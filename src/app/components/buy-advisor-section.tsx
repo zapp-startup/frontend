@@ -1,3 +1,4 @@
+import * as React from "react";
 import { CheckCircle2, XCircle, Clock, Camera } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
