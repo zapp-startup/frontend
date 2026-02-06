@@ -1,0 +1,6 @@
+Used Figma make to generate the initial frontend .
+
+Work for Feb 5 - Feb 12
+Add login functionality
+Connect frontend to backend functionality (connect to urls)
+
