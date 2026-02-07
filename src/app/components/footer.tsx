@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Zap } from "lucide-react";
 
 export function Footer() {

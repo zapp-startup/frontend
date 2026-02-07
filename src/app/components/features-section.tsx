@@ -1,3 +1,4 @@
+import * as React from "react";
 import { LayoutDashboard, Receipt, ThumbsUp, FileText, BarChart3, Bell } from "lucide-react";
 import { Card } from "./ui/card";
 

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ShoppingBag, MessageSquare, TrendingUp, Lightbulb } from "lucide-react";
 
 export function HowItWorksSection() {

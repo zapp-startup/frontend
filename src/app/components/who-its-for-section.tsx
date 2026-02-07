@@ -1,3 +1,4 @@
+import * as React from "react";
 import { GraduationCap, Users, Target } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 

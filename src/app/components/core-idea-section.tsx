@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Brain, Target, Zap } from "lucide-react";
 import { Card } from "./ui/card";
 
