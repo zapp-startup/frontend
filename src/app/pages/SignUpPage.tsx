@@ -9,6 +9,7 @@ import { Label } from "../components/ui/label";
 import { COLORS, GLOWS } from "../theme";
 import { toast } from "sonner";
 
+
 export function SignUpPage() {
   const { signUp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
