@@ -1,14 +1,31 @@
 import * as React from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
-import { X } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "./ui/button";
+import { X, Send } from "lucide-react";
 import { COLORS, GLOWS } from "../theme";
+import { cn } from "./ui/utils";
+
+interface Message {
+  id: string;
+  text: string;
+  sender: "user" | "bot";
+  timestamp: Date;
+}
 
 export function ZappBot() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [value, setValue] = React.useState(50);
+  const [input, setInput] = React.useState("");
   const [isHovered, setIsHovered] = React.useState(false);
+  const [isTyping, setIsTyping] = React.useState(false);
+  const [messages, setMessages] = React.useState<Message[]>([
+    {
+      id: "1",
+      text: "Hello! I'm your Zapp CFO. I've been monitoring your subscriptions. How can I help you optimize your value score today?",
+      sender: "bot",
+      timestamp: new Date(),
+    },
+  ]);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -22,81 +39,146 @@ export function ZappBot() {
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
+
+  const generateResponse = React.useCallback((text: string) => {
+    const normalized = text.toLowerCase();
+
+    if (normalized.includes("score") || normalized.includes("value")) {
+      return "Your current Value Score is 88. You're in the 'Intentional' tier. Your recent specialty coffee purchase is the main factor preventing a move to 'Optimal'.";
+    }
+
+    if (normalized.includes("subscription") || normalized.includes("netflix")) {
+      return "I noticed Netflix hasn't been used in 14 days. This is costing you $1.14 per idle day. Should we consider a pause?";
+    }
+
+    if (normalized.includes("save") || normalized.includes("budget")) {
+      return "Based on your spending patterns, shifting your 'Lifestyle' allocation by 5% toward 'Infrastructure' would increase your long-term joy efficiency by 12%.";
+    }
+
+    return "Understood. I'm analyzing that against your financial memory bank. Would you like me to project the impact on your end-of-month liquidity?";
   }, []);
+
+  const handleSend = (event?: React.FormEvent) => {
+    event?.preventDefault();
+
+    if (!input.trim()) return;
+
+    const prompt = input.trim();
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: prompt,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsTyping(true);
+
+    setTimeout(() => {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: generateResponse(prompt),
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMsg]);
+      setIsTyping(false);
+    }, 1500);
+  };
 
   return (
     <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: "bottom right" }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="mb-6 w-80 bg-[#101A2E]/95 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl backdrop-blur-3xl"
-            style={{ boxShadow: `${GLOWS.ambient()}, ${GLOWS.soft(COLORS.electricPurple)}` }}
+            className="mb-6 h-[500px] w-96 overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#101A2E]/95 shadow-2xl backdrop-blur-3xl flex flex-col"
+            style={{ boxShadow: `${GLOWS.ambient(0.8)}, ${GLOWS.soft(COLORS.electricPurple)}` }}
           >
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#B47CFF]" style={{ backgroundColor: COLORS.electricPurple }} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Zapp Intelligence</span>
+            <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] p-6">
+              <div className="flex items-center gap-3">
+                <div
+                  className="h-2 w-2 animate-pulse rounded-full"
+                  style={{ backgroundColor: COLORS.electricPurple, boxShadow: `0 0 10px ${COLORS.electricPurple}` }}
+                />
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-white">Zapp CFO</h3>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Active Intelligence</span>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-white transition-colors">
-                  <X size={16} />
+              </div>
+              <button onClick={() => setIsOpen(false)} className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6 scrollbar-none">
+              {messages.map((msg) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  key={msg.id}
+                  className={cn("flex max-w-[80%] flex-col", msg.sender === "user" ? "ml-auto items-end" : "items-start")}
+                >
+                  <div
+                    className={cn(
+                      "rounded-2xl p-4 text-sm font-medium leading-relaxed shadow-lg",
+                      msg.sender === "user"
+                        ? "rounded-br-none text-white"
+                        : "rounded-bl-none border border-white/5 bg-white/5 text-gray-200"
+                    )}
+                    style={msg.sender === "user" ? { backgroundColor: COLORS.electricPurple } : {}}
+                  >
+                    {msg.text}
+                  </div>
+                  <span className="mt-2 text-[8px] font-black uppercase tracking-widest text-gray-600">
+                    {msg.sender === "user" ? "You" : "ZappBot"} • {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </motion.div>
+              ))}
+
+              {isTyping && (
+                <div className="flex w-20 items-center gap-2 rounded-2xl rounded-bl-none border border-white/5 bg-white/5 p-4">
+                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
+                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
+                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSend} className="border-t border-white/5 bg-white/[0.02] p-6">
+              <div className="group relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask your CFO anything..."
+                  className="w-full rounded-2xl border border-white/10 bg-[#0B1220] py-4 pr-14 pl-6 text-xs font-bold text-white outline-none transition-all placeholder:text-gray-700 focus:border-purple-500/30"
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-xl p-2.5 text-white shadow-lg transition-all hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-50"
+                  style={{ backgroundColor: COLORS.electricPurple }}
+                >
+                  <Send size={16} />
                 </button>
               </div>
-              <p className="text-sm text-gray-300 leading-relaxed font-medium">
-                I've analyzed your recent transactions. It looks like your subscription utility is shifting. Want to review your value score?
-              </p>
-              <div className="space-y-4">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
-                  <span style={{ color: value < 50 ? COLORS.electricRed : "inherit" }}>Low Value</span>
-                  <span style={{ color: value >= 50 ? COLORS.electricGreen : "inherit" }}>High Value</span>
-                </div>
-                <div className="relative group/slider h-10 flex items-center">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={value}
-                    onChange={(e) => setValue(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer outline-none"
-                    style={{ accentColor: value < 50 ? COLORS.electricRed : COLORS.electricGreen }}
-                  />
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 rounded-full blur-md"
-                    style={{
-                      left: `calc(${value}% - 8px)`,
-                      backgroundColor: value < 50 ? COLORS.electricRed : COLORS.electricGreen,
-                      boxShadow: `0 0 15px ${value < 50 ? COLORS.electricRed : COLORS.electricGreen}`,
-                    }}
-                  />
-                </div>
-                <div
-                  className="text-center text-3xl font-black transition-all"
-                  style={{
-                    color: value < 50 ? COLORS.electricRed : COLORS.electricGreen,
-                    textShadow: `0 0 10px ${value < 50 ? COLORS.electricRed : COLORS.electricGreen}80`,
-                  }}
-                >
-                  {value}
-                </div>
-              </div>
-              <Button
-                onClick={() => {
-                  toast.success("Reflection logged. Your intentional streak continues!", {
-                    style: { background: COLORS.bgCard, color: COLORS.electricGreen, border: `1px solid ${COLORS.electricGreen}33` },
-                  });
-                  setIsOpen(false);
-                }}
-                className="w-full bg-white/5 hover:bg-white/10 text-white rounded-2xl py-6 font-bold uppercase tracking-widest text-xs border border-white/5 transition-all"
-              >
-                Log Reflection
-              </Button>
-            </div>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>
+
       <motion.div
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -105,26 +187,31 @@ export function ZappBot() {
         transition={{ y: { repeat: Infinity, duration: 4, ease: "easeInOut" }, rotate: { repeat: Infinity, duration: 0.2 } }}
         className="relative cursor-pointer group"
       >
-        <div className="absolute inset-0 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" style={{ backgroundColor: COLORS.electricPurple }} />
-        <div className="relative w-20 h-20 bg-[#101A2E] border border-white/10 rounded-full flex items-center justify-center overflow-hidden shadow-2xl">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="transition-all duration-300">
-            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke={COLORS.electricPurple} strokeWidth="1.5" fill={isOpen || isHovered ? COLORS.electricYellow : "none"} className="transition-all" />
-            <path d="M7 16L5 18" stroke={COLORS.electricPurple} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-            <path d="M17 10L19 8" stroke={COLORS.electricPurple} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+        <div className="absolute inset-0 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40" style={{ backgroundColor: COLORS.electricPurple }} />
+        <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-[#101A2E] flex items-center justify-center shadow-2xl">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
+              stroke={COLORS.electricPurple}
+              strokeWidth="1.5"
+              fill={isOpen || isHovered ? COLORS.electricYellow : "none"}
+            />
           </svg>
+
           <div className="absolute top-[28px] left-[26px] flex gap-2">
-            <motion.div style={{ x: eyeX, y: eyeY }} className="w-2 h-2 bg-[#0B1220] rounded-full flex items-center justify-center overflow-hidden">
-              <motion.div animate={{ scaleY: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 5, times: [0, 0.95, 1] }} className="w-full h-full bg-[#0B1220]" />
-            </motion.div>
-            <motion.div style={{ x: eyeX, y: eyeY }} className="w-2 h-2 bg-[#0B1220] rounded-full flex items-center justify-center overflow-hidden">
-              <motion.div animate={{ scaleY: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 5, times: [0, 0.95, 1] }} className="w-full h-full bg-[#0B1220]" />
-            </motion.div>
+            <motion.div style={{ x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
+            <motion.div style={{ x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
           </div>
         </div>
+
         {!isOpen && !isHovered && (
-          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="absolute right-full mr-6 top-1/2 -translate-y-1/2 bg-[#101A2E]/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl whitespace-nowrap">
-            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Need a quick value check?</span>
-            <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-[#101A2E] border-r border-t border-white/10 rotate-45" />
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="absolute top-1/2 right-full mr-6 -translate-y-1/2 whitespace-nowrap rounded-2xl border border-white/10 bg-[#101A2E]/80 px-4 py-2 backdrop-blur-xl"
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Ask a question</span>
+            <div className="absolute top-1/2 right-[-4px] h-2 w-2 -translate-y-1/2 rotate-45 border-t border-r border-white/10 bg-[#101A2E]" />
           </motion.div>
         )}
       </motion.div>
