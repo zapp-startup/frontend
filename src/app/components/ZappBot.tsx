@@ -3,11 +3,13 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import { X, Send } from "lucide-react";
 import { COLORS, GLOWS } from "../theme";
 import { cn } from "./ui/utils";
+import { createConversation, sendMessage } from "../../api/ai.api";
+
 
 interface Message {
   id: string;
   text: string;
-  sender: "user" | "bot";
+  sender: "user" | "assistant";
   timestamp: Date;
 }
 
@@ -20,10 +22,16 @@ export function ZappBot() {
     {
       id: "1",
       text: "Hello! I'm your Zapp CFO. I've been monitoring your subscriptions. How can I help you optimize your value score today?",
-      sender: "bot",
+      sender: "assistant",
       timestamp: new Date(),
     },
   ]);
+  const [conversationId, setConversationId] = React.useState<number | null>(() => {
+  const saved = localStorage.getItem("zapp_conversation_id");
+  return saved ? Number(saved) : null;
+});
+
+
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,53 +55,60 @@ export function ZappBot() {
     }
   }, [messages, isTyping]);
 
-  const generateResponse = React.useCallback((text: string) => {
-    const normalized = text.toLowerCase();
 
-    if (normalized.includes("score") || normalized.includes("value")) {
-      return "Your current Value Score is 88. You're in the 'Intentional' tier. Your recent specialty coffee purchase is the main factor preventing a move to 'Optimal'.";
+const handleSend = async (event?: React.FormEvent) => {
+  event?.preventDefault();
+  if (!input.trim()) return;
+
+  const prompt = input.trim();
+
+  const userMsg: Message = {
+    id: Date.now().toString(),
+    text: prompt,
+    sender: "user",
+    timestamp: new Date(),
+  };
+
+  setMessages((prev) => [...prev, userMsg]);
+  setInput("");
+  setIsTyping(true);
+
+  try {
+    let cid = conversationId;
+
+    if (!cid) {
+      const created = await createConversation({ context_type: "general" });
+      cid = created.conversation_id;
+      setConversationId(cid);
+      localStorage.setItem("zapp_conversation_id", String(cid));
     }
 
-    if (normalized.includes("subscription") || normalized.includes("netflix")) {
-      return "I noticed Netflix hasn't been used in 14 days. This is costing you $1.14 per idle day. Should we consider a pause?";
-    }
+    const resp = await sendMessage(cid, prompt);
 
-    if (normalized.includes("save") || normalized.includes("budget")) {
-      return "Based on your spending patterns, shifting your 'Lifestyle' allocation by 5% toward 'Infrastructure' would increase your long-term joy efficiency by 12%.";
-    }
-
-    return "Understood. I'm analyzing that against your financial memory bank. Would you like me to project the impact on your end-of-month liquidity?";
-  }, []);
-
-  const handleSend = (event?: React.FormEvent) => {
-    event?.preventDefault();
-
-    if (!input.trim()) return;
-
-    const prompt = input.trim();
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: prompt,
-      sender: "user",
-      timestamp: new Date(),
+    const assistantMsg: Message = {
+      id: String(resp.assistant_message.id ?? Date.now() + 1),
+      text: resp.assistant_message.content,
+      sender: "assistant",
+      timestamp: new Date(resp.assistant_message.created_at ?? Date.now()),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        text: generateResponse(prompt),
-        sender: "bot",
+    setMessages((prev) => [...prev, assistantMsg]);
+  } catch (err) {
+    console.error(err);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: (Date.now() + 2).toString(),
+        text: "⚠️ I couldn’t reach the AI service. Try again in a moment.",
+        sender: "assistant",
         timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 1500);
-  };
+      },
+    ]);
+  } finally {
+    setIsTyping(false);
+  }
+};
+
 
   return (
     <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end">
