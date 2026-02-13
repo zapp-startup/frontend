@@ -27,13 +27,15 @@ export function ZappBot() {
     },
   ]);
   const [conversationId, setConversationId] = React.useState<number | null>(() => {
-  const saved = localStorage.getItem("zapp_conversation_id");
-  return saved ? Number(saved) : null;
-});
+    const saved = localStorage.getItem("zapp_conversation_id");
+    return saved ? Number(saved) : null;
+  });
 
 
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  /** In-flight createConversation promise so rapid consecutive sends share one conversation. */
+  const createConversationPromiseRef = React.useRef<Promise<{ conversation_id: number }> | null>(null);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -58,7 +60,7 @@ export function ZappBot() {
 
 const handleSend = async (event?: React.FormEvent) => {
   event?.preventDefault();
-  if (!input.trim()) return;
+  if (!input.trim() || isTyping) return;
 
   const prompt = input.trim();
 
@@ -77,10 +79,14 @@ const handleSend = async (event?: React.FormEvent) => {
     let cid = conversationId;
 
     if (!cid) {
-      const created = await createConversation({ context_type: "general" });
+      if (!createConversationPromiseRef.current) {
+        createConversationPromiseRef.current = createConversation({ context_type: "general" });
+      }
+      const created = await createConversationPromiseRef.current;
       cid = created.conversation_id;
       setConversationId(cid);
       localStorage.setItem("zapp_conversation_id", String(cid));
+      createConversationPromiseRef.current = null; // so future "new chat" can create a new conversation
     }
 
     const resp = await sendMessage(cid, prompt);
@@ -95,6 +101,7 @@ const handleSend = async (event?: React.FormEvent) => {
     setMessages((prev) => [...prev, assistantMsg]);
   } catch (err) {
     console.error(err);
+    createConversationPromiseRef.current = null; // allow retry (e.g. new create) on next send
     setMessages((prev) => [
       ...prev,
       {
@@ -178,11 +185,12 @@ const handleSend = async (event?: React.FormEvent) => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask your CFO anything..."
-                  className="w-full rounded-2xl border border-white/10 bg-[#0B1220] py-4 pr-14 pl-6 text-xs font-bold text-white outline-none transition-all placeholder:text-gray-700 focus:border-purple-500/30"
+                  disabled={isTyping}
+                  className="w-full rounded-2xl border border-white/10 bg-[#0B1220] py-4 pr-14 pl-6 text-xs font-bold text-white outline-none transition-all placeholder:text-gray-700 focus:border-purple-500/30 disabled:cursor-not-allowed disabled:opacity-70"
                 />
                 <button
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || isTyping}
                   className="absolute top-1/2 right-2 -translate-y-1/2 rounded-xl p-2.5 text-white shadow-lg transition-all hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-50"
                   style={{ backgroundColor: COLORS.electricPurple }}
                 >

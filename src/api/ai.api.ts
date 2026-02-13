@@ -1,5 +1,5 @@
 // src/api/ai.api.ts
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type ApiMessage = {
   id: string | number;
@@ -9,7 +9,7 @@ export type ApiMessage = {
 };
 
 export async function createConversation(params?: { context_type?: string }) {
-  const res = await fetch(`${API_BASE}/api/ai/conversations/`, {
+  const res = await fetch(`${BASE_URL}/api/ai/conversations/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -24,7 +24,7 @@ export async function createConversation(params?: { context_type?: string }) {
 }
 
 export async function sendMessage(conversationId: number, content: string) {
-  const res = await fetch(`${API_BASE}/api/ai/conversations/${conversationId}/messages/`, {
+  const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,7 +41,7 @@ export async function sendMessage(conversationId: number, content: string) {
 }
 
 export async function listMessages(conversationId: number) {
-  const res = await fetch(`${API_BASE}/api/ai/conversations/${conversationId}/messages/`, {
+  const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     headers: {
       "X-Dev-User": "seed_user_0",
     },
