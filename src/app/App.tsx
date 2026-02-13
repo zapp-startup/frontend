@@ -6,6 +6,7 @@ import { AmbientEnergyLines } from "./components/AmbientEnergyLines";
 import { DashboardLayout } from "./layout/DashboardLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import {HomePage} from "./pages/HomePage";
 
 /**
  * App root: providers, global shell, and top-level routes.
