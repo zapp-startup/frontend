@@ -1,16 +1,28 @@
 import * as React from "react";
+import type { Session } from "@supabase/supabase-js";
+import { apiRequest, setApiAccessToken } from "../../api/client";
 import { supabase } from "../../api/supabaseClient";
 
 export type User = {
-  id: string;
+  id: number | string;
+  supabaseUid: string;
+  username: string;
   name: string;
   email: string;
   tier?: string;
   createdAt: string;
 };
 
+export type BackendUserProfile = {
+  id: number;
+  email: string;
+  username: string;
+  supabase_uid: string;
+};
+
 type AuthContextValue = {
   user: User | null;
+  backendUser: BackendUserProfile | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string }>;
@@ -29,19 +41,74 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 function mapSupabaseUser(u: any): User {
   const meta = (u?.user_metadata ?? {}) as Record<string, any>;
+  const email = u.email ?? "";
+  const fallbackName = email ? String(email).split("@")[0] : "User";
 
   return {
     id: u.id,
+    supabaseUid: u.id,
+    username: (meta.username as string) ?? fallbackName,
     // if you store "name" in metadata, use it; otherwise fallback to email prefix
-    name: (meta.name as string) ?? (u.email ? String(u.email).split("@")[0] : "User"),
-    email: u.email ?? "",
+    name: (meta.name as string) ?? fallbackName,
+    email,
     tier: meta.tier as string | undefined,
     createdAt: u.created_at ?? new Date().toISOString(),
   };
 }
 
+function mergeBackendProfile(user: User, backendUser: BackendUserProfile | null): User {
+  if (!backendUser) return user;
+
+  return {
+    ...user,
+    id: backendUser.id,
+    supabaseUid: backendUser.supabase_uid,
+    username: backendUser.username,
+    name: user.name || backendUser.username,
+    email: backendUser.email || user.email,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
+  const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
+
+  const syncBackendUser = React.useCallback(async () => {
+    try {
+      const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
+        method: "POST",
+      });
+      setBackendUser(profile);
+      setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
+      return profile;
+    } catch (error) {
+      console.error("Failed to sync backend user:", error);
+      setBackendUser(null);
+      return null;
+    }
+  }, []);
+
+  const applySession = React.useCallback(
+    async (session: Session | null, shouldSyncBackend: boolean) => {
+      const accessToken = session?.access_token ?? null;
+      setApiAccessToken(accessToken);
+
+      const sbUser = session?.user ?? null;
+      if (!sbUser) {
+        setUser(null);
+        setBackendUser(null);
+        return;
+      }
+
+      const mappedUser = mapSupabaseUser(sbUser);
+      setUser(mergeBackendProfile(mappedUser, backendUser));
+
+      if (shouldSyncBackend) {
+        await syncBackendUser();
+      }
+    },
+    [backendUser, syncBackendUser]
+  );
 
   // Keep local state synced with Supabase session
   React.useEffect(() => {
@@ -53,36 +120,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("getSession error:", error);
+        setApiAccessToken(null);
         setUser(null);
+        setBackendUser(null);
         return;
       }
 
-      const sbUser = data.session?.user ?? null;
-      setUser(sbUser ? mapSupabaseUser(sbUser) : null);
+      await applySession(data.session, !!data.session);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sbUser = session?.user ?? null;
-      setUser(sbUser ? mapSupabaseUser(sbUser) : null);
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const shouldSyncBackend = event === "SIGNED_IN";
+      await applySession(session, shouldSyncBackend);
     });
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession]);
 
   const login = React.useCallback(async (email: string, password: string) => {
-    const { error, data } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
 
     if (error) return { ok: false, error: error.message };
-
-    // onAuthStateChange will set user; but we can also set immediately
-    const sbUser = data.user;
-    if (sbUser) setUser(mapSupabaseUser(sbUser));
 
     return { ok: true };
   }, []);
@@ -116,7 +180,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = React.useCallback(async () => {
     await supabase.auth.signOut();
+    setApiAccessToken(null);
     setUser(null);
+    setBackendUser(null);
   }, []);
 
   const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
@@ -134,11 +200,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const sbUser = resp.user ?? null;
-    setUser(sbUser ? mapSupabaseUser(sbUser) : null);
-  }, []);
+    setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUser) : null);
+  }, [backendUser]);
 
   const value: AuthContextValue = {
     user,
+    backendUser,
     isAuthenticated: !!user,
     login,
     signUp,
