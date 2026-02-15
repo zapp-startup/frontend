@@ -6,6 +6,8 @@ import { AmbientEnergyLines } from "./components/AmbientEnergyLines";
 import { DashboardLayout } from "./layout/DashboardLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import { AuthCallback } from "./pages/AuthCallback"; // adjust path to where AuthCallback lives
+
 
 /**
  * App root: providers, global shell, and top-level routes.
@@ -20,6 +22,10 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
+
+          {/* IMPORTANT: add this */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+
           <Route path="*" element={<DashboardLayout />} />
         </Routes>
       </div>
