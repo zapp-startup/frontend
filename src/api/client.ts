@@ -6,6 +6,11 @@ export function setApiAccessToken(token: string | null) {
   authToken = token;
 }
 
+export function getApiAccessToken() {
+  return authToken;
+}
+
+
 export async function apiRequest<T = any>(
   path: string,
   options: RequestInit = {}
