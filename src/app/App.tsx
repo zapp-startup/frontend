@@ -7,7 +7,7 @@ import { DashboardLayout } from "./layout/DashboardLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { AuthCallback } from "./pages/AuthCallback"; // adjust path to where AuthCallback lives
-
+import {HomePage} from "./pages/HomePage";
 
 /**
  * App root: providers, global shell, and top-level routes.
