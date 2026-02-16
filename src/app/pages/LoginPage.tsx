@@ -8,17 +8,18 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { COLORS, GLOWS } from "../theme";
 import { toast } from "sonner";
+import { supabase } from "../../api/supabaseClient";
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isAuthReady } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (isAuthenticated) navigate("/", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthReady && isAuthenticated) navigate("/", { replace: true });
+  }, [isAuthReady, isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +34,18 @@ export function LoginPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      toast.error(error.message);
+    }
+  };
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <motion.div
@@ -48,14 +61,39 @@ export function LoginPage() {
           <div className="flex justify-center mb-8">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: COLORS.electricCyan + "20", boxShadow: GLOWS.soft(COLORS.electricCyan) }}
+              style={{
+                backgroundColor: COLORS.electricCyan + "20",
+                boxShadow: GLOWS.soft(COLORS.electricCyan),
+              }}
             >
               <Zap className="w-7 h-7" style={{ color: COLORS.electricCyan }} />
             </div>
           </div>
-          <h1 className="text-2xl font-black text-center text-white uppercase tracking-tight mb-1">Sign in</h1>
-          <p className="text-sm text-gray-400 text-center mb-8">Enter your credentials to continue</p>
 
+          <h1 className="text-2xl font-black text-center text-white uppercase tracking-tight mb-1">
+            Sign in
+          </h1>
+          <p className="text-sm text-gray-400 text-center mb-6">
+            Enter your credentials to continue
+          </p>
+
+          {/* Google OAuth */}
+          <Button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-sm"
+            style={{ backgroundColor: "white", color: COLORS.bgPrimary }}
+          >
+            Continue with Google
+          </Button>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          {/* Email/password */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="login-email" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
@@ -71,6 +109,7 @@ export function LoginPage() {
                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="login-password" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
                 Password
@@ -85,6 +124,7 @@ export function LoginPage() {
                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
             </div>
+
             <Button
               type="submit"
               disabled={loading}

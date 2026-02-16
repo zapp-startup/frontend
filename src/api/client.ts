@@ -1,10 +1,16 @@
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+let authToken: string | null = null;
+
+export function setApiAccessToken(token: string | null) {
+  authToken = token;
+}
+
 export async function apiRequest<T = any>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem("access_token");
+  const token = authToken;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
