@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 
 export function SignUpPage() {
-  const { signUp, isAuthenticated } = useAuth();
+  const { signUp, isAuthenticated, isAuthReady } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -20,8 +20,8 @@ export function SignUpPage() {
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (isAuthenticated) navigate("/", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthReady && isAuthenticated) navigate("/", { replace: true });
+  }, [isAuthReady, isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

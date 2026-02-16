@@ -66,11 +66,14 @@ function PageContent() {
 }
 
 export function DashboardLayout() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isAuthReady, user } = useAuth();
   const { pathname } = useLocation();
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
 
+  if (!isAuthReady) {
+    return null; // or a loading spinner; avoid redirect until session bootstrap completes
+  }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

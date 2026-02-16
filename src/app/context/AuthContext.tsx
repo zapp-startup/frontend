@@ -24,6 +24,8 @@ type AuthContextValue = {
   user: User | null;
   backendUser: BackendUserProfile | null;
   isAuthenticated: boolean;
+  /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
+  isAuthReady: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -72,6 +74,7 @@ function mergeBackendProfile(user: User, backendUser: BackendUserProfile | null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
+  const [authLoading, setAuthLoading] = React.useState(true);
 
   const syncBackendUser = React.useCallback(async () => {
     try {
@@ -110,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [backendUser, syncBackendUser]
   );
 
-  // Keep local state synced with Supabase session
+  // Keep local state synced with Supabase session; bootstrap so redirects wait for first check
   React.useEffect(() => {
     let mounted = true;
 
@@ -123,10 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setApiAccessToken(null);
         setUser(null);
         setBackendUser(null);
-        return;
+      } else {
+        await applySession(data.session, !!data.session);
       }
-
-      await applySession(data.session, !!data.session);
+      setAuthLoading(false);
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -170,13 +173,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) return { ok: false, error: error.message };
 
-    // If email confirmations are OFF, you get a session immediately.
-    // If confirmations are ON, session may be null until user confirms.
-    const sbUser = resp.user ?? null;
-    if (sbUser) setUser(mapSupabaseUser(sbUser));
+    // Only set auth state when Supabase returns a session so route protection matches
+    // real session state (e.g. when email confirmation is on, no session until confirmed).
+    if (resp.session) {
+      await applySession(resp.session, true);
+    }
 
     return { ok: true };
-  }, []);
+  }, [applySession]);
 
   const logout = React.useCallback(async () => {
     await supabase.auth.signOut();
@@ -207,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     backendUser,
     isAuthenticated: !!user,
+    isAuthReady: !authLoading,
     login,
     signUp,
     logout,
