@@ -1,17 +1,12 @@
 import * as React from "react";
 import { Toaster } from "sonner";
 import { Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { AmbientEnergyLines } from "./components/AmbientEnergyLines";
-import { DashboardLayout } from "./layout/DashboardLayout";
-import { LoginPage } from "./pages/LoginPage";
-import { SignUpPage } from "./pages/SignUpPage";
-import { AuthCallback } from "./pages/AuthCallback"; // adjust path to where AuthCallback lives
-import {HomePage} from "./pages/HomePage";
+import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/auth";
+import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
 
 /**
  * App root: providers, global shell, and top-level routes.
- * Auth and dashboard layout live in separate modules.
+ * Auth and dashboard layout live in feature modules.
  */
 export default function App() {
   return (
@@ -22,10 +17,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
-
-          {/* IMPORTANT: add this */}
           <Route path="/auth/callback" element={<AuthCallback />} />
-
           <Route path="*" element={<DashboardLayout />} />
         </Routes>
       </div>
