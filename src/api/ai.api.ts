@@ -1,4 +1,5 @@
 // src/api/ai.api.ts
+import { getApiAccessToken } from "@/api/client";
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type ApiMessage = {
@@ -8,13 +9,45 @@ export type ApiMessage = {
   created_at?: string;
 };
 
+function parseJwtPayload(token: string) {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return null;
+
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded) as Record<string, any>;
+  } catch {
+    return null;
+  }
+}
+
+function buildAuthHeaders() {
+  const token = getApiAccessToken();
+  const payload = token ? parseJwtPayload(token) : null;
+
+  const userIdentifier =
+    payload?.email ??
+    payload?.user_metadata?.username ??
+    payload?.user_metadata?.name ??
+    payload?.sub ??
+    "anonymous";
+
+  console.log(`[AI API] Sending request as user: ${userIdentifier}`);
+
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    "X-Dev-User": String(userIdentifier),
+  } as Record<string, string>;
+}
+
 export async function createConversation(params?: { context_type?: string }) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       // dev-only: identify user without auth CHANGE TO REAL AUTH LATER. DO NOT FORGET.
-      "X-Dev-User": "seed_user_0",
+      ...buildAuthHeaders(),
     },
     body: JSON.stringify(params ?? {}),
   });
@@ -28,7 +61,7 @@ export async function sendMessage(conversationId: number, content: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Dev-User": "seed_user_0",
+      ...buildAuthHeaders(),
     },
     body: JSON.stringify({ content }),
   });
@@ -43,7 +76,7 @@ export async function sendMessage(conversationId: number, content: string) {
 export async function listMessages(conversationId: number) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     headers: {
-      "X-Dev-User": "seed_user_0",
+      ...buildAuthHeaders(),
     },
   });
 
