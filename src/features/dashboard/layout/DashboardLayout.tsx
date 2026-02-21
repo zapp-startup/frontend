@@ -15,7 +15,7 @@ import { SearchPage } from "@/features/search/pages/SearchPage";
 import { ProfilePage } from "@/features/profile/pages/ProfilePage";
 import { TransactionsPage } from "@/features/transactions";
 
-type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search";
+type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search" | "profile";
 
 const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[] = [
   { id: "home", path: "/", label: "Dashboard", icon: Home },
@@ -23,7 +23,7 @@ const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[]
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "analytics", path: "/analytics", label: "Analytics", icon: BarChart2 },
   { id: "search", path: "/search", label: "Search", icon: Search },
-  //{ id: "profile", path: "/profile", label: "Profile", icon: User },
+  { id: "profile", path: "/profile", label: "Profile", icon: User },
 ];
 
 const PAGE_COLORS: Record<PageId, string> = {
@@ -32,7 +32,7 @@ const PAGE_COLORS: Record<PageId, string> = {
   subscriptions: COLORS.electricBlue,
   analytics: COLORS.electricCyan,
   search: COLORS.electricTeal,
-  //profile: COLORS.electricPurple,
+  profile: COLORS.electricPurple,
 };
 
 function pathToPage(pathname: string): PageId {
@@ -47,7 +47,7 @@ const ROUTES: { path: string; element: React.ReactNode }[] = [
   { path: "/subscriptions", element: <SubscriptionsPage /> },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
-  //{ path: "/profile", element: <ProfilePage /> },
+  { path: "/profile", element: <ProfilePage /> },
 ];
 
 function PageContent() {
