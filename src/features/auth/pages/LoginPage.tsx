@@ -9,6 +9,7 @@ import { Label } from "@/shared/components/ui/label";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { toast } from "sonner";
 import { supabase } from "@/api/supabaseClient";
+import { OnboardingAPI } from "@/api/onboarding.api";
 
 export function LoginPage() {
   const { login, isAuthenticated, isAuthReady } = useAuth();
@@ -28,7 +29,8 @@ export function LoginPage() {
     setLoading(false);
     if (result.ok) {
       toast.success("Welcome back!");
-      navigate("/", { replace: true });
+      const isComplete = await OnboardingAPI.checkComplete();
+      navigate(isComplete ? "/" : "/onboarding", { replace: true });
     } else {
       toast.error(result.error);
     }
