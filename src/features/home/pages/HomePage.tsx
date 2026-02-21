@@ -1,6 +1,7 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { TrendingUp, AlertCircle, Sparkles, TrendingDown, ChevronRight } from "lucide-react";
+import { TransactionsAPI, type Transaction } from "@/api/transactions.api";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -26,6 +27,16 @@ export function HomePage() {
       style: { background: COLORS.bgCard, color: COLORS.electricGreen, border: `1px solid ${COLORS.electricGreen}33` },
     });
   };
+
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    TransactionsAPI.recent()
+      .then(setTransactions)
+      .catch(console.error)
+      .finally(() => setTxLoading(false));
+  }, []);
 
   return (
     <div className="space-y-12 pb-32 relative z-10">
@@ -167,46 +178,89 @@ export function HomePage() {
             <button className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 border-b border-cyan-400/30 pb-1">View Timeline</button>
           </div>
           <div className="space-y-4">
-            {[
-              { id: 1, name: "Specialty Coffee", date: "Today", price: 6.5, score: 32, status: "regret" },
-              { id: 2, name: "Cloud Infrastructure", date: "Yesterday", price: 45, score: 92, status: "high-value" },
-              { id: 3, name: "Mental Health App", date: "2 days ago", price: 12, score: 88, status: "high-value" },
-              { id: 4, name: "Mechanical Keyboard", date: "4 days ago", price: 159, score: 96, status: "high-value" },
-            ].map((item) => (
+            {txLoading && (
+  <div className="text-center py-12 text-gray-600 text-xs font-black uppercase tracking-widest animate-pulse">
+    Loading transactions...
+  </div>
+)}
+
+{!txLoading && transactions.length === 0 && (
+  <div className="text-center py-12 space-y-3">
+    <div className="text-gray-600 text-xs font-black uppercase tracking-widest">No purchases logged yet</div>
+    <div className="text-gray-700 text-xs">Add your first purchase to start tracking your value score.</div>
+  </div>
+)}
+
+{!txLoading && transactions.map((item) => {
+  const score = item.satisfaction_rating != null
+    ? item.satisfaction_rating * 10
+    : item.impulse_score != null
+    ? Math.round((1 - item.impulse_score) * 100)
+    : null;
+
+  const isRegret = item.regret_score != null
+    ? item.regret_score > 0.5
+    : score != null && score < 50;
+
+  const timeAgo = (() => {
+    const diff = Date.now() - new Date(item.occurred_at).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    return `${days} days ago`;
+  })();
+
+  return (
+    <div
+      key={item.id}
+      onClick={triggerPulse}
+      className="group relative flex items-center justify-between p-6 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all cursor-pointer"
+    >
+      <div className="flex items-center gap-8">
+        <div
+          className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center border transition-all group-hover:scale-110"
+          style={{
+            color: isRegret ? COLORS.electricRed : COLORS.electricGreen,
+            backgroundColor: isRegret ? `${COLORS.electricRed}15` : `${COLORS.electricGreen}15`,
+            borderColor: isRegret ? `${COLORS.electricRed}33` : `${COLORS.electricGreen}33`,
+            boxShadow: isRegret ? GLOWS.soft(COLORS.electricRed) : GLOWS.soft(COLORS.electricGreen),
+          }}
+        >
+          {isRegret ? <TrendingDown size={32} /> : <TrendingUp size={32} />}
+        </div>
+        <div>
+          <div className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors tracking-tight">
+            {item.description_raw || item.category}
+          </div>
+          <div className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2">
+            {timeAgo} • ${Number(item.amount).toFixed(2)}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-10">
+        <div className="text-right">
+          {score != null ? (
+            <>
               <div
-                key={item.id}
-                onClick={triggerPulse}
-                className="group relative flex items-center justify-between p-6 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all cursor-pointer"
+                className="text-4xl font-black tracking-tighter"
+                style={{
+                  color: score > 70 ? COLORS.electricGreen : COLORS.electricRed,
+                  filter: `drop-shadow(0 0 10px ${score > 70 ? COLORS.electricGreen : COLORS.electricRed}80)`,
+                }}
               >
-                <div className="flex items-center gap-8">
-                  <div
-                    className={cn(
-                      "w-16 h-16 rounded-[1.5rem] flex items-center justify-center border transition-all group-hover:scale-110",
-                      item.status === "regret" ? "bg-electric-red/10 border-electric-red/20 text-electric-red" : "bg-electric-green/10 border-electric-green/20 text-electric-green"
-                    )}
-                    style={{
-                      color: item.status === "regret" ? COLORS.electricRed : COLORS.electricGreen,
-                      backgroundColor: item.status === "regret" ? `${COLORS.electricRed}15` : `${COLORS.electricGreen}15`,
-                      borderColor: item.status === "regret" ? `${COLORS.electricRed}33` : `${COLORS.electricGreen}33`,
-                      boxShadow: item.status === "regret" ? GLOWS.soft(COLORS.electricRed) : GLOWS.soft(COLORS.electricGreen),
-                    }}
-                  >
-                    {item.status === "regret" ? <TrendingDown size={32} /> : <TrendingUp size={32} />}
-                  </div>
-                  <div>
-                    <div className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors tracking-tight">{item.name}</div>
-                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2">{item.date} • ${item.price.toFixed(2)}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-10">
-                  <div className="text-right">
-                    <div className="text-4xl font-black tracking-tighter transition-all" style={{ color: item.score > 70 ? COLORS.electricGreen : COLORS.electricRed, filter: `drop-shadow(0 0 10px ${item.score > 70 ? COLORS.electricGreen : COLORS.electricRed}80)` }}>{item.score}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-gray-600 font-black">Score</div>
-                  </div>
-                  <ChevronRight size={24} className="text-gray-800 group-hover:text-cyan-400 transition-colors" />
-                </div>
+                {score}
               </div>
-            ))}
+              <div className="text-[10px] uppercase tracking-widest text-gray-600 font-black">Score</div>
+            </>
+          ) : (
+            <div className="text-[10px] uppercase tracking-widest text-gray-700 font-black">No score</div>
+          )}
+        </div>
+        <ChevronRight size={24} className="text-gray-800 group-hover:text-cyan-400 transition-colors" />
+      </div>
+    </div>
+  );
+})}
           </div>
         </ElectricCard>
       </div>
