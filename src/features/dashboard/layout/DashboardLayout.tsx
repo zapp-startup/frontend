@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
-import { Home, CreditCard, BarChart2, Search, User, Camera } from "lucide-react";
+import { Home, CreditCard, BarChart2, Search, User, Camera, List } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { cn } from "@/shared/components/ui/utils";
@@ -13,23 +13,26 @@ import { SubscriptionsPage } from "@/features/subscriptions/pages/SubscriptionsP
 import { AnalyticsPage } from "@/features/analytics/pages/AnalyticsPage";
 import { SearchPage } from "@/features/search/pages/SearchPage";
 import { ProfilePage } from "@/features/profile/pages/ProfilePage";
+import { TransactionsPage } from "@/features/transactions";
 
-type PageId = "home" | "subscriptions" | "analytics" | "search" | "profile";
+type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search";
 
 const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[] = [
   { id: "home", path: "/", label: "Dashboard", icon: Home },
+  { id: "transactions", path: "/transactions", label: "Transactions", icon: List },
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "analytics", path: "/analytics", label: "Analytics", icon: BarChart2 },
   { id: "search", path: "/search", label: "Search", icon: Search },
-  { id: "profile", path: "/profile", label: "Profile", icon: User },
+  //{ id: "profile", path: "/profile", label: "Profile", icon: User },
 ];
 
 const PAGE_COLORS: Record<PageId, string> = {
   home: COLORS.electricGreen,
+  transactions: COLORS.electricCyan,
   subscriptions: COLORS.electricBlue,
   analytics: COLORS.electricCyan,
   search: COLORS.electricTeal,
-  profile: COLORS.electricPurple,
+  //profile: COLORS.electricPurple,
 };
 
 function pathToPage(pathname: string): PageId {
@@ -40,10 +43,11 @@ function pathToPage(pathname: string): PageId {
 
 const ROUTES: { path: string; element: React.ReactNode }[] = [
   { path: "/", element: <HomePage /> },
+  { path: "/transactions", element: <TransactionsPage /> },
   { path: "/subscriptions", element: <SubscriptionsPage /> },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
-  { path: "/profile", element: <ProfilePage /> },
+  //{ path: "/profile", element: <ProfilePage /> },
 ];
 
 function PageContent() {
