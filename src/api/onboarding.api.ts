@@ -1,0 +1,28 @@
+import { apiRequest } from "./client";
+
+export type OnboardingData = {
+  life_stage: string;
+  household_size: number | null;
+  location_zip: string;
+  income_range: string;
+  monthly_fixed_expenses: number | null;
+  financial_goal: string;
+  risk_tolerance: string;
+  budget_style: string;
+  value_priority_cost: number;
+  value_priority_quality: number;
+  value_priority_sustainability: number;
+  self_report_research_habit: number | null;
+};
+
+export const OnboardingAPI = {
+  checkComplete: async (): Promise<boolean> => {
+    const data = await apiRequest<any[]>("/api/raw-explicit/");
+    return data.length > 0;
+  },
+  submit: (payload: OnboardingData) =>
+    apiRequest("/api/raw-explicit/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};

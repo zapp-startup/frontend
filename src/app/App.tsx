@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/auth";
 import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
+import { OnboardingPage } from "@/features/onboarding";
 
 /**
  * App root: providers, global shell, and top-level routes.
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="*" element={<DashboardLayout />} />
         </Routes>
       </div>
