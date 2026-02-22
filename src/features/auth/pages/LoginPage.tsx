@@ -42,7 +42,7 @@ export function LoginPage() {
   } catch {
     navigate("/", { replace: true });
   }
-}else {
+} else {
       toast.error(result.error);
     }
   };
