@@ -30,11 +30,17 @@ export function LoginPage() {
     if (result.ok) {
   toast.success("Welcome back!");
   // Wait for auth state to propagate so the API token is set
-  await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve) => {
     const unsub = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") { unsub.data.subscription.unsubscribe(); resolve(); }
+      if (event === "SIGNED_IN") {
+        unsub.data.subscription.unsubscribe();
+        resolve();
+      }
     });
-    setTimeout(resolve, 2000); // fallback
+    setTimeout(() => {
+      unsub.data.subscription.unsubscribe();
+      resolve();
+    }, 2000);
   });
   try {
     const isComplete = await OnboardingAPI.checkComplete();

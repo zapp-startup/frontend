@@ -2,6 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
+import { setApiAccessToken } from "@/api/client";
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -9,42 +10,44 @@ export function AuthCallback() {
   React.useEffect(() => {
     let done = false;
 
-  const finish = async () => {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("getSession error:", error);
-      navigate("/login", { replace: true });
-      return;
-    }
-    if (data.session) {
-      done = true;
+    const finish = async () => {
       try {
-        const isComplete = await OnboardingAPI.checkComplete();
-        navigate(isComplete ? "/" : "/onboarding", { replace: true });
-      } catch {
-        navigate("/", { replace: true });
-      }
-      return;
-    }
-    setTimeout(async () => {
-      if (done) return;
-      const { data: d2 } = await supabase.auth.getSession();
-      if (d2.session) {
-        try {
-          const isComplete = await OnboardingAPI.checkComplete();
-          navigate(isComplete ? "/" : "/onboarding", { replace: true });
-        } catch {
-          navigate("/", { replace: true });
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("getSession error:", error);
+          navigate("/login", { replace: true });
+          return;
         }
-      } else {
+        if (data.session) {
+          done = true;
+          setApiAccessToken(data.session.access_token);
+          try {
+            const isComplete = await OnboardingAPI.checkComplete();
+            navigate(isComplete ? "/" : "/onboarding", { replace: true });
+          } catch {
+            navigate("/", { replace: true });
+          }
+          return;
+        }
+        setTimeout(async () => {
+          if (done) return;
+          const { data: d2 } = await supabase.auth.getSession();
+          if (d2.session) {
+            setApiAccessToken(d2.session.access_token);
+            try {
+              const isComplete = await OnboardingAPI.checkComplete();
+              navigate(isComplete ? "/" : "/onboarding", { replace: true });
+            } catch {
+              navigate("/", { replace: true });
+            }
+          } else {
+            navigate("/login", { replace: true });
+          }
+        }, 300);
+      } catch {
         navigate("/login", { replace: true });
       }
-    }, 300);
-  } catch {
-    navigate("/login", { replace: true });
-  }
-};
+    };
 
     finish();
   }, [navigate]);
