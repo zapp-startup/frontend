@@ -28,27 +28,20 @@ export function LoginPage() {
     const result = await login(email, password);
     setLoading(false);
     if (result.ok) {
-  toast.success("Welcome back!");
-  // Wait for auth state to propagate so the API token is set
-    await new Promise<void>((resolve) => {
-    const unsub = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        unsub.data.subscription.unsubscribe();
-        resolve();
+      toast.success("Welcome back!");
+
+      const accessToken = result.session?.access_token ?? null;
+      if (accessToken) {
+        try {
+          const isComplete = await OnboardingAPI.checkComplete();
+          navigate(isComplete ? "/" : "/onboarding", { replace: true });
+        } catch {
+          navigate("/", { replace: true });
+        }
+      } else {
+        navigate("/", { replace: true });
       }
-    });
-    setTimeout(() => {
-      unsub.data.subscription.unsubscribe();
-      resolve();
-    }, 2000);
-  });
-  try {
-    const isComplete = await OnboardingAPI.checkComplete();
-    navigate(isComplete ? "/" : "/onboarding", { replace: true });
-  } catch {
-    navigate("/", { replace: true });
-  }
-} else {
+    } else {
       toast.error(result.error);
     }
   };

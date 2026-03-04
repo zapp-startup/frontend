@@ -26,7 +26,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; session?: Session | null }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<void>;
@@ -74,21 +74,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
+  const backendUserRef = React.useRef<BackendUserProfile | null>(null);
+
+  const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
+    backendUserRef.current = profile;
+    setBackendUser(profile);
+  }, []);
 
   const syncBackendUser = React.useCallback(async () => {
     try {
       const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
+        requireAuth: true,
         method: "POST",
       });
-      setBackendUser(profile);
+      updateBackendUser(profile);
       setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
       return profile;
     } catch (error) {
       console.error("Failed to sync backend user:", error);
-      setBackendUser(null);
+      updateBackendUser(null);
       return null;
     }
-  }, []);
+  }, [updateBackendUser]);
 
   const applySession = React.useCallback(
     async (session: Session | null, shouldSyncBackend: boolean) => {
@@ -98,18 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sbUser = session?.user ?? null;
       if (!sbUser) {
         setUser(null);
-        setBackendUser(null);
+        updateBackendUser(null);
         return;
       }
 
       const mappedUser = mapSupabaseUser(sbUser);
-      setUser(mergeBackendProfile(mappedUser, backendUser));
+      setUser(mergeBackendProfile(mappedUser, backendUserRef.current));
 
       if (shouldSyncBackend) {
         await syncBackendUser();
       }
     },
-    [backendUser, syncBackendUser]
+    [syncBackendUser, updateBackendUser]
   );
 
   React.useEffect(() => {
@@ -123,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("getSession error:", error);
         setApiAccessToken(null);
         setUser(null);
-        setBackendUser(null);
+        updateBackendUser(null);
       } else {
         await applySession(data.session, !!data.session);
       }
@@ -142,14 +149,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applySession]);
 
   const login = React.useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
 
     if (error) return { ok: false, error: error.message };
 
-    return { ok: true };
+    setApiAccessToken(data.session?.access_token ?? null);
+
+    return { ok: true, session: data.session };
   }, []);
 
   const signUp = React.useCallback(async (data: SignUpData) => {
@@ -182,8 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setApiAccessToken(null);
     setUser(null);
-    setBackendUser(null);
-  }, []);
+    updateBackendUser(null);
+  }, [updateBackendUser]);
 
   const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
     const { error, data: resp } = await supabase.auth.updateUser({
@@ -199,8 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const sbUser = resp.user ?? null;
-    setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUser) : null);
-  }, [backendUser]);
+    setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
+  }, []);
 
   const value: AuthContextValue = {
     user,

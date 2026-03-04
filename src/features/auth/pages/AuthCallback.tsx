@@ -8,48 +8,73 @@ export function AuthCallback() {
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    let done = false;
+    let cancelled = false;
 
-    const finish = async () => {
+    const completeSignIn = async (accessToken: string) => {
+      if (cancelled) return;
+
+      setApiAccessToken(accessToken);
+
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("getSession error:", error);
-          navigate("/login", { replace: true });
-          return;
+        const isComplete = await OnboardingAPI.checkComplete();
+        if (!cancelled) {
+          navigate(isComplete ? "/" : "/onboarding", { replace: true });
         }
-        if (data.session) {
-          done = true;
-          setApiAccessToken(data.session.access_token);
-          try {
-            const isComplete = await OnboardingAPI.checkComplete();
-            navigate(isComplete ? "/" : "/onboarding", { replace: true });
-          } catch {
-            navigate("/", { replace: true });
-          }
-          return;
-        }
-        setTimeout(async () => {
-          if (done) return;
-          const { data: d2 } = await supabase.auth.getSession();
-          if (d2.session) {
-            setApiAccessToken(d2.session.access_token);
-            try {
-              const isComplete = await OnboardingAPI.checkComplete();
-              navigate(isComplete ? "/" : "/onboarding", { replace: true });
-            } catch {
-              navigate("/", { replace: true });
-            }
-          } else {
-            navigate("/login", { replace: true });
-          }
-        }, 300);
       } catch {
-        navigate("/login", { replace: true });
+        if (!cancelled) {
+          navigate("/", { replace: true });
+        }
       }
     };
 
-    finish();
+    void (async () => {
+      try {
+        const code = new URL(window.location.href).searchParams.get("code");
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error("exchangeCodeForSession error:", error);
+            if (!cancelled) {
+              navigate("/login", { replace: true });
+            }
+            return;
+          }
+
+          const accessToken = data.session?.access_token ?? null;
+          if (accessToken) {
+            await completeSignIn(accessToken);
+            return;
+          }
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("getSession error:", error);
+          if (!cancelled) {
+            navigate("/login", { replace: true });
+          }
+          return;
+        }
+
+        const accessToken = data.session?.access_token ?? null;
+        if (accessToken) {
+          await completeSignIn(accessToken);
+          return;
+        }
+
+        if (!cancelled) {
+          navigate("/login", { replace: true });
+        }
+      } catch {
+        if (!cancelled) {
+          navigate("/login", { replace: true });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (
