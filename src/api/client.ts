@@ -76,3 +76,32 @@ export async function apiRequest<T = any>(
   if (res.status === 204) return null as T;
   return (await res.json()) as T;
 }
+
+/** DRF-style paginated response. */
+export type PaginatedResponse<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
+export type PaginatedParams = {
+  page?: number;
+  page_size?: number;
+};
+
+/** Fetches paginated endpoint and returns results array. Handles both paginated and plain array responses. */
+export async function apiRequestPaginated<T>(
+  path: string,
+  params?: PaginatedParams,
+  options: ApiRequestOptions = {}
+): Promise<T[]> {
+  const search = new URLSearchParams();
+  if (params?.page != null) search.set("page", String(params.page));
+  if (params?.page_size != null) search.set("page_size", String(params.page_size));
+  const qs = search.toString();
+  const fullPath = path + (qs ? (path.includes("?") ? "&" : "?") + qs : "");
+  const data = await apiRequest<PaginatedResponse<T> | T[]>(fullPath, options);
+  if (Array.isArray(data)) return data;
+  return (data as PaginatedResponse<T>).results ?? [];
+}

@@ -39,4 +39,21 @@ export const TransactionsAPI = {
       method: "POST",
       body: JSON.stringify({ ...data, currency: "USD", payment_channel: "card" }),
     }),
+  update: (id: number, data: Partial<NewTransaction>) =>
+    apiRequest<Transaction>(`/api/transactions/${id}/`, {
+      requireAuth: true,
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  patch: (id: number, data: Partial<NewTransaction>) =>
+    apiRequest<Transaction>(`/api/transactions/${id}/`, {
+      requireAuth: true,
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  remove: (id: number) =>
+    apiRequest<null>(`/api/transactions/${id}/`, {
+      requireAuth: true,
+      method: "DELETE",
+    }),
 };

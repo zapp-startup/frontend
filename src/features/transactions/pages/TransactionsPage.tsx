@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
   Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, Flame, TrendingDown, Sparkles,
+  Pencil, Trash2,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
@@ -60,31 +61,86 @@ function SpendingCalendar({
     return () => ro.disconnect();
   }, []);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split("T")[0];
+  const {
+    allDays,
+    todayStr,
+    spendByDay,
+    maxValue,
+    weeks,
+    monthLabelByWeek,
+    thisWeekSpend,
+    biggestDay,
+    streak,
+  } = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStrMemo = today.toISOString().split("T")[0];
 
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - today.getDay() - 7 * (NUM_WEEKS - 1));
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - today.getDay() - 7 * (NUM_WEEKS - 1));
 
-  const allDays: string[] = [];
-  const cursor = new Date(startDate);
-  while (cursor <= today) {
-    allDays.push(cursor.toISOString().split("T")[0]);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  const spendByDay: Record<string, number> = {};
-  transactions.forEach((tx) => {
-    const day = tx.occurred_at.split("T")[0];
-    if (tx.direction === "spend") {
-      spendByDay[day] = (spendByDay[day] ?? 0) + Math.abs(Number(tx.amount));
+    const allDaysMemo: string[] = [];
+    const cursor = new Date(startDate);
+    while (cursor <= today) {
+      allDaysMemo.push(cursor.toISOString().split("T")[0]);
+      cursor.setDate(cursor.getDate() + 1);
     }
-  });
 
-  const maxValue = Math.max(...Object.values(spendByDay), 1);
+    const spendByDayMemo: Record<string, number> = {};
+    for (const tx of transactions) {
+      const day = tx.occurred_at.split("T")[0];
+      if (tx.direction === "spend") {
+        spendByDayMemo[day] = (spendByDayMemo[day] ?? 0) + Math.abs(Number(tx.amount));
+      }
+    }
 
-  const getColor = (value: number, isSelected: boolean) => {
+    const weeksMemo: string[][] = [];
+    for (let i = 0; i < allDaysMemo.length; i += 7) {
+      weeksMemo.push(allDaysMemo.slice(i, i + 7));
+    }
+
+    const seenMonths = new Set<string>();
+    const monthLabelByWeekMemo: Record<number, string> = {};
+    weeksMemo.forEach((week, wi) => {
+      for (const date of week) {
+        const d = new Date(date);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (!seenMonths.has(key)) {
+          seenMonths.add(key);
+          monthLabelByWeekMemo[wi] = d.toLocaleDateString("en-US", { month: "short" });
+          break;
+        }
+      }
+    });
+
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    const thisWeekSpendMemo = allDaysMemo
+      .filter((d) => d >= thisWeekStart.toISOString().split("T")[0])
+      .reduce((s, d) => s + (spendByDayMemo[d] ?? 0), 0);
+
+    const biggestDayMemo = Object.entries(spendByDayMemo).sort((a, b) => b[1] - a[1])[0];
+
+    let streakMemo = 0;
+    for (let i = allDaysMemo.length - 1; i >= 0; i--) {
+      if (!spendByDayMemo[allDaysMemo[i]]) streakMemo++;
+      else break;
+    }
+
+    return {
+      allDays: allDaysMemo,
+      todayStr: todayStrMemo,
+      spendByDay: spendByDayMemo,
+      maxValue: Math.max(...Object.values(spendByDayMemo), 1),
+      weeks: weeksMemo,
+      monthLabelByWeek: monthLabelByWeekMemo,
+      thisWeekSpend: thisWeekSpendMemo,
+      biggestDay: biggestDayMemo,
+      streak: streakMemo,
+    };
+  }, [transactions, NUM_WEEKS]);
+
+  const getColor = React.useCallback((value: number, isSelected: boolean) => {
     if (isSelected) return COLORS.electricCyan;
     if (!value) return "rgba(255,255,255,0.05)";
     const t = value / maxValue;
@@ -92,40 +148,7 @@ function SpendingCalendar({
     if (t < 0.5)  return `${COLORS.electricCyan}60`;
     if (t < 0.75) return `${COLORS.electricCyan}85`;
     return COLORS.electricCyan;
-  };
-
-  const weeks: string[][] = [];
-  for (let i = 0; i < allDays.length; i += 7) {
-    weeks.push(allDays.slice(i, i + 7));
-  }
-
-  const seenMonths = new Set<string>();
-  const monthLabelByWeek: Record<number, string> = {};
-  weeks.forEach((week, wi) => {
-    for (const date of week) {
-      const d = new Date(date);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (!seenMonths.has(key)) {
-        seenMonths.add(key);
-        monthLabelByWeek[wi] = d.toLocaleDateString("en-US", { month: "short" });
-        break;
-      }
-    }
-  });
-
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - today.getDay());
-  const thisWeekSpend = allDays
-    .filter((d) => d >= thisWeekStart.toISOString().split("T")[0])
-    .reduce((s, d) => s + (spendByDay[d] ?? 0), 0);
-
-  const biggestDay = Object.entries(spendByDay).sort((a, b) => b[1] - a[1])[0];
-
-  let streak = 0;
-  for (let i = allDays.length - 1; i >= 0; i--) {
-    if (!spendByDay[allDays[i]]) streak++;
-    else break;
-  }
+  }, [maxValue]);
 
   return (
     <div className="space-y-6">
@@ -218,10 +241,7 @@ function SpendingCalendar({
                         onMouseEnter={() => !isFuture && setHoveredDate(date)}
                         onMouseLeave={() => setHoveredDate(null)}
                       >
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1, opacity: isFuture ? 0 : 1 }}
-                          transition={{ delay: wi * 0.012, duration: 0.1 }}
+                        <div
                           onClick={() => !isFuture && onSelectDate(isSelected ? null : date)}
                           style={{
                             width: "100%", height: "100%",
@@ -303,27 +323,77 @@ const EMPTY_FORM: NewTransaction = {
   satisfaction_rating: null,
 };
 
-function AddPanel({ onClose, onAdded }: { onClose: () => void; onAdded: (tx: Transaction) => void }) {
-  const [form, setForm] = React.useState<NewTransaction>(EMPTY_FORM);
+function AddPanel({
+  onClose,
+  onAdded,
+  onUpdated,
+  editingTransaction,
+}: {
+  onClose: () => void;
+  onAdded: (tx: Transaction) => void;
+  onUpdated?: (tx: Transaction) => void;
+  editingTransaction?: Transaction | null;
+}) {
+  const [form, setForm] = React.useState<NewTransaction>(() =>
+    editingTransaction
+      ? {
+          description_raw: editingTransaction.description_raw,
+          amount: editingTransaction.amount,
+          direction: editingTransaction.direction,
+          category: editingTransaction.category,
+          occurred_at: editingTransaction.occurred_at.split("T")[0],
+          satisfaction_rating: editingTransaction.satisfaction_rating,
+        }
+      : EMPTY_FORM
+  );
   const [categoryOpen, setCategoryOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (editingTransaction) {
+      setForm({
+        description_raw: editingTransaction.description_raw,
+        amount: editingTransaction.amount,
+        direction: editingTransaction.direction,
+        category: editingTransaction.category,
+        occurred_at: editingTransaction.occurred_at.split("T")[0],
+        satisfaction_rating: editingTransaction.satisfaction_rating,
+      });
+    } else {
+      setForm(EMPTY_FORM);
+    }
+  }, [editingTransaction]);
 
   const set = <K extends keyof NewTransaction>(key: K, val: NewTransaction[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
   const selectedCat = getCategoryMeta(form.category);
+  const isEdit = !!editingTransaction;
 
   const handleSubmit = async () => {
-    if (!form.amount || Number(form.amount) <= 0) { toast.error("Please enter a valid amount."); return; }
-    if (!form.description_raw.trim()) { toast.error("Please enter a description."); return; }
+    if (!form.amount || Number(form.amount) <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+    if (!form.description_raw.trim()) {
+      toast.error("Please enter a description.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const tx = await TransactionsAPI.create({ ...form, occurred_at: `${form.occurred_at}T12:00:00Z` });
-      toast.success("Transaction added!");
-      onAdded(tx);
+      const payload = { ...form, occurred_at: `${form.occurred_at}T12:00:00Z` };
+      if (isEdit && editingTransaction) {
+        const tx = await TransactionsAPI.patch(editingTransaction.id, payload);
+        toast.success("Transaction updated!");
+        onUpdated?.(tx);
+      } else {
+        const tx = await TransactionsAPI.create(payload);
+        toast.success("Transaction added!");
+        onAdded(tx);
+      }
       onClose();
     } catch {
-      toast.error("Failed to save transaction.");
+      toast.error(isEdit ? "Failed to update transaction." : "Failed to save transaction.");
     } finally {
       setSubmitting(false);
     }
@@ -339,8 +409,12 @@ function AddPanel({ onClose, onAdded }: { onClose: () => void; onAdded: (tx: Tra
         style={{ boxShadow: `-20px 0 60px rgba(0,0,0,0.5)` }}>
         <div className="flex items-center justify-between mb-10">
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter">Add Transaction</h2>
-            <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">Manual Entry</div>
+            <h2 className="text-4xl font-black text-white tracking-tighter">
+              {isEdit ? "Edit Transaction" : "Add Transaction"}
+            </h2>
+            <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">
+              {isEdit ? "Update" : "Manual Entry"}
+            </div>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
             <X size={24} className="text-gray-500" />
@@ -439,7 +513,7 @@ function AddPanel({ onClose, onAdded }: { onClose: () => void; onAdded: (tx: Tra
         <div className="pt-8 mt-auto">
           <Button onClick={handleSubmit} disabled={submitting}
             className="w-full bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] rounded-[2rem] py-10 text-xl font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-50">
-            {submitting ? "Saving..." : "Add Transaction"}
+            {submitting ? "Saving..." : isEdit ? "Update Transaction" : "Add Transaction"}
           </Button>
         </div>
       </motion.div>
@@ -539,6 +613,7 @@ export const TransactionsPage = () => {
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
+  const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
@@ -558,31 +633,69 @@ export const TransactionsPage = () => {
     return () => { cancelled = true; };
   }, [filters]);
 
-  const filtered = transactions.filter((tx) =>
-    [tx.description_raw, tx.category].join(" ").toLowerCase().includes(searchQuery.toLowerCase())
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filtered = React.useMemo(
+    () =>
+      transactions.filter((tx) =>
+        [tx.description_raw, tx.category].join(" ").toLowerCase().includes(normalizedSearch)
+      ),
+    [transactions, normalizedSearch]
   );
 
-  const grouped = filtered.reduce<Record<string, Transaction[]>>((acc, tx) => {
-    const day = tx.occurred_at.split("T")[0];
-    if (!acc[day]) acc[day] = [];
-    acc[day].push(tx);
-    return acc;
-  }, {});
+  const grouped = React.useMemo(
+    () =>
+      filtered.reduce<Record<string, Transaction[]>>((acc, tx) => {
+        const day = tx.occurred_at.split("T")[0];
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(tx);
+        return acc;
+      }, {}),
+    [filtered]
+  );
 
-  const dates = Object.keys(grouped)
-    .sort((a, b) => b.localeCompare(a))
-    .filter((d) => !selectedDate || d === selectedDate);
+  const dates = React.useMemo(
+    () =>
+      Object.keys(grouped)
+        .sort((a, b) => b.localeCompare(a))
+        .filter((d) => !selectedDate || d === selectedDate),
+    [grouped, selectedDate]
+  );
 
-  React.useEffect(() => { setExpandedGroups(dates); }, [selectedDate, searchQuery, transactions]);
+  React.useEffect(() => { setExpandedGroups(dates); }, [dates]);
 
   const toggleGroup = (date: string) =>
     setExpandedGroups((prev) => prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]);
 
   const handleAdded = (tx: Transaction) => setTransactions((prev) => [tx, ...prev]);
+  const handleUpdated = (tx: Transaction) =>
+    setTransactions((prev) => prev.map((t) => (t.id === tx.id ? tx : t)));
+  const handleDelete = async (tx: Transaction, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${tx.description_raw || "this transaction"}"?`)) return;
+    try {
+      await TransactionsAPI.remove(tx.id);
+      setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+      toast.success("Transaction deleted.");
+    } catch {
+      toast.error("Failed to delete transaction.");
+    }
+  };
 
-  const totalSpend  = transactions.filter(t => t.direction === "spend").reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
-  const totalIncome = transactions.filter(t => t.direction === "income").reduce((s, t) => s + Number(t.amount), 0);
-  const net = totalIncome - totalSpend;
+  const { totalSpend, totalIncome, net } = React.useMemo(() => {
+    const totalSpendMemo = transactions
+      .filter((t) => t.direction === "spend")
+      .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    const totalIncomeMemo = transactions
+      .filter((t) => t.direction === "income")
+      .reduce((s, t) => s + Number(t.amount), 0);
+
+    return {
+      totalSpend: totalSpendMemo,
+      totalIncome: totalIncomeMemo,
+      net: totalIncomeMemo - totalSpendMemo,
+    };
+  }, [transactions]);
 
   return (
     <div className="space-y-12 pb-40 relative z-10">
@@ -633,7 +746,10 @@ export const TransactionsPage = () => {
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setIsAddPanelOpen(true)}
+          onClick={() => {
+            setEditingTransaction(null);
+            setIsAddPanelOpen(true);
+          }}
           className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]">
           <Plus size={22} strokeWidth={3} />
         </motion.button>
@@ -670,8 +786,14 @@ export const TransactionsPage = () => {
                     return (
                       <motion.div key={tx.id} initial={{ x: -10, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }}
                         whileHover={{ scale: 1.005, backgroundColor: "rgba(255,255,255,0.02)" }}
-                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx cursor-pointer transition-all">
-                        <div className="flex items-center gap-5">
+                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all">
+                        <div
+                          className="flex items-center gap-5 flex-1 cursor-pointer"
+                          onClick={() => {
+                            setEditingTransaction(tx);
+                            setIsAddPanelOpen(true);
+                          }}
+                        >
                           <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover/tx:scale-110" style={{ backgroundColor: `${cat.color}15` }}>
                             <cat.icon size={20} style={{ color: cat.color }} />
                           </div>
@@ -690,11 +812,31 @@ export const TransactionsPage = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className={cn("text-xl font-black", isIncome ? "text-emerald-400" : "text-white")}>
-                            {isIncome ? "+" : "-"}${Math.abs(Number(tx.amount)).toFixed(2)}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className={cn("text-xl font-black", isIncome ? "text-emerald-400" : "text-white")}>
+                              {isIncome ? "+" : "-"}${Math.abs(Number(tx.amount)).toFixed(2)}
+                            </div>
+                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
                           </div>
-                          <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTransaction(tx);
+                              setIsAddPanelOpen(true);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(tx, e)}
+                            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </motion.div>
                     );
@@ -708,7 +850,15 @@ export const TransactionsPage = () => {
 
       <AnimatePresence>
         {isAddPanelOpen && (
-          <AddPanel onClose={() => setIsAddPanelOpen(false)} onAdded={handleAdded} />
+          <AddPanel
+            onClose={() => {
+              setIsAddPanelOpen(false);
+              setEditingTransaction(null);
+            }}
+            onAdded={handleAdded}
+            onUpdated={handleUpdated}
+            editingTransaction={editingTransaction}
+          />
         )}
       </AnimatePresence>
     </div>
