@@ -1,0 +1,20 @@
+import { apiRequest } from "./client";
+
+export type Merchant = {
+  id: number;
+  name: string;
+  category: string;
+  logo_url?: string;
+  website?: string;
+};
+
+/** Merchant list is public; no auth required. */
+export const MerchantsAPI = {
+  list: async (): Promise<Merchant[]> => {
+    const data = await apiRequest<Merchant[] | { results?: Merchant[]; data?: Merchant[] }>(
+      "/api/merchants/"
+    );
+    return Array.isArray(data) ? data : (data?.results ?? data?.data ?? []);
+  },
+  get: (id: number) => apiRequest<Merchant>(`/api/merchants/${id}/`),
+};

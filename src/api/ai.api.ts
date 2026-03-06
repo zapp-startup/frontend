@@ -1,5 +1,5 @@
 // src/api/ai.api.ts
-import { getApiAccessToken } from "@/api/client";
+import { getCurrentApiAccessToken } from "@/api/client";
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type ApiMessage = {
@@ -22,8 +22,11 @@ function parseJwtPayload(token: string) {
   }
 }
 
-function buildAuthHeaders() {
-  const token = getApiAccessToken();
+async function buildAuthHeaders() {
+  const token = await getCurrentApiAccessToken();
+  if (!token) {
+    throw new Error("Authentication required for AI API request, but no Supabase access token is available.");
+  }
   const payload = token ? parseJwtPayload(token) : null;
 
   const userIdentifier =
@@ -36,7 +39,7 @@ function buildAuthHeaders() {
   console.log(`[AI API] Sending request as user: ${userIdentifier}`);
 
   return {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${token}`,
     "X-Dev-User": String(userIdentifier),
   } as Record<string, string>;
 }
@@ -47,7 +50,7 @@ export async function createConversation(params?: { context_type?: string }) {
     headers: {
       "Content-Type": "application/json",
       // dev-only: identify user without auth CHANGE TO REAL AUTH LATER. DO NOT FORGET.
-      ...buildAuthHeaders(),
+      ...(await buildAuthHeaders()),
     },
     body: JSON.stringify(params ?? {}),
   });
@@ -61,7 +64,7 @@ export async function sendMessage(conversationId: number, content: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...buildAuthHeaders(),
+      ...(await buildAuthHeaders()),
     },
     body: JSON.stringify({ content }),
   });
@@ -76,7 +79,7 @@ export async function sendMessage(conversationId: number, content: string) {
 export async function listMessages(conversationId: number) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     headers: {
-      ...buildAuthHeaders(),
+      ...(await buildAuthHeaders()),
     },
   });
 

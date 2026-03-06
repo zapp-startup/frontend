@@ -1,21 +1,34 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
-import { Home, CreditCard, BarChart2, Search, User, Camera, List } from "lucide-react";
+import { Home, CreditCard, BarChart2, Search, User, Camera, List, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
-import { HomePage } from "@/features/home";
-import { SubscriptionsPage } from "@/features/subscriptions/pages/SubscriptionsPage";
-import { AnalyticsPage } from "@/features/analytics/pages/AnalyticsPage";
-import { SearchPage } from "@/features/search/pages/SearchPage";
-import { ProfilePage } from "@/features/profile/pages/ProfilePage";
-import { TransactionsPage } from "@/features/transactions";
 
-type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search";
+const HomePage = React.lazy(() =>
+  import("@/features/home").then((module) => ({ default: module.HomePage }))
+);
+const TransactionsPage = React.lazy(() =>
+  import("@/features/transactions").then((module) => ({ default: module.TransactionsPage }))
+);
+const SubscriptionsPage = React.lazy(() =>
+  import("@/features/subscriptions/pages/SubscriptionsPage").then((module) => ({ default: module.SubscriptionsPage }))
+);
+const AnalyticsPage = React.lazy(() =>
+  import("@/features/analytics/pages/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage }))
+);
+const SearchPage = React.lazy(() =>
+  import("@/features/search/pages/SearchPage").then((module) => ({ default: module.SearchPage }))
+);
+const ProfilePage = React.lazy(() =>
+  import("@/features/profile/pages/ProfilePage").then((module) => ({ default: module.ProfilePage }))
+);
+
+type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search" | "profile";
 
 const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[] = [
   { id: "home", path: "/", label: "Dashboard", icon: Home },
@@ -23,7 +36,7 @@ const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[]
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "analytics", path: "/analytics", label: "Analytics", icon: BarChart2 },
   { id: "search", path: "/search", label: "Search", icon: Search },
-  //{ id: "profile", path: "/profile", label: "Profile", icon: User },
+  { id: "profile", path: "/profile", label: "Profile", icon: User },
 ];
 
 const PAGE_COLORS: Record<PageId, string> = {
@@ -32,27 +45,28 @@ const PAGE_COLORS: Record<PageId, string> = {
   subscriptions: COLORS.electricBlue,
   analytics: COLORS.electricCyan,
   search: COLORS.electricTeal,
-  //profile: COLORS.electricPurple,
+  profile: COLORS.electricPurple,
 };
 
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
-  const segment = pathname.replace(/^\//, "") || "home";
+  if (pathname.startsWith("/profile")) return "profile";
+  const segment = pathname.replace(/^\//, "").split("/")[0] || "home";
   return (NAV_ITEMS.some((n) => n.id === segment) ? segment : "home") as PageId;
 }
 
-const ROUTES: { path: string; element: React.ReactNode }[] = [
+const ROUTES: { path: string; match?: (p: string) => boolean; element: React.ReactNode }[] = [
   { path: "/", element: <HomePage /> },
   { path: "/transactions", element: <TransactionsPage /> },
   { path: "/subscriptions", element: <SubscriptionsPage /> },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
-  //{ path: "/profile", element: <ProfilePage /> },
+  { path: "/profile", element: <ProfilePage /> },
 ];
 
 function PageContent() {
   const { pathname } = useLocation();
-  const route = ROUTES.find((r) => r.path === pathname);
+  const route = ROUTES.find((r) => r.match ? r.match(pathname) : r.path === pathname);
   const content = route ? route.element : <HomePage />;
   return (
     <AnimatePresence mode="wait">
@@ -63,14 +77,22 @@ function PageContent() {
         exit={{ opacity: 0, scale: 0.98, y: -15 }}
         transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
       >
-        {content}
+        <React.Suspense
+          fallback={
+            <div className="min-h-[40vh] flex items-center justify-center text-xs font-black uppercase tracking-widest text-gray-500">
+              Loading...
+            </div>
+          }
+        >
+          {content}
+        </React.Suspense>
       </motion.div>
     </AnimatePresence>
   );
 }
 
 export function DashboardLayout() {
-  const { isAuthenticated, isAuthReady, user } = useAuth();
+  const { isAuthenticated, isAuthReady } = useAuth();
   const { pathname } = useLocation();
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
@@ -93,54 +115,34 @@ export function DashboardLayout() {
       />
 
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B1220]/60 backdrop-blur-3xl border-b border-white/[0.03]">
-        <div className="max-w-7xl mx-auto px-12 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-16">
-            <NavLink to="/" className="flex items-center gap-4 group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full blur-xl opacity-20 group-hover:opacity-60 transition-all" style={{ backgroundColor: COLORS.electricCyan }} />
-                <div className="relative w-5 h-5 rounded-full shadow-[0_0_20px_#22F0FF]" style={{ backgroundColor: COLORS.electricCyan }} />
-              </div>
-              <span className="text-4xl font-black tracking-tighter uppercase italic group-hover:text-cyan-400 transition-colors">Zapp</span>
-            </NavLink>
-            <div className="hidden lg:flex items-center gap-4">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.id}
-                  to={item.path}
-                  end={item.path === "/"}
-                  className={({ isActive }) =>
-                    cn(
-                      "relative flex items-center gap-3 px-8 py-3 rounded-2xl transition-all font-black uppercase tracking-[0.3em] text-[10px]",
-                      isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div layoutId="nav-bg" className="absolute inset-0 bg-white/[0.05] rounded-2xl border border-white/10" />
-                      )}
-                      <item.icon className={cn("w-4 h-4 transition-colors relative z-10", isActive ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]" : "text-gray-600")} />
-                      <span className="relative z-10">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 pl-4 border-l border-white/5">
-              <NavLink to="/profile" className="flex items-center gap-4 cursor-pointer group/avatar">
-                <div className="text-right hidden sm:block">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white group-hover/avatar:text-cyan-400 transition-colors">{user?.name ?? "Guest"}</div>
-                  <div className="text-[9px] font-black text-cyan-500 uppercase">{user?.tier ?? "Intentional Tier"}</div>
-                </div>
-                <div
-                  className="w-14 h-14 rounded-[1.25rem] border border-white/20 group-hover/avatar:scale-105 transition-all shadow-2xl"
-                  style={{ backgroundImage: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})` }}
-                />
+        <div className="absolute left-4 sm:left-8 lg:left-12 top-1/2 -translate-y-1/2">
+          <span className="text-4xl font-black tracking-tighter uppercase italic text-white shrink-0 -ml-1">Zapp</span>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 h-24 flex items-center justify-center">
+          <div className="hidden lg:flex items-center gap-4">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.id}
+                to={item.path}
+                end={item.path === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    "relative flex items-center gap-3 px-8 py-3 rounded-2xl transition-all font-black uppercase tracking-[0.3em] text-[10px]",
+                    isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.div layoutId="nav-bg" className="absolute inset-0 bg-white/[0.05] rounded-2xl border border-white/10" />
+                    )}
+                    <item.icon className={cn("w-4 h-4 transition-colors relative z-10", isActive ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]" : "text-gray-600")} />
+                    <span className="relative z-10">{item.label}</span>
+                  </>
+                )}
               </NavLink>
-            </div>
+            ))}
           </div>
         </div>
       </nav>

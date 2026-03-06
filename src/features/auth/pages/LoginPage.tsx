@@ -29,8 +29,18 @@ export function LoginPage() {
     setLoading(false);
     if (result.ok) {
       toast.success("Welcome back!");
-      const isComplete = await OnboardingAPI.checkComplete();
-      navigate(isComplete ? "/" : "/onboarding", { replace: true });
+
+      const accessToken = result.session?.access_token ?? null;
+      if (accessToken) {
+        try {
+          const isComplete = await OnboardingAPI.checkComplete();
+          navigate(isComplete ? "/" : "/onboarding", { replace: true });
+        } catch {
+          navigate("/", { replace: true });
+        }
+      } else {
+        navigate("/", { replace: true });
+      }
     } else {
       toast.error(result.error);
     }

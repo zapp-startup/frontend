@@ -1,0 +1,47 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createConversation, sendMessage } from "../ai.api";
+import { setApiAccessToken } from "../client";
+
+describe("ai.api", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    setApiAccessToken("mock-token");
+  });
+
+  it("createConversation returns conversation_id", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ conversation_id: 123 }),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    } as Response);
+
+    const result = await createConversation({ context_type: "general" });
+
+    expect(result.conversation_id).toBe(123);
+  });
+
+  it("sendMessage returns user_message and assistant_message", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          user_message: { id: 1, role: "user", content: "Hello" },
+          assistant_message: { id: 2, role: "assistant", content: "Hi there!" },
+        }),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    } as Response);
+
+    const result = await sendMessage(1, "Hello");
+
+    expect(result).toHaveProperty("user_message");
+    expect(result).toHaveProperty("assistant_message");
+    expect(result.user_message.content).toBe("Hello");
+    expect(result.assistant_message.content).toBe("Hi there!");
+  });
+});
