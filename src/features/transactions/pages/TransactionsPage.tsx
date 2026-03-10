@@ -10,6 +10,7 @@ import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
+import { BankingSection } from "@/features/banking";
 import { toast } from "sonner";
 
 const CATEGORY_OPTIONS = [
@@ -617,6 +618,11 @@ export const TransactionsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [bankingRefreshKey, setBankingRefreshKey] = React.useState(0);
+
+  const refetchTransactions = React.useCallback(() => {
+    setBankingRefreshKey((k) => k + 1);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -631,7 +637,7 @@ export const TransactionsPage = () => {
       .catch(() => { if (!cancelled) toast.error("Failed to load transactions."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filters]);
+  }, [filters, bankingRefreshKey]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -699,6 +705,9 @@ export const TransactionsPage = () => {
 
   return (
     <div className="space-y-12 pb-40 relative z-10">
+
+      {/* Bank Connections */}
+      <BankingSection onTransactionsRefetch={refetchTransactions} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
