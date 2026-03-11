@@ -8,7 +8,6 @@ import { BankingEmptyState } from "./BankingEmptyState";
 import { BankConnectionsList } from "./BankConnectionsList";
 import { ConnectBankButton } from "./ConnectBankButton";
 import { LinkedAccountsSection } from "./LinkedAccountsSection";
-import { RecentBankTransactionsSection } from "./RecentBankTransactionsSection";
 
 type BankingSectionProps = {
   onTransactionsRefetch?: () => void | Promise<void>;
@@ -88,11 +87,6 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
           <LinkedAccountsSection
             accounts={accounts}
             loading={accountsLoading && accounts.length === 0}
-          />
-
-          <RecentBankTransactionsSection
-            transactions={transactions}
-            loading={transactionsLoading && transactions.length === 0}
           />
         </div>
       )}

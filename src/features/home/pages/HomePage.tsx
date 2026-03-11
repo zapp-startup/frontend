@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { TrendingUp, AlertCircle, Sparkles, TrendingDown, ChevronRight } from "lucide-react";
-import { TransactionsAPI, type Transaction } from "@/api/transactions.api";
+import { useMergedTransactions } from "@/features/transactions/hooks/useMergedTransactions";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -28,15 +28,7 @@ export function HomePage() {
     });
   };
 
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [txLoading, setTxLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    TransactionsAPI.recent()
-      .then(setTransactions)
-      .catch(console.error)
-      .finally(() => setTxLoading(false));
-  }, []);
+  const { transactions, loading: txLoading } = useMergedTransactions({ limit: 6 });
 
   return (
     <div className="space-y-12 pb-32 relative z-10">
