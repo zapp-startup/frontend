@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
   Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, Flame, TrendingDown, Sparkles,
-  Pencil, Trash2,
+  Pencil, Trash2, MessageSquare,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
@@ -13,6 +13,7 @@ import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/tr
 import { BankingSection } from "@/features/banking";
 import { useMergedTransactions } from "../hooks/useMergedTransactions";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
+import { TransactionFeedbackModal } from "../components/TransactionFeedbackModal";
 import { toast } from "sonner";
 
 const CATEGORY_OPTIONS = [
@@ -616,6 +617,7 @@ export const TransactionsPage = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [editingTransaction, setEditingTransaction] = React.useState<DisplayTransaction | null>(null);
+  const [feedbackTransaction, setFeedbackTransaction] = React.useState<DisplayTransaction | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
@@ -836,6 +838,16 @@ export const TransactionsPage = () => {
                             </div>
                             <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
                           </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFeedbackTransaction(tx);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                            title="Give feedback"
+                          >
+                            <MessageSquare size={18} />
+                          </button>
                           {isManual && (
                             <>
                               <button
@@ -882,6 +894,13 @@ export const TransactionsPage = () => {
           />
         )}
       </AnimatePresence>
+
+      <TransactionFeedbackModal
+        transaction={feedbackTransaction}
+        open={!!feedbackTransaction}
+        onOpenChange={(open) => !open && setFeedbackTransaction(null)}
+        onSubmitted={refetch}
+      />
     </div>
   );
 };

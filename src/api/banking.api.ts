@@ -1,4 +1,5 @@
 import { apiRequest } from "./client";
+import type { TransactionFeedbackPayload } from "./transactions.api";
 
 export type BankConnection = {
   id: string;
@@ -70,5 +71,13 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({}),
+    }),
+
+  /** Submit feedback for a bank-synced transaction. Uses same payload shape as manual transactions. */
+  submitFeedback: (plaidTransactionId: string, payload: TransactionFeedbackPayload) =>
+    apiRequest<BankTransaction>(`/api/banking/transactions/${plaidTransactionId}/`, {
+      requireAuth: true,
+      method: "PATCH",
+      body: JSON.stringify(payload),
     }),
 };

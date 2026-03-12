@@ -10,6 +10,11 @@ export type Transaction = {
   impulse_score: number | null;
   regret_score: number | null;
   satisfaction_rating: number | null;
+  regret_rating?: number | null;
+  repurchase_likelihood?: number | null;
+  usage_frequency?: number | null;
+  reflection_text?: string | null;
+  considered_at?: string | null;
 };
 
 export type NewTransaction = {
@@ -21,8 +26,26 @@ export type NewTransaction = {
   satisfaction_rating: number | null;
 };
 
+/** Response item from GET /api/transactions/feedback-candidates/ */
+export type FeedbackCandidate = {
+  transaction_id: number | string;
+};
+
+/** Payload for transaction-level feedback (ML pipeline). */
+export type TransactionFeedbackPayload = {
+  satisfaction_rating: number;
+  regret_rating: number;
+  repurchase_likelihood: number;
+  usage_frequency?: number;
+  reflection_text?: string;
+  considered_at: string;
+};
+
 export const TransactionsAPI = {
   recent: (limit = 6) => apiRequest<Transaction[]>(`/api/transactions/?limit=${limit}`, { requireAuth: true }),
+  /** Fetch transactions recommended for feedback by the ML pipeline. */
+  getFeedbackCandidates: () =>
+    apiRequest<FeedbackCandidate[]>("/api/transactions/feedback-candidates/", { requireAuth: true }),
   list: (params?: { category?: string; direction?: string; date_from?: string; date_to?: string; limit?: number }) => {
   const query = new URLSearchParams();
   if (params?.category) query.set("category", params.category);
@@ -45,11 +68,18 @@ export const TransactionsAPI = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  patch: (id: number, data: Partial<NewTransaction>) =>
+  patch: (id: number, data: Partial<NewTransaction> | Partial<TransactionFeedbackPayload>) =>
     apiRequest<Transaction>(`/api/transactions/${id}/`, {
       requireAuth: true,
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+  /** Submit transaction-level feedback for ML pipeline. Uses PATCH. */
+  submitFeedback: (id: number, payload: TransactionFeedbackPayload) =>
+    apiRequest<Transaction>(`/api/transactions/${id}/`, {
+      requireAuth: true,
+      method: "PATCH",
+      body: JSON.stringify(payload),
     }),
   remove: (id: number) =>
     apiRequest<null>(`/api/transactions/${id}/`, {

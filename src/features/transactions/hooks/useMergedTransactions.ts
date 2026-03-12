@@ -70,6 +70,11 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
       impulse_score: t.impulse_score,
       regret_score: t.regret_score,
       satisfaction_rating: t.satisfaction_rating,
+      regret_rating: t.regret_rating ?? null,
+      repurchase_likelihood: t.repurchase_likelihood ?? null,
+      usage_frequency: t.usage_frequency ?? null,
+      reflection_text: t.reflection_text ?? null,
+      considered_at: t.considered_at ?? null,
       source: "manual" as const,
     }));
     const bank: DisplayTransaction[] = bankTx.map(normalizeBankTransaction);

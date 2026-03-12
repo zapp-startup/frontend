@@ -14,6 +14,11 @@ export type DisplayTransaction = {
   impulse_score: number | null;
   regret_score: number | null;
   satisfaction_rating: number | null;
+  regret_rating?: number | null;
+  repurchase_likelihood?: number | null;
+  usage_frequency?: number | null;
+  reflection_text?: string | null;
+  considered_at?: string | null;
   source: "manual" | "bank";
 };
 
@@ -91,6 +96,11 @@ export function normalizeBankTransaction(bankTx: BankTransaction): DisplayTransa
     impulse_score: null,
     regret_score: null,
     satisfaction_rating: null,
+    regret_rating: null,
+    repurchase_likelihood: null,
+    usage_frequency: null,
+    reflection_text: null,
+    considered_at: null,
     source: "bank",
   };
 }
