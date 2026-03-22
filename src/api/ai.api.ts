@@ -9,38 +9,14 @@ export type ApiMessage = {
   created_at?: string;
 };
 
-function parseJwtPayload(token: string) {
-  try {
-    const payloadPart = token.split(".")[1];
-    if (!payloadPart) return null;
-
-    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(normalized);
-    return JSON.parse(decoded) as Record<string, any>;
-  } catch {
-    return null;
-  }
-}
-
 async function buildAuthHeaders() {
   const token = await getCurrentApiAccessToken();
   if (!token) {
     throw new Error("Authentication required for AI API request, but no Supabase access token is available.");
   }
-  const payload = token ? parseJwtPayload(token) : null;
-
-  const userIdentifier =
-    payload?.email ??
-    payload?.user_metadata?.username ??
-    payload?.user_metadata?.name ??
-    payload?.sub ??
-    "anonymous";
-
-  console.log(`[AI API] Sending request as user: ${userIdentifier}`);
 
   return {
     Authorization: `Bearer ${token}`,
-    "X-Dev-User": String(userIdentifier),
   } as Record<string, string>;
 }
 
@@ -49,7 +25,6 @@ export async function createConversation(params?: { context_type?: string }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // dev-only: identify user without auth CHANGE TO REAL AUTH LATER. DO NOT FORGET.
       ...(await buildAuthHeaders()),
     },
     body: JSON.stringify(params ?? {}),

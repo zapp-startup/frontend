@@ -300,7 +300,6 @@ function ValuationsSection() {
                 recommendation={v.recommendation}
                 confidence={v.confidence}
                 evidence={v.evidence}
-                type="subscription"
               />
             ))}
           </div>

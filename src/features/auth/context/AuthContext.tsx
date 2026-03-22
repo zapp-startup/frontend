@@ -27,9 +27,9 @@ type AuthContextValue = {
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; session?: Session | null }>;
-  signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string }>;
+  signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<void>;
+  updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
 };
 
 export type SignUpData = {
@@ -90,8 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateBackendUser(profile);
       setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
       return profile;
-    } catch (error) {
-      console.error("Failed to sync backend user:", error);
+    } catch {
       updateBackendUser(null);
       return null;
     }
@@ -127,7 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (error) {
-        console.error("getSession error:", error);
         setApiAccessToken(null);
         setUser(null);
         updateBackendUser(null);
@@ -203,12 +201,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) {
-      console.error("updateUser error:", error);
-      return;
+      return { ok: false as const, error: error.message };
     }
 
     const sbUser = resp.user ?? null;
     setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
+    return { ok: true as const };
   }, []);
 
   const value: AuthContextValue = {

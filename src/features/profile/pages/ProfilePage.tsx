@@ -217,16 +217,23 @@ export function ProfilePage() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    updateProfile({ name: name.trim(), tier: tier.trim() || undefined });
-    setSaving(false);
-    toast.success("Profile updated");
+    try {
+      const result = await updateProfile({ name: name.trim(), tier: tier.trim() || undefined });
+      if (result.ok) {
+        toast.success("Profile updated");
+      } else {
+        toast.error(result.error ?? "Failed to update profile.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success("Signed out");
     navigate("/login", { replace: true });
   };

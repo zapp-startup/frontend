@@ -4,6 +4,7 @@ import { X, Send } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { createConversation, sendMessage } from "@/api/ai.api";
+import { useAuth } from "@/features/auth";
 
 interface Message {
   id: string;
@@ -13,6 +14,9 @@ interface Message {
 }
 
 export function ZappBot() {
+  const { user } = useAuth();
+  const conversationStorageKey = user?.supabaseUid ? `zapp_conversation_id_${user.supabaseUid}` : null;
+
   const [isOpen, setIsOpen] = React.useState(false);
   const [input, setInput] = React.useState("");
   const [isHovered, setIsHovered] = React.useState(false);
@@ -25,10 +29,16 @@ export function ZappBot() {
       timestamp: new Date(),
     },
   ]);
-  const [conversationId, setConversationId] = React.useState<number | null>(() => {
-    const saved = localStorage.getItem("zapp_conversation_id");
-    return saved ? Number(saved) : null;
-  });
+  const [conversationId, setConversationId] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!conversationStorageKey) {
+      setConversationId(null);
+      return;
+    }
+    const saved = localStorage.getItem(conversationStorageKey);
+    setConversationId(saved ? Number(saved) : null);
+  }, [conversationStorageKey]);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const createConversationPromiseRef = React.useRef<Promise<{ conversation_id: number }> | null>(null);
@@ -66,7 +76,9 @@ export function ZappBot() {
     const created = await createConversationPromiseRef.current;
     const cid = created.conversation_id;
     setConversationId(cid);
-    localStorage.setItem("zapp_conversation_id", String(cid));
+    if (conversationStorageKey) {
+      localStorage.setItem(conversationStorageKey, String(cid));
+    }
     createConversationPromiseRef.current = null;
     return cid;
   };
@@ -116,8 +128,7 @@ export function ZappBot() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       createConversationPromiseRef.current = null;
       setMessages((prev) => [
         ...prev,

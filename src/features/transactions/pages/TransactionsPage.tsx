@@ -10,6 +10,24 @@ import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
+
+function formatLocalDateYYYYMMDD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function createEmptyTransactionForm(): NewTransaction {
+  return {
+    description_raw: "",
+    amount: "",
+    direction: "spend",
+    category: "other",
+    occurred_at: formatLocalDateYYYYMMDD(new Date()),
+    satisfaction_rating: null,
+  };
+}
 import { toast } from "sonner";
 
 const CATEGORY_OPTIONS = [
@@ -314,15 +332,6 @@ function SpendingCalendar({
 }
 
 // ── Add Transaction Panel ─────────────────────────────────────────────────────
-const EMPTY_FORM: NewTransaction = {
-  description_raw: "",
-  amount: "",
-  direction: "spend",
-  category: "other",
-  occurred_at: new Date().toISOString().split("T")[0],
-  satisfaction_rating: null,
-};
-
 function AddPanel({
   onClose,
   onAdded,
@@ -344,7 +353,7 @@ function AddPanel({
           occurred_at: editingTransaction.occurred_at.split("T")[0],
           satisfaction_rating: editingTransaction.satisfaction_rating,
         }
-      : EMPTY_FORM
+      : createEmptyTransactionForm()
   );
   const [categoryOpen, setCategoryOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -360,7 +369,7 @@ function AddPanel({
         satisfaction_rating: editingTransaction.satisfaction_rating,
       });
     } else {
-      setForm(EMPTY_FORM);
+      setForm(createEmptyTransactionForm());
     }
   }, [editingTransaction]);
 
@@ -501,13 +510,6 @@ function AddPanel({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Reflection <span className="text-gray-600">(optional)</span>
-            </label>
-            <textarea placeholder="Any thoughts on this purchase..."
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all h-28 resize-none placeholder:text-gray-700" />
-          </div>
         </div>
 
         <div className="pt-8 mt-auto">
@@ -619,6 +621,7 @@ export const TransactionsPage = () => {
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
 
   React.useEffect(() => {
+    const ac = new AbortController();
     let cancelled = false;
     setLoading(true);
     TransactionsAPI.list({
@@ -626,11 +629,22 @@ export const TransactionsPage = () => {
       direction: filters.direction || undefined,
       date_from: filters.date_from || undefined,
       date_to: filters.date_to || undefined,
+      signal: ac.signal,
     })
-      .then((data) => { if (!cancelled) setTransactions(data); })
-      .catch(() => { if (!cancelled) toast.error("Failed to load transactions."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .then((data) => {
+        if (!cancelled) setTransactions(data);
+      })
+      .catch((err) => {
+        if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+        toast.error("Failed to load transactions.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
   }, [filters]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();

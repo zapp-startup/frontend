@@ -4,6 +4,70 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 let authToken: string | null = null;
 
+/** Normalized API failure: safe `message` for UI; `rawBody` for debugging only. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly rawBody?: string;
+
+  constructor(message: string, status: number, rawBody?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.rawBody = rawBody;
+  }
+}
+
+function safeMessageForHttpStatus(status: number): string {
+  if (status === 400) return "The request could not be processed.";
+  if (status === 401) return "Authentication required. Please sign in again.";
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return "We couldn't find that resource.";
+  if (status === 409) return "This action conflicts with existing data.";
+  if (status === 422) return "Please check your input and try again.";
+  if (status === 429) return "Too many requests. Please try again later.";
+  if (status >= 500) return "Something went wrong on our end. Please try again later.";
+  return "Something went wrong. Please try again.";
+}
+
+function looksLikeHtml(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return t.startsWith("<!doctype") || t.startsWith("<html") || (t.includes("<") && t.includes(">") && t.length > 80);
+}
+
+/** Derive a short, user-safe message from JSON error bodies (e.g. DRF). */
+function tryParseUserFacingDetail(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || looksLikeHtml(trimmed)) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (typeof parsed === "string") return parsed.length <= 500 ? parsed : null;
+
+    if (parsed && typeof parsed === "object") {
+      const o = parsed as Record<string, unknown>;
+      const detail = o.detail;
+      if (typeof detail === "string" && detail.length <= 500) return detail;
+      if (Array.isArray(detail) && typeof detail[0] === "string") return detail[0];
+
+      for (const v of Object.values(o)) {
+        if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+        if (typeof v === "string") return v;
+      }
+    }
+  } catch {
+    // not JSON
+  }
+
+  if (trimmed.length <= 300 && !looksLikeHtml(trimmed)) return trimmed;
+  return null;
+}
+
+function buildApiError(status: number, rawBody: string): ApiError {
+  const detail = tryParseUserFacingDetail(rawBody);
+  const message = detail ?? safeMessageForHttpStatus(status);
+  return new ApiError(message, status, rawBody || undefined);
+}
+
 export function setApiAccessToken(token: string | null) {
   authToken = token;
 }
@@ -17,7 +81,6 @@ export async function getCurrentApiAccessToken() {
 
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    console.error("getSession error while preparing API request:", error);
     return null;
   }
 
@@ -34,10 +97,18 @@ async function resolveRequestToken(requireAuth: boolean) {
   return getCurrentApiAccessToken();
 }
 
-function buildRequestHeaders(headersInit: HeadersInit | undefined, token: string | null) {
+function shouldSetJsonContentType(body: BodyInit | null | undefined) {
+  return body != null && !(body instanceof FormData);
+}
+
+function buildRequestHeaders(
+  headersInit: HeadersInit | undefined,
+  token: string | null,
+  body: BodyInit | null | undefined
+) {
   const headers = new Headers(headersInit);
 
-  if (!headers.has("Content-Type")) {
+  if (!headers.has("Content-Type") && shouldSetJsonContentType(body)) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -65,16 +136,30 @@ export async function apiRequest<T = any>(
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...requestOptions,
-    headers: buildRequestHeaders(requestOptions.headers, token),
+    headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    throw buildApiError(res.status, text);
   }
 
-  if (res.status === 204) return null as T;
-  return (await res.json()) as T;
+  if (res.status === 204 || res.status === 205) return null as T;
+
+  const text = await res.text();
+  if (!text) return null as T;
+
+  const contentType = res.headers.get("Content-Type") ?? "";
+  const expectsJson = contentType.includes("application/json") || contentType.includes("+json");
+  if (expectsJson) {
+    return JSON.parse(text) as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as T;
+  }
 }
 
 /** DRF-style paginated response. */

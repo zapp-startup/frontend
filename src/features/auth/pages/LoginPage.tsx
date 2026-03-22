@@ -10,6 +10,7 @@ import { COLORS, GLOWS } from "@/shared/theme";
 import { toast } from "sonner";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
+import { apiRequest } from "@/api/client";
 
 export function LoginPage() {
   const { login, isAuthenticated, isAuthReady } = useAuth();
@@ -33,6 +34,7 @@ export function LoginPage() {
       const accessToken = result.session?.access_token ?? null;
       if (accessToken) {
         try {
+          await apiRequest("/api/auth/sync/", { requireAuth: true, method: "POST" });
           const isComplete = await OnboardingAPI.checkComplete();
           navigate(isComplete ? "/" : "/onboarding", { replace: true });
         } catch {

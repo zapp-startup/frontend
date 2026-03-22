@@ -12,6 +12,7 @@ import {
   type Merchant,
   type SubscriptionValuation,
 } from "@/api";
+import { ApiError } from "@/api/client";
 import { toast } from "sonner";
 
 const BILLING_CYCLES = ["monthly", "yearly", "quarterly", "one-time"];
@@ -51,14 +52,20 @@ type AddSubscriptionForm = {
   notes: string;
 };
 
-const EMPTY_FORM: AddSubscriptionForm = {
-  merchantName: "",
-  amount: "",
-  billing_cycle: "monthly",
-  status: "active",
-  started_at: new Date().toISOString().split("T")[0],
-  notes: "",
-};
+function createEmptySubscriptionForm(): AddSubscriptionForm {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return {
+    merchantName: "",
+    amount: "",
+    billing_cycle: "monthly",
+    status: "active",
+    started_at: `${y}-${m}-${day}`,
+    notes: "",
+  };
+}
 
 function AddPanel({
   onClose,
@@ -69,7 +76,7 @@ function AddPanel({
   onAdded: (s: Subscription) => void;
   merchants: Merchant[];
 }) {
-  const [form, setForm] = React.useState<AddSubscriptionForm>(EMPTY_FORM);
+  const [form, setForm] = React.useState<AddSubscriptionForm>(() => createEmptySubscriptionForm());
   const [submitting, setSubmitting] = React.useState(false);
 
   const set = <K extends keyof AddSubscriptionForm>(key: K, val: AddSubscriptionForm[K]) =>
@@ -391,10 +398,11 @@ export function SubscriptionsPage() {
   } | null>(null);
 
   React.useEffect(() => {
+    const ac = new AbortController();
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([SubscriptionsAPI.list(), MerchantsAPI.list()])
+    Promise.all([SubscriptionsAPI.list({ signal: ac.signal }), MerchantsAPI.list({ signal: ac.signal })])
       .then(([subs, mchs]) => {
         if (!cancelled) {
           setSubscriptions(subs);
@@ -402,16 +410,22 @@ export function SubscriptionsPage() {
         }
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load subscriptions.");
-          toast.error("Failed to load subscriptions.");
-        }
+        if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to load subscriptions.";
+        setError(msg);
+        toast.error("Failed to load subscriptions.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
+      ac.abort();
     };
   }, []);
 
@@ -535,8 +549,9 @@ export function SubscriptionsPage() {
                 onClick={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
                 className={cn(
                   "relative group cursor-pointer transition-all duration-500",
-                  expandedId === sub.id ? "z-[60] !translate-y-[-100px]" : `z-[${10 - index}]`
+                  expandedId === sub.id && "z-[60] !translate-y-[-100px]"
                 )}
+                style={expandedId === sub.id ? undefined : { zIndex: 10 - index }}
               >
                 <div
                   className="bg-[#101A2E] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between"

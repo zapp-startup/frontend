@@ -25,7 +25,8 @@ export type NewSubscription = {
 const auth = { requireAuth: true as const };
 
 export const SubscriptionsAPI = {
-  list: () => apiRequest<Subscription[]>("/api/subscriptions/", auth),
+  list: (opts?: { signal?: AbortSignal }) =>
+    apiRequest<Subscription[]>("/api/subscriptions/", { ...auth, signal: opts?.signal }),
   get: (id: number) => apiRequest<Subscription>(`/api/subscriptions/${id}/`, auth),
   create: (data: NewSubscription) =>
     apiRequest<Subscription>("/api/subscriptions/", {
