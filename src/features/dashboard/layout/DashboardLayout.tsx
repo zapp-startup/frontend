@@ -8,6 +8,7 @@ import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
+import { PanelProvider } from "../context/PanelContext";
 
 const HomePage = React.lazy(() =>
   import("@/features/home").then((module) => ({ default: module.HomePage }))
@@ -107,7 +108,7 @@ export function DashboardLayout() {
   const activeColor = PAGE_COLORS[activePage];
 
   return (
-    <>
+    <PanelProvider>
       <motion.div
         animate={{ backgroundColor: activeColor }}
         transition={{ duration: 1.5 }}
@@ -166,6 +167,6 @@ export function DashboardLayout() {
 
       <ZappBot />
       <BuyAdvisorModal isOpen={isBuyAdvisorOpen} onClose={() => setIsBuyAdvisorOpen(false)} />
-    </>
+    </PanelProvider>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
+import { usePanelContext } from "@/features/dashboard/context/PanelContext";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
@@ -611,6 +612,7 @@ function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange:
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const TransactionsPage = () => {
+  const { setRightPanelOpen } = usePanelContext();
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -619,6 +621,11 @@ export const TransactionsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+
+  React.useEffect(() => {
+    setRightPanelOpen(isAddPanelOpen);
+    return () => setRightPanelOpen(false);
+  }, [isAddPanelOpen, setRightPanelOpen]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -799,8 +806,7 @@ export const TransactionsPage = () => {
                     const isIncome = tx.direction === "income";
                     return (
                       <motion.div key={tx.id} initial={{ x: -10, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }}
-                        whileHover={{ scale: 1.005, backgroundColor: "rgba(255,255,255,0.02)" }}
-                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all">
+                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all hover:bg-white/[0.02]">
                         <div
                           className="flex items-center gap-5 flex-1 cursor-pointer"
                           onClick={() => {

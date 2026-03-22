@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { ZappBot } from "../components/ZappBot";
+import { PanelProvider } from "../context/PanelContext";
 
 const mockUseAuth = vi.fn();
 
@@ -45,7 +46,11 @@ describe("ZappBot", () => {
 
     localStorage.setItem("zapp_conversation_id_uid-abc", "42");
 
-    render(<ZappBot />);
+    render(
+      <PanelProvider>
+        <ZappBot />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(localStorage.getItem("zapp_conversation_id_uid-abc")).toBe("42");
@@ -59,7 +64,11 @@ describe("ZappBot", () => {
       user: { supabaseUid: "uid-me", name: "T", email: "t@e.com", id: "x", createdAt: "" },
     });
 
-    render(<ZappBot />);
+    render(
+      <PanelProvider>
+        <ZappBot />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(localStorage.getItem("zapp_conversation_id_uid-me")).toBeNull();

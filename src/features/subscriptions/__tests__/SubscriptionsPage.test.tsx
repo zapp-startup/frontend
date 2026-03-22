@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SubscriptionsPage } from "../pages/SubscriptionsPage";
+import { PanelProvider } from "@/features/dashboard/context/PanelContext";
 import * as api from "@/api";
 
 vi.mock("@/api", () => ({
@@ -20,7 +21,11 @@ describe("SubscriptionsPage", () => {
   });
 
   it("loads and displays empty state when no subscriptions", async () => {
-    render(<SubscriptionsPage />);
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(api.SubscriptionsAPI.list).toHaveBeenCalled();
@@ -43,7 +48,11 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    render(<SubscriptionsPage />);
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();

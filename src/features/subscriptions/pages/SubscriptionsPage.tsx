@@ -13,6 +13,7 @@ import {
   type SubscriptionValuation,
 } from "@/api";
 import { ApiError } from "@/api/client";
+import { usePanelContext } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
 
 const BILLING_CYCLES = ["monthly", "yearly", "quarterly", "one-time"];
@@ -31,15 +32,21 @@ function getScoreColor(score: number) {
 }
 
 function extractApiErrorMessage(err: unknown): string {
-  if (!(err instanceof Error)) return "Failed to save subscription.";
-  try {
-    const parsed = JSON.parse(err.message) as Record<string, unknown>;
-    const first = Object.values(parsed)[0];
-    if (Array.isArray(first) && typeof first[0] === "string") return first[0];
-    if (typeof first === "string") return first;
-  } catch {
-    // Non-JSON error body; use raw message below.
+  if (err instanceof ApiError) {
+    const raw = err.rawBody;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const first = Object.values(parsed)[0];
+        if (Array.isArray(first) && typeof first[0] === "string") return first[0];
+        if (typeof first === "string") return first;
+      } catch {
+        // use normalized message below
+      }
+    }
+    return err.message || "Failed to save subscription.";
   }
+  if (!(err instanceof Error)) return "Failed to save subscription.";
   return err.message || "Failed to save subscription.";
 }
 
@@ -108,7 +115,7 @@ function AddPanel({
     setSubmitting(true);
     try {
       const sub = await SubscriptionsAPI.create({
-        merchant: match.id,
+        ...(match ? { merchant: match.id } : {}),
         merchant_name: merchantName,
         amount: amt,
         billing_cycle: form.billing_cycle,
@@ -386,6 +393,7 @@ function ValuationDetailPanel({
 }
 
 export function SubscriptionsPage() {
+  const { setRightPanelOpen } = usePanelContext();
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [merchants, setMerchants] = React.useState<Merchant[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -396,6 +404,12 @@ export function SubscriptionsPage() {
     id: number;
     name: string;
   } | null>(null);
+
+  React.useEffect(() => {
+    const rightOpen = isAddPanelOpen || valuationPanel != null;
+    setRightPanelOpen(rightOpen);
+    return () => setRightPanelOpen(false);
+  }, [isAddPanelOpen, valuationPanel, setRightPanelOpen]);
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -545,7 +559,7 @@ export function SubscriptionsPage() {
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: index * 0.1, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-                whileHover={{ y: -60, zIndex: 50, rotateX: 0, scale: 1.02 }}
+                whileHover={{ zIndex: 50, rotateX: 0 }}
                 onClick={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
                 className={cn(
                   "relative group cursor-pointer transition-all duration-500",

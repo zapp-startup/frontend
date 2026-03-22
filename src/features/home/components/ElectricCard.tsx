@@ -42,13 +42,6 @@ export const ElectricCard = ({
         boxShadow: `${elevationStyles.shadow}, ${GLOWS.inner}, ${GLOWS[glowIntensity](semanticColor)}`,
         ...style,
       }}
-      whileHover={{
-        y: elevationStyles.y - 4,
-        boxShadow: `${GLOWS.ambient(0.8)}, ${GLOWS.inner}, ${GLOWS.medium(semanticColor)}`,
-        borderColor: `${semanticColor}20`,
-        rotateX: elevation === 2 ? 1 : 0,
-        rotateY: elevation === 2 ? 1 : 0,
-      }}
     >
       {children}
     </motion.div>

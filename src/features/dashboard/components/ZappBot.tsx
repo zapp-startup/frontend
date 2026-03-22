@@ -5,6 +5,7 @@ import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { createConversation, sendMessage } from "@/api/ai.api";
 import { useAuth } from "@/features/auth";
+import { usePanelContext } from "../context/PanelContext";
 
 interface Message {
   id: string;
@@ -15,6 +16,7 @@ interface Message {
 
 export function ZappBot() {
   const { user } = useAuth();
+  const { isRightPanelOpen } = usePanelContext();
   const conversationStorageKey = user?.supabaseUid ? `zapp_conversation_id_${user.supabaseUid}` : null;
 
   const [isOpen, setIsOpen] = React.useState(false);
@@ -113,7 +115,9 @@ export function ZappBot() {
       } catch (err) {
         // Conversation may be stale (deleted/migrated/user-context mismatch). Recreate once and retry.
         if (!isNotFoundError(err)) throw err;
-        localStorage.removeItem("zapp_conversation_id");
+        if (conversationStorageKey) {
+          localStorage.removeItem(conversationStorageKey);
+        }
         setConversationId(null);
         createConversationPromiseRef.current = null;
         const freshCid = await createFreshConversation();
@@ -145,7 +149,12 @@ export function ZappBot() {
   };
 
   return (
-    <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end">
+    <motion.div
+      animate={{ y: isRightPanelOpen ? 200 : 0, opacity: isRightPanelOpen ? 0 : 1 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      className="fixed bottom-10 right-10 z-[100] flex flex-col items-end"
+      style={{ pointerEvents: isRightPanelOpen ? "none" : "auto" }}
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -265,6 +274,6 @@ export function ZappBot() {
           </motion.div>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
