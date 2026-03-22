@@ -2,10 +2,11 @@ import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
-  Zap as ZapIcon, ChevronDown, Wallet, ChevronUp,
+  Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, MessageSquare,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
+import { TransactionReflectionDialog } from "@/features/gamification";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
@@ -464,6 +465,8 @@ export const TransactionsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [reflectionTransaction, setReflectionTransaction] = React.useState<Transaction | null>(null);
+  const [isReflectionOpen, setIsReflectionOpen] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -649,7 +652,23 @@ export const TransactionsPage = () => {
                           <div className={cn("text-xl font-black", isIncome ? "text-emerald-400" : "text-white")}>
                             {isIncome ? "+" : "-"}${Math.abs(Number(tx.amount)).toFixed(2)}
                           </div>
-                          <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            {!isIncome && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setReflectionTransaction(tx);
+                                  setIsReflectionOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/8 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300 transition-all hover:bg-cyan-500/15"
+                              >
+                                <MessageSquare size={12} />
+                                Reflect
+                              </button>
+                            )}
+                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-600">{tx.direction}</div>
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -667,6 +686,15 @@ export const TransactionsPage = () => {
           <AddPanel onClose={() => setIsAddPanelOpen(false)} onAdded={handleAdded} />
         )}
       </AnimatePresence>
+
+      <TransactionReflectionDialog
+        transaction={reflectionTransaction}
+        open={isReflectionOpen}
+        onOpenChange={(open) => {
+          setIsReflectionOpen(open);
+          if (!open) setReflectionTransaction(null);
+        }}
+      />
     </div>
   );
 };

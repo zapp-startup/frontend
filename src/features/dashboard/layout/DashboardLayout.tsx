@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
-import { Home, CreditCard, BarChart2, Search, User, Camera, List } from "lucide-react";
+import { Home, CreditCard, BarChart2, Search, Camera, List, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { cn } from "@/shared/components/ui/utils";
@@ -12,14 +12,15 @@ import { HomePage } from "@/features/home";
 import { SubscriptionsPage } from "@/features/subscriptions/pages/SubscriptionsPage";
 import { AnalyticsPage } from "@/features/analytics/pages/AnalyticsPage";
 import { SearchPage } from "@/features/search/pages/SearchPage";
-import { ProfilePage } from "@/features/profile/pages/ProfilePage";
 import { TransactionsPage } from "@/features/transactions";
+import { BadgesPage, CirclesPage, TargetsPage } from "@/features/gamification";
 
-type PageId = "home" | "transactions" | "subscriptions" | "analytics" | "search";
+type PageId = "home" | "transactions" | "circles" | "subscriptions" | "analytics" | "search";
 
 const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[] = [
   { id: "home", path: "/", label: "Dashboard", icon: Home },
   { id: "transactions", path: "/transactions", label: "Transactions", icon: List },
+  { id: "circles", path: "/circles", label: "Circles", icon: Users },
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "analytics", path: "/analytics", label: "Analytics", icon: BarChart2 },
   { id: "search", path: "/search", label: "Search", icon: Search },
@@ -29,6 +30,7 @@ const NAV_ITEMS: { id: PageId; path: string; label: string; icon: LucideIcon }[]
 const PAGE_COLORS: Record<PageId, string> = {
   home: COLORS.electricGreen,
   transactions: COLORS.electricCyan,
+  circles: COLORS.electricYellow,
   subscriptions: COLORS.electricBlue,
   analytics: COLORS.electricCyan,
   search: COLORS.electricTeal,
@@ -38,12 +40,16 @@ const PAGE_COLORS: Record<PageId, string> = {
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
   const segment = pathname.replace(/^\//, "") || "home";
+  if (segment === "badges" || segment === "targets") return "circles";
   return (NAV_ITEMS.some((n) => n.id === segment) ? segment : "home") as PageId;
 }
 
 const ROUTES: { path: string; element: React.ReactNode }[] = [
   { path: "/", element: <HomePage /> },
   { path: "/transactions", element: <TransactionsPage /> },
+  { path: "/circles", element: <CirclesPage /> },
+  { path: "/badges", element: <BadgesPage /> },
+  { path: "/targets", element: <TargetsPage /> },
   { path: "/subscriptions", element: <SubscriptionsPage /> },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
