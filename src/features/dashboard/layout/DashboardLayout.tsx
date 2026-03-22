@@ -12,6 +12,7 @@ import { HomePage } from "@/features/home";
 import { SubscriptionsPage } from "@/features/subscriptions/pages/SubscriptionsPage";
 import { AnalyticsPage } from "@/features/analytics/pages/AnalyticsPage";
 import { SearchPage } from "@/features/search/pages/SearchPage";
+import { ProfilePage } from "@/features/profile/pages/ProfilePage";
 import { TransactionsPage } from "@/features/transactions";
 import { BadgesPage, CirclesPage, TargetsPage } from "@/features/gamification";
 
@@ -53,7 +54,7 @@ const ROUTES: { path: string; element: React.ReactNode }[] = [
   { path: "/subscriptions", element: <SubscriptionsPage /> },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
-  //{ path: "/profile", element: <ProfilePage /> },
+  { path: "/profile", element: <ProfilePage /> },
 ];
 
 function PageContent() {
@@ -99,16 +100,16 @@ export function DashboardLayout() {
       />
 
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B1220]/60 backdrop-blur-3xl border-b border-white/[0.03]">
-        <div className="max-w-7xl mx-auto px-12 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-16">
+        <div className="mx-auto flex h-24 w-full max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-6 lg:gap-10">
             <NavLink to="/" className="flex items-center gap-4 group cursor-pointer">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full blur-xl opacity-20 group-hover:opacity-60 transition-all" style={{ backgroundColor: COLORS.electricCyan }} />
                 <div className="relative w-5 h-5 rounded-full shadow-[0_0_20px_#22F0FF]" style={{ backgroundColor: COLORS.electricCyan }} />
               </div>
-              <span className="text-4xl font-black tracking-tighter uppercase italic group-hover:text-cyan-400 transition-colors">Zapp</span>
+              <span className="text-3xl sm:text-4xl font-black tracking-tighter uppercase italic group-hover:text-cyan-400 transition-colors">Zapp</span>
             </NavLink>
-            <div className="hidden lg:flex items-center gap-4">
+            <div className="hidden min-w-0 lg:flex items-center gap-2 xl:gap-3">
               {NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.id}
@@ -116,7 +117,7 @@ export function DashboardLayout() {
                   end={item.path === "/"}
                   className={({ isActive }) =>
                     cn(
-                      "relative flex items-center gap-3 px-8 py-3 rounded-2xl transition-all font-black uppercase tracking-[0.3em] text-[10px]",
+                      "relative flex items-center gap-2 px-4 2xl:px-6 py-3 rounded-2xl transition-all font-black uppercase tracking-[0.22em] text-[10px] whitespace-nowrap",
                       isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
                     )
                   }
@@ -134,15 +135,15 @@ export function DashboardLayout() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 pl-4 border-l border-white/5">
+          <div className="flex shrink-0 items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-white/5">
               <NavLink to="/profile" className="flex items-center gap-4 cursor-pointer group/avatar">
-                <div className="text-right hidden sm:block">
+                <div className="text-right hidden md:block">
                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white group-hover/avatar:text-cyan-400 transition-colors">{user?.name ?? "Guest"}</div>
                   <div className="text-[9px] font-black text-cyan-500 uppercase">{user?.tier ?? "Intentional Tier"}</div>
                 </div>
                 <div
-                  className="w-14 h-14 rounded-[1.25rem] border border-white/20 group-hover/avatar:scale-105 transition-all shadow-2xl"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.25rem] border border-white/20 group-hover/avatar:scale-105 transition-all shadow-2xl"
                   style={{ backgroundImage: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})` }}
                 />
               </NavLink>
@@ -151,7 +152,7 @@ export function DashboardLayout() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-12 pt-44 min-h-screen relative z-10">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-40 lg:pt-44 min-h-screen relative z-10">
         <Routes>
           <Route path="*" element={<PageContent />} />
         </Routes>

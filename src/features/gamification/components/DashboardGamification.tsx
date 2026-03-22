@@ -17,19 +17,29 @@ export function DashboardGamification() {
   const [currentRank, setCurrentRank] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [submittingReview, setSubmittingReview] = React.useState<"weekly" | "monthly" | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const loadData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [streakData, badgeData, groupData] = await Promise.all([
+      setLoadError(null);
+      const [streakResult, badgesResult, groupsResult] = await Promise.allSettled([
         GamificationAPI.getMyStreak(),
         GamificationAPI.getUserBadges(),
         GamificationAPI.getGroups(),
       ]);
 
+      const streakData = streakResult.status === "fulfilled" ? streakResult.value : null;
+      const badgeData = badgesResult.status === "fulfilled" ? badgesResult.value : [];
+      const groupData = groupsResult.status === "fulfilled" ? groupsResult.value : [];
+
       setStreak(streakData);
       setBadges(badgeData);
       setGroups(groupData);
+
+      if (!streakData) {
+        setLoadError("Streak data is not loading from the backend yet.");
+      }
 
       if (groupData[0]) {
         try {
@@ -44,6 +54,7 @@ export function DashboardGamification() {
       }
     } catch (error) {
       console.error(error);
+      setLoadError("Gamification data failed to load.");
       toast.error("Failed to load gamification overview.");
     } finally {
       setLoading(false);
@@ -84,7 +95,19 @@ export function DashboardGamification() {
   }
 
   if (!streak) {
-    return null;
+    return (
+      <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
+        <div className="space-y-3 py-2">
+          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">
+            Gamification
+          </div>
+          <div className="text-2xl font-black text-white">Waiting on backend data</div>
+          <div className="text-sm text-gray-400">
+            {loadError ?? "The dashboard could not fetch streak and level data yet."}
+          </div>
+        </div>
+      </ElectricCard>
+    );
   }
 
   const levelProgress = streak.next_level_points > streak.level_floor_points
