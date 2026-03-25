@@ -1,11 +1,11 @@
 import * as React from "react";
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useReducedMotion } from "motion/react";
 import { X, Send } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { createConversation, sendMessage } from "@/api/ai.api";
 import { useAuth } from "@/features/auth";
-import { usePanelContext } from "../context/PanelContext";
+import { usePanelState } from "../context/PanelContext";
 
 interface Message {
   id: string;
@@ -16,7 +16,8 @@ interface Message {
 
 export function ZappBot() {
   const { user } = useAuth();
-  const { isRightPanelOpen } = usePanelContext();
+  const { isRightPanelOpen } = usePanelState();
+  const shouldReduceMotion = useReducedMotion();
   const conversationStorageKey = user?.supabaseUid ? `zapp_conversation_id_${user.supabaseUid}` : null;
   const devUsername = user?.username?.trim() ?? "";
 
@@ -52,13 +53,14 @@ export function ZappBot() {
   const eyeY = useSpring(useTransform(mouseY, [0, 1080], [-1, 1]), { damping: 20 });
 
   React.useEffect(() => {
+    if (shouldReduceMotion) return;
     const handleMouseMove = (e: MouseEvent) => {
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [mouseX, mouseY]);
+  }, [mouseX, mouseY, shouldReduceMotion]);
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -171,10 +173,13 @@ export function ZappBot() {
 
   return (
     <motion.div
-      animate={{ y: isRightPanelOpen ? 200 : 0, opacity: isRightPanelOpen ? 0 : 1 }}
+      animate={shouldReduceMotion ? undefined : { y: isRightPanelOpen ? 200 : 0, opacity: isRightPanelOpen ? 0 : 1 }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
       className="fixed bottom-10 right-10 z-[100] flex flex-col items-end"
-      style={{ pointerEvents: isRightPanelOpen ? "none" : "auto" }}
+      style={{
+        pointerEvents: isRightPanelOpen ? "none" : "auto",
+        ...(shouldReduceMotion ? { transform: isRightPanelOpen ? "translateY(200px)" : undefined, opacity: isRightPanelOpen ? 0 : 1 } : {}),
+      }}
     >
       <AnimatePresence>
         {isOpen && (
@@ -263,8 +268,8 @@ export function ZappBot() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => setIsOpen(!isOpen)}
-        animate={{ y: [0, -4, 0], rotate: isHovered ? [0, -2, 2, 0] : 0 }}
-        transition={{ y: { repeat: Infinity, duration: 4, ease: "easeInOut" }, rotate: { repeat: Infinity, duration: 0.2 } }}
+        animate={shouldReduceMotion ? undefined : { y: [0, -4, 0], rotate: isHovered ? [0, -2, 2, 0] : 0 }}
+        transition={shouldReduceMotion ? undefined : { y: { repeat: Infinity, duration: 6, ease: "easeInOut" }, rotate: { repeat: Infinity, duration: 0.2 } }}
         className="relative cursor-pointer group"
       >
         <div className="absolute inset-0 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40" style={{ backgroundColor: COLORS.electricPurple }} />
@@ -279,8 +284,8 @@ export function ZappBot() {
           </svg>
 
           <div className="absolute top-[28px] left-[26px] flex gap-2">
-            <motion.div style={{ x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
-            <motion.div style={{ x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
+            <motion.div style={shouldReduceMotion ? undefined : { x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
+            <motion.div style={shouldReduceMotion ? undefined : { x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
           </div>
         </div>
 

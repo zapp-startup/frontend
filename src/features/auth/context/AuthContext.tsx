@@ -209,16 +209,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { ok: true as const };
   }, []);
 
-  const value: AuthContextValue = {
-    user,
-    backendUser,
-    isAuthenticated: !!user,
-    isAuthReady: !authLoading,
-    login,
-    signUp,
-    logout,
-    updateProfile,
-  };
+  const value = React.useMemo<AuthContextValue>(
+    () => ({
+      user,
+      backendUser,
+      isAuthenticated: !!user,
+      isAuthReady: !authLoading,
+      login,
+      signUp,
+      logout,
+      updateProfile,
+    }),
+    [user, backendUser, authLoading, login, signUp, logout, updateProfile]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

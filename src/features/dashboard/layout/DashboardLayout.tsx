@@ -1,5 +1,5 @@
 import * as React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
 import { Home, CreditCard, BarChart2, Search, User, Camera, List, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -65,38 +65,36 @@ const ROUTES: { path: string; match?: (p: string) => boolean; element: React.Rea
   { path: "/profile", element: <ProfilePage /> },
 ];
 
-function PageContent() {
+const PageContent = React.memo(function PageContent() {
   const { pathname } = useLocation();
   const route = ROUTES.find((r) => r.match ? r.match(pathname) : r.path === pathname);
   const content = route ? route.element : <HomePage />;
+  const shouldReduceMotion = useReducedMotion();
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.24, ease: "easeOut" }}
+    <motion.div
+      initial={shouldReduceMotion ? false : { opacity: 0.92, y: 8 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
+      <React.Suspense
+        fallback={
+          <div className="min-h-[40vh] flex items-center justify-center text-xs font-black uppercase tracking-widest text-gray-500">
+            Loading...
+          </div>
+        }
       >
-        <React.Suspense
-          fallback={
-            <div className="min-h-[40vh] flex items-center justify-center text-xs font-black uppercase tracking-widest text-gray-500">
-              Loading...
-            </div>
-          }
-        >
-          {content}
-        </React.Suspense>
-      </motion.div>
-    </AnimatePresence>
+        {content}
+      </React.Suspense>
+    </motion.div>
   );
-}
+});
 
 export function DashboardLayout() {
   const { isAuthenticated, isAuthReady } = useAuth();
   const { pathname } = useLocation();
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   if (!isAuthReady) {
     return null;
@@ -110,9 +108,10 @@ export function DashboardLayout() {
   return (
     <PanelProvider>
       <motion.div
-        animate={{ backgroundColor: activeColor }}
-        transition={{ duration: 1.5 }}
+        animate={shouldReduceMotion ? undefined : { backgroundColor: activeColor }}
+        transition={{ duration: 0.9 }}
         className="fixed top-0 left-1/2 -translate-x-1/2 w-[80%] h-1 blur-[100px] opacity-20 pointer-events-none z-0"
+        style={shouldReduceMotion ? { backgroundColor: activeColor } : undefined}
       />
 
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B1220]/60 backdrop-blur-3xl border-b border-white/[0.03]">

@@ -19,7 +19,13 @@ import {
 } from "@/api";
 import { toast } from "sonner";
 
-function RawInferredSection() {
+const OVERVIEW_BARS = [
+  { name: "Development Tools", val: 85, color: COLORS.electricGreen, sub: "Essential Utility" },
+  { name: "Content Streaming", val: 32, color: COLORS.electricRed, sub: "High Overlap Risk" },
+  { name: "Lifestyle Apps", val: 58, color: COLORS.electricBlue, sub: "Healthy Engagement" },
+];
+
+const RawInferredSection = React.memo(function RawInferredSection() {
   const [data, setData] = React.useState<RawInferred[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -70,9 +76,9 @@ function RawInferredSection() {
       ))}
     </div>
   );
-}
+});
 
-function ComputedSection() {
+const ComputedSection = React.memo(function ComputedSection() {
   const [data, setData] = React.useState<Computed[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -123,9 +129,9 @@ function ComputedSection() {
       ))}
     </div>
   );
-}
+});
 
-function ValuationCard({
+const ValuationCard = React.memo(function ValuationCard({
   recommendation,
   confidence,
   evidence,
@@ -182,9 +188,9 @@ function ValuationCard({
       )}
     </div>
   );
-}
+});
 
-function ValuationsSection() {
+const ValuationsSection = React.memo(function ValuationsSection() {
   const [subVals, setSubVals] = React.useState<SubscriptionValuation[]>([]);
   const [itemVals, setItemVals] = React.useState<ItemValuation[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -323,7 +329,7 @@ function ValuationsSection() {
       )}
     </div>
   );
-}
+});
 
 export function AnalyticsPage() {
   return (
@@ -352,11 +358,7 @@ export function AnalyticsPage() {
                   </div>
                 </div>
                 <div className="space-y-14 px-4">
-                  {[
-                    { name: "Development Tools", val: 85, color: COLORS.electricGreen, sub: "Essential Utility" },
-                    { name: "Content Streaming", val: 32, color: COLORS.electricRed, sub: "High Overlap Risk" },
-                    { name: "Lifestyle Apps", val: 58, color: COLORS.electricBlue, sub: "Healthy Engagement" },
-                  ].map((bar, i) => (
+                  {OVERVIEW_BARS.map((bar, i) => (
                     <div key={i} className="space-y-5">
                       <div className="flex justify-between items-end">
                         <div>

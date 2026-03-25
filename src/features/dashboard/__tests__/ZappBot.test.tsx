@@ -26,6 +26,7 @@ vi.mock("motion/react", () => {
     useMotionValue: (v: number) => ({ set: vi.fn(), get: () => v }),
     useSpring: (v: unknown) => v,
     useTransform: () => 0,
+    useReducedMotion: () => false,
   };
 });
 

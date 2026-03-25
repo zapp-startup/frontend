@@ -7,10 +7,11 @@ import {
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { usePanelContext } from "@/features/dashboard/context/PanelContext";
+import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
+import { toast } from "sonner";
 
 function formatLocalDateYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -29,7 +30,6 @@ function createEmptyTransactionForm(): NewTransaction {
     satisfaction_rating: null,
   };
 }
-import { toast } from "sonner";
 
 const CATEGORY_OPTIONS = [
   { value: "eating_out",    label: "Eating Out",     icon: Coffee,      color: COLORS.electricYellow },
@@ -49,8 +49,34 @@ function getCategoryMeta(value: string) {
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const INITIAL_VISIBLE_GROUPS = 8;
+type Filters = { category: string; direction: string; date_from: string; date_to: string };
+const EMPTY_FILTERS: Filters = { category: "", direction: "", date_from: "", date_to: "" };
 
-function SpendingCalendar({
+type TransactionRowViewModel = {
+  tx: Transaction;
+  categoryLabel: string;
+  categoryColor: string;
+  categoryIcon: (typeof CATEGORY_OPTIONS)[number]["icon"];
+  timeLabel: string;
+  heading: string;
+  directionLabel: string;
+  satisfactionLabel: string | null;
+  amountText: string;
+  isIncome: boolean;
+};
+
+type TransactionGroupViewModel = {
+  date: string;
+  dateLabel: string;
+  rows: TransactionRowViewModel[];
+};
+
+function formatDayLabel(date: string) {
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+const SpendingCalendar = React.memo(function SpendingCalendar({
   transactions,
   selectedDate,
   onSelectDate,
@@ -80,17 +106,7 @@ function SpendingCalendar({
     return () => ro.disconnect();
   }, []);
 
-  const {
-    allDays,
-    todayStr,
-    spendByDay,
-    maxValue,
-    weeks,
-    monthLabelByWeek,
-    thisWeekSpend,
-    biggestDay,
-    streak,
-  } = React.useMemo(() => {
+  const { todayStr, spendByDay, maxValue, weeks, monthLabelByWeek, thisWeekSpend, biggestDay, streak } = React.useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStrMemo = today.toISOString().split("T")[0];
@@ -330,7 +346,7 @@ function SpendingCalendar({
       </div>
     </div>
   );
-}
+});
 
 // ── Add Transaction Panel ─────────────────────────────────────────────────────
 function AddPanel({
@@ -524,11 +540,7 @@ function AddPanel({
   );
 }
 
-// ── Filter Bar ────────────────────────────────────────────────────────────────
-type Filters = { category: string; direction: string; date_from: string; date_to: string };
-const EMPTY_FILTERS: Filters = { category: "", direction: "", date_from: "", date_to: "" };
-
-function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange: (f: Filters) => void; onClear: () => void }) {
+const FilterBar = React.memo(function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange: (f: Filters) => void; onClear: () => void }) {
   const [open, setOpen] = React.useState<string | null>(null);
   const hasFilters = Object.values(filters).some(Boolean);
 
@@ -608,18 +620,224 @@ function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange:
       )}
     </div>
   );
-}
+});
+
+const TransactionStats = React.memo(function TransactionStats({
+  count,
+  totalSpend,
+  totalIncome,
+  net,
+}: {
+  count: number;
+  totalSpend: number;
+  totalIncome: number;
+  net: number;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <ElectricCard className="p-6" semanticColor={COLORS.electricCyan} elevation={1}>
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Transactions</div>
+        <div className="text-3xl font-black text-white">{count}</div>
+      </ElectricCard>
+      <ElectricCard className="p-6" semanticColor={COLORS.electricRed} elevation={1}>
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Spent</div>
+        <div className="text-3xl font-black text-white">${totalSpend.toFixed(2)}</div>
+      </ElectricCard>
+      <ElectricCard className="p-6" semanticColor={COLORS.electricGreen} elevation={1}>
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Income</div>
+        <div className="text-3xl font-black text-white">${totalIncome.toFixed(2)}</div>
+      </ElectricCard>
+      <ElectricCard className="p-6" semanticColor={COLORS.electricBlue} elevation={1}>
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Net</div>
+        <div className={cn("text-3xl font-black", net >= 0 ? "text-emerald-400" : "text-red-400")}>
+          {net >= 0 ? "+" : ""}${net.toFixed(2)}
+        </div>
+      </ElectricCard>
+    </div>
+  );
+});
+
+const TransactionToolbar = React.memo(function TransactionToolbar({
+  searchQuery,
+  onSearchChange,
+  filters,
+  onFiltersChange,
+  onClearFilters,
+  onOpenAdd,
+}: {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  filters: Filters;
+  onFiltersChange: (filters: Filters) => void;
+  onClearFilters: () => void;
+  onOpenAdd: () => void;
+}) {
+  return (
+    <div className="flex flex-row gap-4 items-center">
+      <div className="relative w-80 flex-shrink-0 group">
+        <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
+        <input type="text" placeholder="Search transactions..." value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full bg-[#101A2E] border border-white/5 rounded-2xl py-4 pl-14 pr-6 text-white font-bold outline-none focus:border-cyan-500/30 transition-all placeholder:text-gray-600" />
+      </div>
+      <div className="flex items-center gap-3 flex-1">
+        <FilterBar filters={filters} onChange={onFiltersChange} onClear={onClearFilters} />
+      </div>
+      <motion.button
+        whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onOpenAdd}
+        className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]">
+        <Plus size={22} strokeWidth={3} />
+      </motion.button>
+    </div>
+  );
+});
+
+const TransactionGroups = React.memo(function TransactionGroups({
+  groups,
+  loading,
+  onEdit,
+  onDelete,
+}: {
+  groups: TransactionGroupViewModel[];
+  loading: boolean;
+  onEdit: (tx: Transaction) => void;
+  onDelete: (tx: Transaction, e: React.MouseEvent) => void;
+}) {
+  const [expandedState, setExpandedState] = React.useState<Record<string, boolean>>({});
+  const [visibleGroupCount, setVisibleGroupCount] = React.useState(INITIAL_VISIBLE_GROUPS);
+  const groupKeys = React.useMemo(() => groups.map((group) => group.date), [groups]);
+
+  React.useEffect(() => {
+    setExpandedState((prev) => {
+      const next: Record<string, boolean> = {};
+      groupKeys.forEach((date, index) => {
+        next[date] = prev[date] ?? index < INITIAL_VISIBLE_GROUPS;
+      });
+      return next;
+    });
+    setVisibleGroupCount((prev) => {
+      if (groupKeys.length <= INITIAL_VISIBLE_GROUPS) return groupKeys.length;
+      return prev >= groupKeys.length ? groupKeys.length : Math.max(INITIAL_VISIBLE_GROUPS, prev);
+    });
+  }, [groupKeys]);
+
+  const visibleGroups = React.useMemo(() => groups.slice(0, visibleGroupCount), [groups, visibleGroupCount]);
+
+  const toggleGroup = React.useCallback((date: string) => {
+    setExpandedState((prev) => ({ ...prev, [date]: !prev[date] }));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-16 text-gray-600 text-xs font-black uppercase tracking-widest animate-pulse">
+        Loading transactions...
+      </div>
+    );
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <div className="text-gray-600 text-xs font-black uppercase tracking-widest">No transactions found</div>
+        <div className="text-gray-700 text-xs">Add your first transaction using the + button.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {visibleGroups.map((group) => {
+        const isExpanded = expandedState[group.date] ?? false;
+        return (
+          <div key={group.date} className="space-y-4">
+            <button onClick={() => toggleGroup(group.date)} className="flex items-center gap-4 w-full text-left group">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 bg-[#101A2E] px-4 py-1 rounded-full border border-white/5">
+                {group.dateLabel}
+              </div>
+              <div className="h-px flex-1 bg-white/[0.03]" />
+              <ChevronDown size={16} className={cn("text-gray-600 transition-transform duration-300", !isExpanded && "-rotate-90")} />
+            </button>
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-2">
+                  {group.rows.map((row) => {
+                    const Icon = row.categoryIcon;
+                    return (
+                      <div key={row.tx.id} className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all hover:bg-white/[0.02]">
+                        <div className="flex items-center gap-5 flex-1 cursor-pointer" onClick={() => onEdit(row.tx)}>
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover/tx:scale-110" style={{ backgroundColor: `${row.categoryColor}15` }}>
+                            <Icon size={20} style={{ color: row.categoryColor }} />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-white text-lg">{row.heading}</h4>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                              <span>{row.categoryLabel}</span>
+                              <span className="w-1 h-1 rounded-full bg-gray-700" />
+                              <span>{row.timeLabel}</span>
+                              {row.satisfactionLabel && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
+                                  <span style={{ color: COLORS.electricCyan }}>{row.satisfactionLabel}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className={cn("text-xl font-black", row.isIncome ? "text-emerald-400" : "text-white")}>{row.amountText}</div>
+                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{row.directionLabel}</div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(row.tx);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => onDelete(row.tx, e)}
+                            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+
+      {visibleGroupCount < groups.length && (
+        <div className="flex justify-center pt-2">
+          <Button variant="outline" onClick={() => setVisibleGroupCount((prev) => Math.min(prev + INITIAL_VISIBLE_GROUPS, groups.length))} className="rounded-2xl border-white/10">
+            Load More Dates
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+});
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const TransactionsPage = () => {
-  const { setRightPanelOpen } = usePanelContext();
+  const { setRightPanelOpen } = usePanelActions();
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
-  const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
 
   React.useEffect(() => {
@@ -656,42 +874,59 @@ export const TransactionsPage = () => {
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
-  const filtered = React.useMemo(
+  const filteredTransactions = React.useMemo(
     () =>
-      transactions.filter((tx) =>
-        [tx.description_raw, tx.category].join(" ").toLowerCase().includes(normalizedSearch)
-      ),
+      normalizedSearch
+        ? transactions.filter((tx) =>
+            [tx.description_raw, tx.category].join(" ").toLowerCase().includes(normalizedSearch)
+          )
+        : transactions,
     [transactions, normalizedSearch]
   );
 
-  const grouped = React.useMemo(
+  const transactionGroups = React.useMemo<TransactionGroupViewModel[]>(
     () =>
-      filtered.reduce<Record<string, Transaction[]>>((acc, tx) => {
-        const day = tx.occurred_at.split("T")[0];
-        if (!acc[day]) acc[day] = [];
-        acc[day].push(tx);
-        return acc;
-      }, {}),
-    [filtered]
+      Array.from(
+        filteredTransactions
+          .reduce<Map<string, TransactionRowViewModel[]>>((acc, tx) => {
+          const date = tx.occurred_at.split("T")[0];
+          if (selectedDate && date !== selectedDate) return acc;
+          const category = getCategoryMeta(tx.category);
+          const isIncome = tx.direction === "income";
+          const amount = Math.abs(Number(tx.amount));
+          const row: TransactionRowViewModel = {
+            tx,
+            categoryLabel: category.label,
+            categoryColor: category.color,
+            categoryIcon: category.icon,
+            timeLabel: new Date(tx.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            heading: tx.description_raw || category.label,
+            directionLabel: tx.direction,
+            satisfactionLabel: tx.satisfaction_rating ? `★ ${tx.satisfaction_rating}/10` : null,
+            amountText: `${isIncome ? "+" : "-"}$${amount.toFixed(2)}`,
+            isIncome,
+          };
+          const existing = acc.get(date);
+          if (existing) existing.push(row);
+          else acc.set(date, [row]);
+          return acc;
+        }, new Map<string, TransactionRowViewModel[]>())
+          .entries()
+      )
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([date, rows]) => ({ date, dateLabel: formatDayLabel(date), rows })),
+    [filteredTransactions, selectedDate]
   );
 
-  const dates = React.useMemo(
-    () =>
-      Object.keys(grouped)
-        .sort((a, b) => b.localeCompare(a))
-        .filter((d) => !selectedDate || d === selectedDate),
-    [grouped, selectedDate]
-  );
+  const handleAdded = React.useCallback((tx: Transaction) => {
+    setTransactions((prev) => [tx, ...prev]);
+  }, []);
 
-  React.useEffect(() => { setExpandedGroups(dates); }, [dates]);
-
-  const toggleGroup = (date: string) =>
-    setExpandedGroups((prev) => prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]);
-
-  const handleAdded = (tx: Transaction) => setTransactions((prev) => [tx, ...prev]);
-  const handleUpdated = (tx: Transaction) =>
+  const handleUpdated = React.useCallback((tx: Transaction) => {
     setTransactions((prev) => prev.map((t) => (t.id === tx.id ? tx : t)));
-  const handleDelete = async (tx: Transaction, e: React.MouseEvent) => {
+  }, []);
+
+  const handleDelete = React.useCallback(async (tx: Transaction, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`Delete "${tx.description_raw || "this transaction"}"?`)) return;
     try {
@@ -701,7 +936,22 @@ export const TransactionsPage = () => {
     } catch {
       toast.error("Failed to delete transaction.");
     }
-  };
+  }, []);
+
+  const openAddPanel = React.useCallback(() => {
+    setEditingTransaction(null);
+    setIsAddPanelOpen(true);
+  }, []);
+
+  const handleEdit = React.useCallback((tx: Transaction) => {
+    setEditingTransaction(tx);
+    setIsAddPanelOpen(true);
+  }, []);
+
+  const closePanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    setEditingTransaction(null);
+  }, []);
 
   const { totalSpend, totalIncome, net } = React.useMemo(() => {
     const totalSpendMemo = transactions
@@ -720,30 +970,8 @@ export const TransactionsPage = () => {
 
   return (
     <div className="space-y-12 pb-40 relative z-10">
+      <TransactionStats count={transactions.length} totalSpend={totalSpend} totalIncome={totalIncome} net={net} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ElectricCard className="p-6" semanticColor={COLORS.electricCyan} elevation={1}>
-          <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Transactions</div>
-          <div className="text-3xl font-black text-white">{transactions.length}</div>
-        </ElectricCard>
-        <ElectricCard className="p-6" semanticColor={COLORS.electricRed} elevation={1}>
-          <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Spent</div>
-          <div className="text-3xl font-black text-white">${totalSpend.toFixed(2)}</div>
-        </ElectricCard>
-        <ElectricCard className="p-6" semanticColor={COLORS.electricGreen} elevation={1}>
-          <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Total Income</div>
-          <div className="text-3xl font-black text-white">${totalIncome.toFixed(2)}</div>
-        </ElectricCard>
-        <ElectricCard className="p-6" semanticColor={COLORS.electricBlue} elevation={1}>
-          <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Net</div>
-          <div className={cn("text-3xl font-black", net >= 0 ? "text-emerald-400" : "text-red-400")}>
-            {net >= 0 ? "+" : ""}${net.toFixed(2)}
-          </div>
-        </ElectricCard>
-      </div>
-
-      {/* Spending Calendar */}
       <div className="space-y-4">
         <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
           <Calendar size={20} className="text-cyan-400" /> Spending Calendar
@@ -753,128 +981,21 @@ export const TransactionsPage = () => {
         </ElectricCard>
       </div>
 
-      {/* Search + Filters + Add */}
-      <div className="flex flex-row gap-4 items-center">
-        <div className="relative w-80 flex-shrink-0 group">
-          <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
-          <input type="text" placeholder="Search transactions..." value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#101A2E] border border-white/5 rounded-2xl py-4 pl-14 pr-6 text-white font-bold outline-none focus:border-cyan-500/30 transition-all placeholder:text-gray-600" />
-        </div>
-        <div className="flex items-center gap-3 flex-1">
-          <FilterBar filters={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            setEditingTransaction(null);
-            setIsAddPanelOpen(true);
-          }}
-          className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]">
-          <Plus size={22} strokeWidth={3} />
-        </motion.button>
-      </div>
+      <TransactionToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onClearFilters={() => setFilters(EMPTY_FILTERS)}
+        onOpenAdd={openAddPanel}
+      />
 
-      {/* Transaction List */}
-      <div className="space-y-8">
-        {loading && (
-          <div className="text-center py-16 text-gray-600 text-xs font-black uppercase tracking-widest animate-pulse">
-            Loading transactions...
-          </div>
-        )}
-        {!loading && dates.length === 0 && (
-          <div className="text-center py-16 space-y-3">
-            <div className="text-gray-600 text-xs font-black uppercase tracking-widest">No transactions found</div>
-            <div className="text-gray-700 text-xs">Add your first transaction using the + button.</div>
-          </div>
-        )}
-        {dates.map((date) => (
-          <div key={date} className="space-y-4">
-            <button onClick={() => toggleGroup(date)} className="flex items-center gap-4 w-full text-left group">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 bg-[#101A2E] px-4 py-1 rounded-full border border-white/5">
-                {new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </div>
-              <div className="h-px flex-1 bg-white/[0.03]" />
-              <ChevronDown size={16} className={cn("text-gray-600 transition-transform duration-300", !expandedGroups.includes(date) && "-rotate-90")} />
-            </button>
-            <AnimatePresence>
-              {expandedGroups.includes(date) && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-2">
-                  {grouped[date].map((tx) => {
-                    const cat = getCategoryMeta(tx.category);
-                    const isIncome = tx.direction === "income";
-                    return (
-                      <motion.div key={tx.id} initial={{ x: -10, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }}
-                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all hover:bg-white/[0.02]">
-                        <div
-                          className="flex items-center gap-5 flex-1 cursor-pointer"
-                          onClick={() => {
-                            setEditingTransaction(tx);
-                            setIsAddPanelOpen(true);
-                          }}
-                        >
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover/tx:scale-110" style={{ backgroundColor: `${cat.color}15` }}>
-                            <cat.icon size={20} style={{ color: cat.color }} />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-white text-lg">{tx.description_raw || cat.label}</h4>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                              <span>{cat.label}</span>
-                              <span className="w-1 h-1 rounded-full bg-gray-700" />
-                              <span>{new Date(tx.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                              {tx.satisfaction_rating && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
-                                  <span style={{ color: COLORS.electricCyan }}>★ {tx.satisfaction_rating}/10</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className={cn("text-xl font-black", isIncome ? "text-emerald-400" : "text-white")}>
-                              {isIncome ? "+" : "-"}${Math.abs(Number(tx.amount)).toFixed(2)}
-                            </div>
-                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTransaction(tx);
-                              setIsAddPanelOpen(true);
-                            }}
-                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => handleDelete(tx, e)}
-                            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
+      <TransactionGroups groups={transactionGroups} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
 
       <AnimatePresence>
         {isAddPanelOpen && (
           <AddPanel
-            onClose={() => {
-              setIsAddPanelOpen(false);
-              setEditingTransaction(null);
-            }}
+            onClose={closePanel}
             onAdded={handleAdded}
             onUpdated={handleUpdated}
             editingTransaction={editingTransaction}

@@ -13,10 +13,11 @@ import {
   type SubscriptionValuation,
 } from "@/api";
 import { ApiError } from "@/api/client";
-import { usePanelContext } from "@/features/dashboard/context/PanelContext";
+import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
+const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
 
 function getStatusColor(status: string) {
   const s = (status || "").toLowerCase();
@@ -392,8 +393,133 @@ function ValuationDetailPanel({
   );
 }
 
+const SubscriptionCard = React.memo(function SubscriptionCard({
+  sub,
+  index,
+  expanded,
+  name,
+  onToggle,
+  onDelete,
+  onOpenValuation,
+}: {
+  sub: Subscription;
+  index: number;
+  expanded: boolean;
+  name: string;
+  onToggle: (id: number) => void;
+  onDelete: (sub: Subscription, e: React.MouseEvent) => void;
+  onOpenValuation: (panel: { id: number; name: string }) => void;
+}) {
+  const cost = Number(sub.amount) || 0;
+  const score = sub.value_score ?? 0;
+  const statusColor = getStatusColor(sub.status);
+  const scoreColor = getScoreColor(score);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: Math.min(index, 6) * 0.03, duration: 0.18, ease: "easeOut" }}
+      whileHover={{ zIndex: 50, rotateX: 0 }}
+      onClick={() => onToggle(sub.id)}
+      className={cn(
+        "relative group cursor-pointer transition-all duration-500",
+        expanded && "z-[60] !translate-y-[-100px]"
+      )}
+      style={expanded ? undefined : { zIndex: 10 - (index % 10) }}
+    >
+      <div
+        className="bg-[#101A2E] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between"
+        style={{
+          boxShadow: `${GLOWS.ambient(0.4)}, ${GLOWS.inner}, ${GLOWS.soft(statusColor)}`,
+          borderColor: `${statusColor}20`,
+        }}
+      >
+        <div className="flex items-center gap-8">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/[0.02] border border-white/5">
+            <CreditCard size={32} style={{ color: statusColor }} />
+          </div>
+          <div>
+            <h4 className="text-2xl font-black text-white">{name}</h4>
+            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: statusColor }}>
+              {sub.status || "Active"}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-16">
+          <div className="text-center">
+            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Cost</div>
+            <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Value</div>
+            <div
+              className="text-3xl font-black"
+              style={{
+                color: scoreColor,
+                filter: `drop-shadow(0 0 8px ${scoreColor}60)`,
+              }}
+            >
+              {score || "—"}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenValuation({ id: sub.id, name });
+              }}
+              className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-colors"
+            >
+              <TrendingUp size={20} />
+            </button>
+            <button
+              onClick={(e) => onDelete(sub, e)}
+              className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mt-4 bg-white/[0.02] border border-white/5 rounded-[2rem] p-8"
+          >
+            <div className="grid grid-cols-3 gap-8">
+              <div>
+                <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Billing</div>
+                <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                  {sub.billing_cycle} · Started{" "}
+                  {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Notes</div>
+                <p className="text-sm text-gray-400 leading-relaxed font-medium">{sub.notes || "—"}</p>
+              </div>
+              <div className="flex items-center justify-end">
+                <Button
+                  onClick={(e) => onDelete(sub, e)}
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl px-8 py-4 text-xs font-black uppercase tracking-widest"
+                >
+                  Cancel Service
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+});
+
 export function SubscriptionsPage() {
-  const { setRightPanelOpen } = usePanelContext();
+  const { setRightPanelOpen } = usePanelActions();
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [merchants, setMerchants] = React.useState<Merchant[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -404,6 +530,7 @@ export function SubscriptionsPage() {
     id: number;
     name: string;
   } | null>(null);
+  const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_SUBSCRIPTIONS);
 
   React.useEffect(() => {
     const rightOpen = isAddPanelOpen || valuationPanel != null;
@@ -464,6 +591,18 @@ export function SubscriptionsPage() {
     () => Object.fromEntries(merchants.map((m) => [m.id, m])),
     [merchants]
   );
+  const subscriptionCards = React.useMemo(
+    () =>
+      subscriptions.map((sub) => ({
+        sub,
+        name: sub.merchant_name || merchantMap[sub.merchant]?.name || `Subscription #${sub.id}`,
+      })),
+    [subscriptions, merchantMap]
+  );
+
+  React.useEffect(() => {
+    setVisibleCount((prev) => Math.min(Math.max(prev, INITIAL_VISIBLE_SUBSCRIPTIONS), subscriptionCards.length || INITIAL_VISIBLE_SUBSCRIPTIONS));
+  }, [subscriptionCards.length]);
 
   if (loading) {
     return (
@@ -546,135 +685,28 @@ export function SubscriptionsPage() {
           transition={{ duration: 0.24, ease: "easeOut" }}
           className="relative max-w-4xl mx-auto space-y-[-40px]"
         >
-          {subscriptions.map((sub, index) => {
-            const name = sub.merchant_name || merchantMap[sub.merchant]?.name || `Subscription #${sub.id}`;
-            const cost = Number(sub.amount) || 0;
-            const score = sub.value_score ?? 0;
-            const statusColor = getStatusColor(sub.status);
-            const scoreColor = getScoreColor(score);
-
-            return (
-              <motion.div
-                key={sub.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: index * 0.04, duration: 0.2, ease: "easeOut" }}
-                whileHover={{ zIndex: 50, rotateX: 0 }}
-                onClick={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
-                className={cn(
-                  "relative group cursor-pointer transition-all duration-500",
-                  expandedId === sub.id && "z-[60] !translate-y-[-100px]"
-                )}
-                style={expandedId === sub.id ? undefined : { zIndex: 10 - index }}
-              >
-                <div
-                  className="bg-[#101A2E] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between"
-                  style={{
-                    boxShadow: `${GLOWS.ambient(0.4)}, ${GLOWS.inner}, ${GLOWS.soft(statusColor)}`,
-                    borderColor: `${statusColor}20`,
-                  }}
-                >
-                  <div className="flex items-center gap-8">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/[0.02] border border-white/5">
-                      <CreditCard size={32} style={{ color: statusColor }} />
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-white">{name}</h4>
-                      <span
-                        className="text-[10px] font-black uppercase tracking-widest"
-                        style={{ color: statusColor }}
-                      >
-                        {sub.status || "Active"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-16">
-                    <div className="text-center">
-                      <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-                        Cost
-                      </div>
-                      <div className="text-2xl font-black text-white">
-                        ${cost.toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-                        Value
-                      </div>
-                      <div
-                        className="text-3xl font-black"
-                        style={{
-                          color: scoreColor,
-                          filter: `drop-shadow(0 0 8px ${scoreColor}60)`,
-                        }}
-                      >
-                        {score || "—"}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setValuationPanel({ id: sub.id, name });
-                        }}
-                        className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-colors"
-                      >
-                        <TrendingUp size={20} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(sub, e)}
-                        className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
-                      >
-                        <X size={20} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <AnimatePresence>
-                  {expandedId === sub.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden mt-4 bg-white/[0.02] border border-white/5 rounded-[2rem] p-8"
-                    >
-                      <div className="grid grid-cols-3 gap-8">
-                        <div>
-                          <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
-                            Billing
-                          </div>
-                          <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                            {sub.billing_cycle} · Started{" "}
-                            {sub.started_at
-                              ? new Date(sub.started_at).toLocaleDateString("en-US")
-                              : "—"}
-                          </p>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
-                            Notes
-                          </div>
-                          <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                            {sub.notes || "—"}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-end">
-                          <Button
-                            onClick={(e) => handleDelete(sub, e)}
-                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl px-8 py-4 text-xs font-black uppercase tracking-widest"
-                          >
-                            Cancel Service
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
+          {subscriptionCards.slice(0, visibleCount).map(({ sub, name }, index) => (
+            <SubscriptionCard
+              key={sub.id}
+              sub={sub}
+              index={index}
+              expanded={expandedId === sub.id}
+              name={name}
+              onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
+              onDelete={handleDelete}
+              onOpenValuation={setValuationPanel}
+            />
+          ))}
         </motion.div>
       </div>
+
+      {visibleCount < subscriptionCards.length && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => setVisibleCount((prev) => Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length))} className="rounded-2xl border-white/10">
+            Load More Subscriptions
+          </Button>
+        </div>
+      )}
 
       <AnimatePresence>
         {isAddPanelOpen && (
