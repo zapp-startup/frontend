@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
   Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, Flame, TrendingDown, Sparkles,
-  Pencil, Trash2,
+  Pencil, Trash2, MessageSquare,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
+import { TransactionReflectionDialog } from "@/features/gamification";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
@@ -617,6 +618,8 @@ export const TransactionsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [reflectionTransaction, setReflectionTransaction] = React.useState<Transaction | null>(null);
+  const [isReflectionOpen, setIsReflectionOpen] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -819,20 +822,35 @@ export const TransactionsPage = () => {
                             </div>
                             <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
                           </div>
+                          {!isIncome && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setReflectionTransaction(tx);
+                                setIsReflectionOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/8 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300 transition-all hover:bg-cyan-500/15"
+                              title="Reflect"
+                            >
+                              <MessageSquare size={12} />
+                              Reflect
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingTransaction(tx);
                               setIsAddPanelOpen(true);
                             }}
-                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                            className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/10 hover:text-cyan-400"
                             title="Edit"
                           >
                             <Pencil size={18} />
                           </button>
                           <button
                             onClick={(e) => handleDelete(tx, e)}
-                            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+                            className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
                             title="Delete"
                           >
                             <Trash2 size={18} />
@@ -861,6 +879,15 @@ export const TransactionsPage = () => {
           />
         )}
       </AnimatePresence>
+
+      <TransactionReflectionDialog
+        transaction={reflectionTransaction}
+        open={isReflectionOpen}
+        onOpenChange={(open) => {
+          setIsReflectionOpen(open);
+          if (!open) setReflectionTransaction(null);
+        }}
+      />
     </div>
   );
 };
