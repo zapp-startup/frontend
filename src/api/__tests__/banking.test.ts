@@ -76,10 +76,16 @@ describe("banking.api", () => {
     ];
     vi.mocked(apiRequest).mockResolvedValueOnce(transactions);
 
-    await BankingAPI.getTransactions({ limit: 20, date_from: "2025-01-01", date_to: "2025-01-31" });
+    await BankingAPI.getTransactions({
+      limit: 20,
+      date_from: "2025-01-01",
+      date_to: "2025-01-31",
+      category: "food",
+      direction: "spend",
+    });
 
     expect(apiRequest).toHaveBeenCalledWith(
-      "/api/banking/transactions/?limit=20&date_from=2025-01-01&date_to=2025-01-31",
+      "/api/banking/transactions/?limit=20&date_from=2025-01-01&date_to=2025-01-31&category=food&direction=spend",
       { requireAuth: true }
     );
   });

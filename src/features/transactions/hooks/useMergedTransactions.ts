@@ -33,6 +33,8 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
           limit: filters.limit,
         }),
         BankingAPI.getTransactions({
+          category: filters.category,
+          direction: filters.direction,
           date_from: filters.date_from,
           date_to: filters.date_to,
           limit: filters.limit ?? 500,
