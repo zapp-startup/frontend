@@ -147,6 +147,7 @@ export function CirclesPage() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to join circle.");
+      throw error;
     }
   };
 
