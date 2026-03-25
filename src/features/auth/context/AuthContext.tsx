@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await applySession(resp.session, true);
     }
 
-    return { ok: true };
+    return { ok: true, requiresVerification: !resp.session };
   }, [applySession]);
 
   const logout = React.useCallback(async () => {

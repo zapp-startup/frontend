@@ -522,14 +522,24 @@ export function SubscriptionsPage() {
     Promise.all([
       SubscriptionsAPI.list({ signal: ac.signal }),
       MerchantsAPI.list({ signal: ac.signal }),
-      SubscriptionValuationsAPI.list(),
     ])
-      .then(([subs, mchs, valuations]) => {
+      .then(([subs, mchs]) => {
         if (!cancelled) {
           setSubscriptions(subs);
           setMerchants(mchs);
-          setSubscriptionValuations(valuations);
         }
+
+        return SubscriptionValuationsAPI.list()
+          .then((valuations) => {
+            if (!cancelled) {
+              setSubscriptionValuations(valuations);
+            }
+          })
+          .catch(() => {
+            if (!cancelled) {
+              setSubscriptionValuations([]);
+            }
+          });
       })
       .catch((err) => {
         if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;

@@ -10,6 +10,7 @@ const {
   mockSetApiAccessToken,
   mockGetSession,
   mockOnAuthStateChange,
+  mockSignUp,
   mockSignInWithPassword,
   mockSignOut,
   mockUpdateUser,
@@ -19,6 +20,7 @@ const {
   mockSetApiAccessToken: vi.fn(),
   mockGetSession: vi.fn(),
   mockOnAuthStateChange: vi.fn(),
+  mockSignUp: vi.fn(),
   mockSignInWithPassword: vi.fn(),
   mockSignOut: vi.fn(),
   mockUpdateUser: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("@/api/supabaseClient", () => ({
     auth: {
       getSession: mockGetSession,
       onAuthStateChange: mockOnAuthStateChange,
+      signUp: mockSignUp,
       signInWithPassword: mockSignInWithPassword,
       signOut: mockSignOut,
       updateUser: mockUpdateUser,
@@ -57,6 +60,31 @@ function LoginHarness() {
   );
 }
 
+function SignUpHarness() {
+  const { signUp } = useAuth();
+  const [result, setResult] = React.useState<string>("");
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          const response = await signUp({
+            name: "Test User",
+            email: "user@example.com",
+            password: "secret12",
+            confirmPassword: "secret12",
+          });
+          setResult(JSON.stringify(response));
+        }}
+      >
+        Sign up
+      </button>
+      <output>{result}</output>
+    </>
+  );
+}
+
 describe("AuthProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,6 +96,7 @@ describe("AuthProvider", () => {
     });
     mockGetApiAccessToken.mockReturnValue("token-123");
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+    mockSignUp.mockResolvedValue({ error: null, data: { session: null } });
     mockSignOut.mockResolvedValue({ error: null });
     mockUpdateUser.mockResolvedValue({ error: null, data: { user: null } });
   });
@@ -124,6 +153,22 @@ describe("AuthProvider", () => {
     expect(mockApiRequest).toHaveBeenCalledWith("/api/auth/sync/", {
       requireAuth: true,
       method: "POST",
+    });
+  });
+
+  it("returns requiresVerification when signup succeeds without a session", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <SignUpHarness />
+      </AuthProvider>
+    );
+
+    await user.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('{"ok":true,"requiresVerification":true}')).toBeInTheDocument();
     });
   });
 });

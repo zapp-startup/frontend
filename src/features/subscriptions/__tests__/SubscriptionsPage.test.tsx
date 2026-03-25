@@ -86,4 +86,31 @@ describe("SubscriptionsPage", () => {
       expect(screen.getAllByText("Decent").length).toBeGreaterThan(0);
     });
   });
+
+  it("still shows subscriptions when valuations fail to load", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+      },
+    ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockRejectedValue(new Error("valuations unavailable"));
+
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Netflix")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+  });
 });
