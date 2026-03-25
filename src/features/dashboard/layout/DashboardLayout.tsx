@@ -10,6 +10,7 @@ import { COLORS, GLOWS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
 import { PanelProvider } from "../context/PanelContext";
+import { FeedbackPromptFlow } from "@/features/transactions/components/FeedbackPromptFlow";
 
 const HomePage = React.lazy(() =>
   import("@/features/home").then((module) => ({ default: module.HomePage }))
@@ -243,6 +244,7 @@ export function DashboardLayout() {
 
       <ZappBot />
       <BuyAdvisorModal isOpen={isBuyAdvisorOpen} onClose={() => setIsBuyAdvisorOpen(false)} />
+      <FeedbackPromptFlow />
     </PanelProvider>
   );
 }
