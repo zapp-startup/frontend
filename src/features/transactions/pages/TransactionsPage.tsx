@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
   Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, Flame, TrendingDown, Sparkles,
-  Pencil, Trash2,
+  Pencil, Trash2, MessageSquare,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
 import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
+import { TransactionReflectionDialog } from "@/features/gamification";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
@@ -878,6 +879,8 @@ export const TransactionsPage = () => {
   const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [reflectionTransaction, setReflectionTransaction] = React.useState<Transaction | null>(null);
+  const [isReflectionOpen, setIsReflectionOpen] = React.useState(false);
 
   React.useEffect(() => {
     setRightPanelOpen(isAddPanelOpen);
@@ -1050,6 +1053,15 @@ export const TransactionsPage = () => {
           />
         )}
       </AnimatePresence>
+
+      <TransactionReflectionDialog
+        transaction={reflectionTransaction}
+        open={isReflectionOpen}
+        onOpenChange={(open) => {
+          setIsReflectionOpen(open);
+          if (!open) setReflectionTransaction(null);
+        }}
+      />
     </div>
   );
 };

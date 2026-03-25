@@ -1,0 +1,265 @@
+import { apiRequest } from "./client";
+
+export type PointEvent = {
+  id: number;
+  user: number;
+  group: number | null;
+  action: string;
+  points: number;
+  source_object_type: string;
+  source_object_id: number | null;
+  event_key: string | null;
+  metadata_json: Record<string, unknown>;
+  window_date: string | null;
+  created_at: string;
+};
+
+export type StreakData = {
+  user: number;
+  total_points_earned: number;
+  current_streak_days: number;
+  best_streak_days: number;
+  last_checkin_date: string | null;
+  updated_at: string;
+  level: number;
+  level_floor_points: number;
+  next_level_points: number;
+  points_into_level: number;
+  points_to_next_level: number;
+};
+
+export type Badge = {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type UserBadge = {
+  id: number;
+  user: number;
+  badge: Badge;
+  awarded_at: string;
+  source_object_type: string;
+  source_object_id: number | null;
+  trigger_event: number | null;
+};
+
+export type MonthlyTarget = {
+  id: number;
+  user: number;
+  target_type: string;
+  title: string;
+  month_start: string;
+  target_value: number;
+  current_value: number;
+  status: "active" | "completed" | "expired";
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Group = {
+  id: number;
+  name: string;
+  created_by: number;
+  invite_code: string;
+  is_private: boolean;
+  created_at: string;
+  member_count: number;
+};
+
+export type GroupMember = {
+  id: number;
+  group: number;
+  user: number;
+  username: string;
+  role: "admin" | "member";
+  joined_at: string;
+};
+
+export type GroupInvite = {
+  id: number;
+  group: number;
+  invited_by: number;
+  invited_user: number | null;
+  invite_code: string;
+  status: "pending" | "accepted" | "declined" | "revoked";
+  note: string;
+  expires_at: string | null;
+  accepted_by: number | null;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  group_name?: string;
+  inviter_username?: string;
+};
+
+export type LeaderboardEntry = {
+  user_id: number;
+  username: string;
+  role: "admin" | "member";
+  points_total: number;
+  active_days_count: number;
+  reflections_count: number;
+  current_streak_days: number;
+  best_streak_days: number;
+  lifetime_points_total: number;
+  level: number;
+  rank: number;
+};
+
+export type LeaderboardResponse = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  group_id: number;
+  group_name: string;
+  days: number;
+  window_start: string;
+  window_end: string;
+  member_count: number;
+  current_user_rank: number | null;
+  results: LeaderboardEntry[];
+};
+
+export type CreateMonthlyTargetInput = {
+  target_type: string;
+  title: string;
+  month_start: string;
+  target_value: number;
+};
+
+export type CreateGroupInput = {
+  name: string;
+  is_private: boolean;
+};
+
+export type CreateTransactionReflectionInput = {
+  transaction: number;
+  regret_score?: number | null;
+  was_worth_it?: boolean | null;
+  notes?: string;
+};
+
+export type TransactionReflection = {
+  id: number;
+  user: number;
+  transaction: number;
+  reflected_at: string;
+  regret_score: number | null;
+  was_worth_it: boolean | null;
+  notes: string;
+  reflected_same_day: boolean;
+};
+
+export const GamificationAPI = {
+  getMyStreak: () => apiRequest<StreakData>("/api/gamification/points/my_streak/"),
+
+  completeWeeklyReview: (reviewDate?: string) =>
+    apiRequest<PointEvent>("/api/gamification/points/complete_weekly_review/", {
+      method: "POST",
+      body: JSON.stringify(reviewDate ? { review_date: reviewDate } : {}),
+    }),
+
+  completeMonthlyReview: (month?: string) =>
+    apiRequest<PointEvent>("/api/gamification/points/complete_monthly_review/", {
+      method: "POST",
+      body: JSON.stringify(month ? { month } : {}),
+    }),
+
+  getBadges: () => apiRequest<Badge[]>("/api/gamification/badges/"),
+
+  getUserBadges: () => apiRequest<UserBadge[]>("/api/gamification/user-badges/"),
+
+  getMonthlyTargets: () => apiRequest<MonthlyTarget[]>("/api/gamification/monthly-targets/"),
+
+  createMonthlyTarget: (data: CreateMonthlyTargetInput) =>
+    apiRequest<MonthlyTarget>("/api/gamification/monthly-targets/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTargetProgress: (targetId: number, amount: number) =>
+    apiRequest<MonthlyTarget>(`/api/gamification/monthly-targets/${targetId}/progress/`, {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    }),
+
+  getGroups: () => apiRequest<Group[]>("/api/gamification/groups/"),
+
+  createGroup: (data: CreateGroupInput) =>
+    apiRequest<Group>("/api/gamification/groups/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  joinGroup: (inviteCode: string) =>
+    apiRequest<{ detail: string; group_id: number }>("/api/gamification/groups/join/", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode }),
+    }),
+
+  leaveGroup: (groupId: number) =>
+    apiRequest<{ detail: string; group_deleted: boolean }>(`/api/gamification/groups/${groupId}/leave/`, {
+      method: "POST",
+    }),
+
+  getGroupMembers: (groupId: number) =>
+    apiRequest<GroupMember[]>(`/api/gamification/groups/${groupId}/members/`),
+
+  updateMemberRole: (groupId: number, membershipId: number, role: "admin" | "member") =>
+    apiRequest<GroupMember>(`/api/gamification/groups/${groupId}/update_member_role/`, {
+      method: "POST",
+      body: JSON.stringify({ membership_id: membershipId, role }),
+    }),
+
+  removeMember: (groupId: number, membershipId: number) =>
+    apiRequest<void>(`/api/gamification/groups/${groupId}/remove_member/`, {
+      method: "POST",
+      body: JSON.stringify({ membership_id: membershipId }),
+    }),
+
+  getGroupInvites: () => apiRequest<GroupInvite[]>("/api/gamification/group-invites/"),
+
+  createGroupInvite: (data: Record<string, unknown>) =>
+    apiRequest<GroupInvite>("/api/gamification/group-invites/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  acceptInvite: (inviteId: number) =>
+    apiRequest<{ detail: string; group_id: number }>(`/api/gamification/group-invites/${inviteId}/accept/`, {
+      method: "POST",
+    }),
+
+  declineInvite: (inviteId: number) =>
+    apiRequest<{ detail: string }>(`/api/gamification/group-invites/${inviteId}/decline/`, {
+      method: "POST",
+    }),
+
+  deleteInvite: (inviteId: number) =>
+    apiRequest<void>(`/api/gamification/group-invites/${inviteId}/`, {
+      method: "DELETE",
+    }),
+
+  getLeaderboard: (groupId: number, days = 7, page = 1, pageSize = 10) => {
+    const params = new URLSearchParams({
+      group_id: String(groupId),
+      days: String(days),
+      page: String(page),
+      page_size: String(pageSize),
+    });
+    return apiRequest<LeaderboardResponse>(`/api/gamification/points/leaderboard/?${params.toString()}`);
+  },
+
+  createTransactionReflection: (data: CreateTransactionReflectionInput) =>
+    apiRequest<TransactionReflection>("/api/transaction-reflections/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
