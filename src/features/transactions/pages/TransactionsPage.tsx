@@ -11,6 +11,10 @@ import { TransactionReflectionDialog } from "@/features/gamification";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
+import { BankingSection } from "@/features/banking";
+import { useMergedTransactions } from "../hooks/useMergedTransactions";
+import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
+import { TransactionFeedbackModal } from "../components/TransactionFeedbackModal";
 import { toast } from "sonner";
 
 const CATEGORY_OPTIONS = [
@@ -37,7 +41,7 @@ function SpendingCalendar({
   selectedDate,
   onSelectDate,
 }: {
-  transactions: Transaction[];
+  transactions: DisplayTransaction[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
 }) {
@@ -333,10 +337,11 @@ function AddPanel({
   onClose: () => void;
   onAdded: (tx: Transaction) => void;
   onUpdated?: (tx: Transaction) => void;
-  editingTransaction?: Transaction | null;
+  editingTransaction?: DisplayTransaction | null;
 }) {
+  const canEdit = editingTransaction?.source === "manual" && typeof editingTransaction.id === "number";
   const [form, setForm] = React.useState<NewTransaction>(() =>
-    editingTransaction
+    editingTransaction && canEdit
       ? {
           description_raw: editingTransaction.description_raw,
           amount: editingTransaction.amount,
@@ -351,7 +356,7 @@ function AddPanel({
   const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (editingTransaction) {
+    if (editingTransaction && canEdit) {
       setForm({
         description_raw: editingTransaction.description_raw,
         amount: editingTransaction.amount,
@@ -363,13 +368,13 @@ function AddPanel({
     } else {
       setForm(EMPTY_FORM);
     }
-  }, [editingTransaction]);
+  }, [editingTransaction, canEdit]);
 
   const set = <K extends keyof NewTransaction>(key: K, val: NewTransaction[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
   const selectedCat = getCategoryMeta(form.category);
-  const isEdit = !!editingTransaction;
+  const isEdit = !!editingTransaction && canEdit;
 
   const handleSubmit = async () => {
     if (!form.amount || Number(form.amount) <= 0) {
@@ -383,7 +388,7 @@ function AddPanel({
     setSubmitting(true);
     try {
       const payload = { ...form, occurred_at: `${form.occurred_at}T12:00:00Z` };
-      if (isEdit && editingTransaction) {
+      if (isEdit && editingTransaction && typeof editingTransaction.id === "number") {
         const tx = await TransactionsAPI.patch(editingTransaction.id, payload);
         toast.success("Transaction updated!");
         onUpdated?.(tx);
@@ -610,31 +615,28 @@ function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange:
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const TransactionsPage = () => {
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
-  const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = React.useState<DisplayTransaction | null>(null);
+  const [feedbackTransaction, setFeedbackTransaction] = React.useState<DisplayTransaction | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
   const [reflectionTransaction, setReflectionTransaction] = React.useState<Transaction | null>(null);
   const [isReflectionOpen, setIsReflectionOpen] = React.useState(false);
 
+  const { transactions, loading, error, refetch } = useMergedTransactions({
+    category: filters.category || undefined,
+    direction: filters.direction || undefined,
+    date_from: filters.date_from || undefined,
+    date_to: filters.date_to || undefined,
+  });
+
+  const refetchTransactions = React.useCallback(() => refetch(), [refetch]);
+
   React.useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    TransactionsAPI.list({
-      category: filters.category || undefined,
-      direction: filters.direction || undefined,
-      date_from: filters.date_from || undefined,
-      date_to: filters.date_to || undefined,
-    })
-      .then((data) => { if (!cancelled) setTransactions(data); })
-      .catch(() => { if (!cancelled) toast.error("Failed to load transactions."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [filters]);
+    if (error) toast.error("Failed to load transactions.");
+  }, [error]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -670,15 +672,20 @@ export const TransactionsPage = () => {
   const toggleGroup = (date: string) =>
     setExpandedGroups((prev) => prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]);
 
-  const handleAdded = (tx: Transaction) => setTransactions((prev) => [tx, ...prev]);
-  const handleUpdated = (tx: Transaction) =>
-    setTransactions((prev) => prev.map((t) => (t.id === tx.id ? tx : t)));
-  const handleDelete = async (tx: Transaction, e: React.MouseEvent) => {
+  const handleAdded = (tx: Transaction) => {
+    refetch();
+  };
+  const handleUpdated = () => {
+    refetch();
+  };
+  const handleDelete = async (tx: DisplayTransaction, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (tx.source === "bank") return;
+    if (typeof tx.id !== "number") return;
     if (!window.confirm(`Delete "${tx.description_raw || "this transaction"}"?`)) return;
     try {
       await TransactionsAPI.remove(tx.id);
-      setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+      refetch();
       toast.success("Transaction deleted.");
     } catch {
       toast.error("Failed to delete transaction.");
@@ -702,6 +709,9 @@ export const TransactionsPage = () => {
 
   return (
     <div className="space-y-12 pb-40 relative z-10">
+
+      {/* Bank Connections */}
+      <BankingSection onTransactionsRefetch={refetchTransactions} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -786,15 +796,18 @@ export const TransactionsPage = () => {
                   {grouped[date].map((tx) => {
                     const cat = getCategoryMeta(tx.category);
                     const isIncome = tx.direction === "income";
+                    const isManual = tx.source === "manual";
                     return (
                       <motion.div key={tx.id} initial={{ x: -10, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }}
                         whileHover={{ scale: 1.005, backgroundColor: "rgba(255,255,255,0.02)" }}
                         className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all">
                         <div
-                          className="flex items-center gap-5 flex-1 cursor-pointer"
+                          className={cn("flex items-center gap-5 flex-1", isManual && "cursor-pointer")}
                           onClick={() => {
-                            setEditingTransaction(tx);
-                            setIsAddPanelOpen(true);
+                            if (isManual) {
+                              setEditingTransaction(tx);
+                              setIsAddPanelOpen(true);
+                            }
                           }}
                         >
                           <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover/tx:scale-110" style={{ backgroundColor: `${cat.color}15` }}>
@@ -806,6 +819,12 @@ export const TransactionsPage = () => {
                               <span>{cat.label}</span>
                               <span className="w-1 h-1 rounded-full bg-gray-700" />
                               <span>{new Date(tx.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                              {!isManual && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
+                                  <span className="text-cyan-400/80">Bank</span>
+                                </>
+                              )}
                               {tx.satisfaction_rating && (
                                 <>
                                   <span className="w-1 h-1 rounded-full bg-gray-700" />
@@ -840,21 +859,35 @@ export const TransactionsPage = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingTransaction(tx);
-                              setIsAddPanelOpen(true);
+                              setFeedbackTransaction(tx);
                             }}
-                            className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/10 hover:text-cyan-400"
-                            title="Edit"
+                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                            title="Give feedback"
                           >
-                            <Pencil size={18} />
+                            <MessageSquare size={18} />
                           </button>
-                          <button
-                            onClick={(e) => handleDelete(tx, e)}
-                            className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {isManual && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTransaction(tx);
+                                  setIsAddPanelOpen(true);
+                                }}
+                                className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button
+                                onClick={(e) => handleDelete(tx, e)}
+                                className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -880,13 +913,11 @@ export const TransactionsPage = () => {
         )}
       </AnimatePresence>
 
-      <TransactionReflectionDialog
-        transaction={reflectionTransaction}
-        open={isReflectionOpen}
-        onOpenChange={(open) => {
-          setIsReflectionOpen(open);
-          if (!open) setReflectionTransaction(null);
-        }}
+      <TransactionFeedbackModal
+        transaction={feedbackTransaction}
+        open={!!feedbackTransaction}
+        onOpenChange={(open) => !open && setFeedbackTransaction(null)}
+        onSubmitted={refetch}
       />
     </div>
   );
