@@ -118,16 +118,22 @@ function MonthlyTargetCard({
   onUpdated: () => Promise<void>;
 }) {
   const [amount, setAmount] = React.useState("1");
+  const [submittingProgress, setSubmittingProgress] = React.useState(false);
   const completed = target.status === "completed";
   const progress = Math.min(100, (target.current_value / Math.max(target.target_value, 1)) * 100);
 
   const handleProgress = async () => {
+    if (submittingProgress) {
+      return;
+    }
+
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) {
       toast.error("Enter a positive progress amount.");
       return;
     }
     try {
+      setSubmittingProgress(true);
       await GamificationAPI.updateTargetProgress(target.id, parsed);
       toast.success("Target progress updated.");
       await onUpdated();
@@ -135,6 +141,8 @@ function MonthlyTargetCard({
     } catch (error) {
       console.error(error);
       toast.error("Failed to update target progress.");
+    } finally {
+      setSubmittingProgress(false);
     }
   };
 
@@ -184,13 +192,15 @@ function MonthlyTargetCard({
             onChange={(event) => setAmount(event.target.value)}
             type="number"
             min="1"
+            disabled={submittingProgress}
             className="h-11 rounded-2xl border-white/10 bg-[#0B1220] text-white"
           />
           <Button
             onClick={handleProgress}
+            disabled={submittingProgress}
             className="rounded-2xl bg-purple-500 text-white hover:bg-purple-400"
           >
-            Log Progress
+            {submittingProgress ? "Updating..." : "Log Progress"}
           </Button>
         </div>
       )}

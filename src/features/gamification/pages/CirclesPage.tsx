@@ -47,6 +47,7 @@ export function CirclesPage() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isJoinOpen, setIsJoinOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const selectedGroupRequestRef = React.useRef(0);
 
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
   const isAdmin = members.some((member) => member.user === backendUser?.id && member.role === "admin");
@@ -54,10 +55,22 @@ export function CirclesPage() {
   const loadBaseData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [groupData, inviteData] = await Promise.all([
+      const [groupResult, inviteResult] = await Promise.allSettled([
         GamificationAPI.getGroups(),
         GamificationAPI.getGroupInvites(),
       ]);
+      const groupData = groupResult.status === "fulfilled" ? groupResult.value : [];
+      const inviteData = inviteResult.status === "fulfilled" ? inviteResult.value : [];
+
+      if (groupResult.status !== "fulfilled") {
+        throw groupResult.reason;
+      }
+
+      if (inviteResult.status !== "fulfilled") {
+        console.error(inviteResult.reason);
+        toast.error("Group invites are unavailable right now.");
+      }
+
       setGroups(groupData);
       setInvites(inviteData.filter((invite) => invite.status === "pending"));
       setSelectedGroupId((current) => (
@@ -80,14 +93,25 @@ export function CirclesPage() {
       return;
     }
 
+    const requestId = selectedGroupRequestRef.current + 1;
+    selectedGroupRequestRef.current = requestId;
+
     try {
       const [memberData, leaderboardData] = await Promise.all([
         GamificationAPI.getGroupMembers(selectedGroupId),
         GamificationAPI.getLeaderboard(selectedGroupId, days, page, 10),
       ]);
+
+      if (selectedGroupRequestRef.current !== requestId) {
+        return;
+      }
+
       setMembers(memberData);
       setLeaderboard(leaderboardData);
     } catch (error) {
+      if (selectedGroupRequestRef.current !== requestId) {
+        return;
+      }
       console.error(error);
       toast.error("Failed to load circle details.");
     }

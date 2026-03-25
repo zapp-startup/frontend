@@ -53,6 +53,24 @@ export function ZappBot() {
     }
   }, [messages, isTyping]);
 
+  const isNotFoundError = (err: unknown) =>
+    err instanceof Error &&
+    (err.message.includes("404") ||
+      err.message.includes("sendMessage failed: 404") ||
+      err.message.includes("AI API error: 404"));
+
+  const createFreshConversation = async () => {
+    if (!createConversationPromiseRef.current) {
+      createConversationPromiseRef.current = createConversation({ context_type: "general" });
+    }
+    const created = await createConversationPromiseRef.current;
+    const cid = created.conversation_id;
+    setConversationId(cid);
+    localStorage.setItem("zapp_conversation_id", String(cid));
+    createConversationPromiseRef.current = null;
+    return cid;
+  };
+
   const handleSend = async (event?: React.FormEvent) => {
     event?.preventDefault();
     if (!input.trim() || isTyping) return;
@@ -74,17 +92,21 @@ export function ZappBot() {
       let cid = conversationId;
 
       if (!cid) {
-        if (!createConversationPromiseRef.current) {
-          createConversationPromiseRef.current = createConversation({ context_type: "general" });
-        }
-        const created = await createConversationPromiseRef.current;
-        cid = created.conversation_id;
-        setConversationId(cid);
-        localStorage.setItem("zapp_conversation_id", String(cid));
-        createConversationPromiseRef.current = null;
+        cid = await createFreshConversation();
       }
 
-      const resp = await sendMessage(cid, prompt);
+      let resp;
+      try {
+        resp = await sendMessage(cid, prompt);
+      } catch (err) {
+        // Conversation may be stale (deleted/migrated/user-context mismatch). Recreate once and retry.
+        if (!isNotFoundError(err)) throw err;
+        localStorage.removeItem("zapp_conversation_id");
+        setConversationId(null);
+        createConversationPromiseRef.current = null;
+        const freshCid = await createFreshConversation();
+        resp = await sendMessage(freshCid, prompt);
+      }
 
       const assistantMsg: Message = {
         id: String(resp.assistant_message.id ?? Date.now() + 1),

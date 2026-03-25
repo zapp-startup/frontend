@@ -1,0 +1,119 @@
+import { apiRequest } from "./client";
+
+const auth = { requireAuth: true as const };
+
+export type ValuationModelVersion = {
+  id: number;
+  [key: string]: unknown;
+};
+
+export type SubscriptionValuation = {
+  id: number;
+  subscription?: number;
+  recommendation?: string;
+  confidence?: number;
+  evidence?: string;
+  [key: string]: unknown;
+};
+
+export type ItemValuation = {
+  id: number;
+  description?: string;
+  amount?: string | number;
+  recommendation?: string;
+  confidence?: number;
+  evidence?: string;
+  [key: string]: unknown;
+};
+
+export const ValuationModelVersionsAPI = {
+  list: () => apiRequest<ValuationModelVersion[]>("/api/valuation-model-versions/", auth),
+  get: (id: number) =>
+    apiRequest<ValuationModelVersion>(`/api/valuation-model-versions/${id}/`, auth),
+  create: (data: Partial<ValuationModelVersion>) =>
+    apiRequest<ValuationModelVersion>("/api/valuation-model-versions/", {
+      ...auth,
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: number, data: Partial<ValuationModelVersion>) =>
+    apiRequest<ValuationModelVersion>(`/api/valuation-model-versions/${id}/`, {
+      ...auth,
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  patch: (id: number, data: Partial<ValuationModelVersion>) =>
+    apiRequest<ValuationModelVersion>(`/api/valuation-model-versions/${id}/`, {
+      ...auth,
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  remove: (id: number) =>
+    apiRequest<null>(`/api/valuation-model-versions/${id}/`, {
+      ...auth,
+      method: "DELETE",
+    }),
+};
+
+export const SubscriptionValuationsAPI = {
+  list: (params?: { subscription?: number }) => {
+    const qs = params?.subscription != null ? `?subscription=${params.subscription}` : "";
+    return apiRequest<SubscriptionValuation[]>(`/api/subscription-valuations/${qs}`,
+      auth
+    );
+  },
+  get: (id: number) =>
+    apiRequest<SubscriptionValuation>(`/api/subscription-valuations/${id}/`, auth),
+  create: (data: Partial<SubscriptionValuation>) =>
+    apiRequest<SubscriptionValuation>("/api/subscription-valuations/", {
+      ...auth,
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: number, data: Partial<SubscriptionValuation>) =>
+    apiRequest<SubscriptionValuation>(`/api/subscription-valuations/${id}/`, {
+      ...auth,
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  patch: (id: number, data: Partial<SubscriptionValuation>) =>
+    apiRequest<SubscriptionValuation>(`/api/subscription-valuations/${id}/`, {
+      ...auth,
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  remove: (id: number) =>
+    apiRequest<null>(`/api/subscription-valuations/${id}/`, {
+      ...auth,
+      method: "DELETE",
+    }),
+};
+
+export const ItemValuationsAPI = {
+  list: () => apiRequest<ItemValuation[]>("/api/item-valuations/", auth),
+  get: (id: number) =>
+    apiRequest<ItemValuation>(`/api/item-valuations/${id}/`, auth),
+  create: (data: Partial<ItemValuation>) =>
+    apiRequest<ItemValuation>("/api/item-valuations/", {
+      ...auth,
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: number, data: Partial<ItemValuation>) =>
+    apiRequest<ItemValuation>(`/api/item-valuations/${id}/`, {
+      ...auth,
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  patch: (id: number, data: Partial<ItemValuation>) =>
+    apiRequest<ItemValuation>(`/api/item-valuations/${id}/`, {
+      ...auth,
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  remove: (id: number) =>
+    apiRequest<null>(`/api/item-valuations/${id}/`, {
+      ...auth,
+      method: "DELETE",
+    }),
+};

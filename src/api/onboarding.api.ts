@@ -17,11 +17,12 @@ export type OnboardingData = {
 
 export const OnboardingAPI = {
   checkComplete: async (): Promise<boolean> => {
-    const data = await apiRequest<any[]>("/api/raw-explicit/");
+    const data = await apiRequest<any[]>("/api/raw-explicit/", { requireAuth: true });
     return data.length > 0;
   },
   submit: (payload: OnboardingData) =>
     apiRequest("/api/raw-explicit/", {
+      requireAuth: true,
       method: "POST",
       body: JSON.stringify(payload),
     }),
