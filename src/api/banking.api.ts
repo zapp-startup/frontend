@@ -54,11 +54,19 @@ export const BankingAPI = {
   getAccounts: () =>
     apiRequest<BankAccount[]>("/api/banking/accounts/", { requireAuth: true }),
 
-  getTransactions: (params?: { limit?: number; date_from?: string; date_to?: string }) => {
+  getTransactions: (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+    category?: string;
+    direction?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.limit) query.set("limit", String(params.limit));
     if (params?.date_from) query.set("date_from", params.date_from);
     if (params?.date_to) query.set("date_to", params.date_to);
+    if (params?.category) query.set("category", params.category);
+    if (params?.direction) query.set("direction", params.direction);
     const qs = query.toString();
     return apiRequest<BankTransaction[]>(
       `/api/banking/transactions/${qs ? `?${qs}` : ""}`,
