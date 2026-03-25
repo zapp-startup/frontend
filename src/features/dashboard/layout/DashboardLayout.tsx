@@ -108,17 +108,9 @@ const PageContent = React.memo(function PageContent() {
           </div>
         }
       >
-        <React.Suspense
-          fallback={
-            <div className="flex min-h-[40vh] items-center justify-center text-xs font-black uppercase tracking-widest text-gray-500">
-              Loading...
-            </div>
-          }
-        >
-          {content}
-        </React.Suspense>
+        {content}
+      </React.Suspense>
       </motion.div>
-    </AnimatePresence>
   );
 });
 
@@ -149,60 +141,46 @@ export function DashboardLayout() {
       />
 
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[#0B1220]/60 backdrop-blur-3xl">
-        <div className="mx-auto flex h-24 w-full max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-6 lg:gap-10">
-            <NavLink to="/" className="group flex items-center gap-4">
-              <div className="relative">
-                <div
-                  className="absolute inset-0 rounded-full blur-xl opacity-20 transition-all group-hover:opacity-60"
-                  style={{ backgroundColor: COLORS.electricCyan }}
-                />
-                <div
-                  className="relative h-5 w-5 rounded-full shadow-[0_0_20px_#22F0FF]"
-                  style={{ backgroundColor: COLORS.electricCyan }}
-                />
-              </div>
-              <span className="text-3xl font-black uppercase italic tracking-tighter text-white transition-colors group-hover:text-cyan-400 sm:text-4xl">
-                Zapp
-              </span>
-            </NavLink>
-
-            <div className="hidden min-w-0 items-center gap-2 lg:flex xl:gap-3">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.id}
-                  to={item.path}
-                  end={item.path === "/"}
-                  className={({ isActive }) =>
-                    cn(
-                      "relative flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.22em] transition-all 2xl:px-6",
-                      isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div
-                          layoutId="nav-bg"
-                          className="absolute inset-0 rounded-2xl border border-white/10 bg-white/[0.05]"
-                        />
-                      )}
-                      <item.icon
-                        className={cn(
-                          "relative z-10 h-4 w-4 transition-colors",
-                          isActive ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]" : "text-gray-600"
-                        )}
-                      />
-                      <span className="relative z-10">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </div>
+        <div className="mx-auto grid h-24 w-full max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6 lg:px-8">
+          <div className="justify-self-start">
+            <span className="text-3xl font-black uppercase italic tracking-tighter text-white sm:text-4xl">Zapp</span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-4 sm:gap-6">
+          <div className="hidden min-w-0 items-center justify-center gap-2 justify-self-center lg:flex xl:gap-3">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.id}
+                to={item.path}
+                end={item.path === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    "relative flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.22em] transition-all 2xl:px-6",
+                    isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-bg"
+                        className="absolute inset-0 rounded-2xl border border-white/10 bg-white/[0.05]"
+                      />
+                    )}
+                    <item.icon
+                      className={cn(
+                        "relative z-10 h-4 w-4 transition-colors",
+                        isActive ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]" : "text-gray-600"
+                      )}
+                    />
+                    <span className="relative z-10">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+
+          <div className="flex shrink-0 items-center justify-self-end gap-4 sm:gap-6">
             <div className="flex items-center gap-3 border-l border-white/5 pl-3 sm:pl-4">
               <NavLink to="/profile" className="group/avatar flex items-center gap-4">
                 <div className="hidden text-right md:block">
