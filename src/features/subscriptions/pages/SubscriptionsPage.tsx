@@ -16,7 +16,7 @@ import { ApiError } from "@/api/client";
 import { usePanelContext } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
 
-const BILLING_CYCLES = ["monthly", "yearly", "quarterly", "one-time"];
+const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 
 function getStatusColor(status: string) {
   const s = (status || "").toLowerCase();
