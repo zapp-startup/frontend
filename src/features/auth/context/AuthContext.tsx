@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiRequest, setApiAccessToken } from "@/api/client";
+import { apiRequest, getApiAccessToken, setApiAccessToken } from "@/api/client";
 import { supabase } from "@/api/supabaseClient";
 
 export type User = {
@@ -75,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
   const backendUserRef = React.useRef<BackendUserProfile | null>(null);
+  const syncBackendUserPromiseRef = React.useRef<Promise<BackendUserProfile | null> | null>(null);
+  const lastSyncedAccessTokenRef = React.useRef<string | null>(null);
 
   const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
     backendUserRef.current = profile;
@@ -82,18 +84,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncBackendUser = React.useCallback(async () => {
-    try {
-      const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
-        requireAuth: true,
-        method: "POST",
-      });
-      updateBackendUser(profile);
-      setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
-      return profile;
-    } catch {
-      updateBackendUser(null);
-      return null;
+    const currentAccessToken = getApiAccessToken();
+    if (currentAccessToken && lastSyncedAccessTokenRef.current === currentAccessToken && backendUserRef.current) {
+      return backendUserRef.current;
     }
+
+    if (syncBackendUserPromiseRef.current) {
+      return syncBackendUserPromiseRef.current;
+    }
+
+    syncBackendUserPromiseRef.current = (async () => {
+      try {
+        const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
+          requireAuth: true,
+          method: "POST",
+        });
+        lastSyncedAccessTokenRef.current = currentAccessToken;
+        updateBackendUser(profile);
+        setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
+        return profile;
+      } catch {
+        updateBackendUser(null);
+        return null;
+      } finally {
+        syncBackendUserPromiseRef.current = null;
+      }
+    })();
+
+    return syncBackendUserPromiseRef.current;
   }, [updateBackendUser]);
 
   const applySession = React.useCallback(
@@ -105,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!sbUser) {
         setUser(null);
         updateBackendUser(null);
+        lastSyncedAccessTokenRef.current = null;
         return;
       }
 
@@ -155,9 +174,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return { ok: false, error: error.message };
 
     setApiAccessToken(data.session?.access_token ?? null);
+    if (data.session) {
+      await syncBackendUser();
+    }
 
     return { ok: true, session: data.session };
-  }, []);
+  }, [syncBackendUser]);
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
@@ -190,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiAccessToken(null);
     setUser(null);
     updateBackendUser(null);
+    lastSyncedAccessTokenRef.current = null;
   }, [updateBackendUser]);
 
   const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
