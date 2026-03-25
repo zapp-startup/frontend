@@ -5,8 +5,9 @@ import { Home, CreditCard, BarChart2, Search, User, Camera, List, Users } from "
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
+import { ThemeModeToggle } from "@/shared/components/layout/theme-mode-toggle";
 import { cn } from "@/shared/components/ui/utils";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS, GLOWS, PAGE_ACCENTS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
 import { PanelProvider } from "../context/PanelContext";
@@ -55,16 +56,6 @@ const NAV_ITEMS: { id: Exclude<PageId, "profile">; path: string; label: string; 
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "circles", path: "/circles", label: "Circles", icon: Users },
 ];
-
-const PAGE_COLORS: Record<PageId, string> = {
-  home: COLORS.electricGreen,
-  transactions: COLORS.electricCyan,
-  circles: COLORS.electricYellow,
-  subscriptions: COLORS.electricBlue,
-  analytics: COLORS.electricCyan,
-  search: COLORS.electricTeal,
-  profile: COLORS.electricPurple,
-};
 
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
@@ -127,18 +118,18 @@ export function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  const activeColor = PAGE_COLORS[activePage];
+  const activeColor = PAGE_ACCENTS[activePage];
 
   return (
     <PanelProvider>
-      <motion.div
-        animate={shouldReduceMotion ? undefined : { backgroundColor: activeColor }}
-        transition={{ duration: 0.9 }}
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-[80%] h-1 blur-[100px] opacity-20 pointer-events-none z-0"
-        style={shouldReduceMotion ? { backgroundColor: activeColor } : undefined}
-      />
+        <motion.div
+          animate={shouldReduceMotion ? undefined : { backgroundColor: activeColor }}
+          transition={{ duration: 0.9 }}
+          className="fixed top-0 left-1/2 -translate-x-1/2 w-[80%] h-1 blur-[100px] opacity-20 pointer-events-none z-0"
+          style={shouldReduceMotion ? { backgroundColor: activeColor } : undefined}
+        />
 
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[#0B1220]/60 backdrop-blur-3xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[var(--app-bg-canvas)]/60 backdrop-blur-3xl">
         <div className="mx-auto grid h-24 w-full max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6 lg:px-8">
           <div className="justify-self-start">
             <span className="text-3xl font-black uppercase italic tracking-tighter text-white sm:text-4xl">Zapp</span>
@@ -179,6 +170,7 @@ export function DashboardLayout() {
           </div>
 
           <div className="flex shrink-0 items-center justify-self-end gap-4 sm:gap-6">
+            <ThemeModeToggle />
             <div className="flex items-center gap-3 border-l border-white/5 pl-3 sm:pl-4">
               <NavLink to="/profile" className="group/avatar flex items-center gap-4">
                 <div className="hidden text-right md:block">
@@ -212,7 +204,7 @@ export function DashboardLayout() {
           whileHover={{ scale: 1.1, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsBuyAdvisorOpen(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#101A2E] text-gray-400 shadow-2xl transition-all hover:text-white"
+          className="app-panel flex h-14 w-14 items-center justify-center rounded-full text-gray-400 shadow-2xl transition-all hover:text-white"
         >
           <Camera size={24} />
         </motion.button>

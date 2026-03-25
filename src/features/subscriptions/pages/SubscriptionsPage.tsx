@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS, GLOWS, UI_PATTERNS } from "@/shared/theme";
 import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
 import {
   SubscriptionsAPI,
@@ -143,24 +143,24 @@ function AddPanel({
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[#101A2E] border-l border-white/5 z-[120] p-12 shadow-2xl flex flex-col"
+        className="app-panel fixed top-0 right-0 bottom-0 z-[120] flex w-full max-w-lg flex-col rounded-none border-l border-white/5 p-12 shadow-2xl"
         style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.5)" }}
       >
         <div className="flex items-center justify-between mb-10">
           <div>
             <h2 className="text-4xl font-black text-white tracking-tighter">Add Subscription</h2>
-            <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">
+            <div className={cn(UI_PATTERNS.eyebrow, "mt-1 text-cyan-400")}>
               Manual Entry
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
+          <button aria-label="Close add subscription panel" onClick={onClose} className="rounded-2xl p-3 transition-all hover:bg-white/5">
             <X size={24} className="text-gray-500" />
           </button>
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto pr-2">
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            <label className={UI_PATTERNS.eyebrow}>
               Merchant
             </label>
             <input
@@ -169,7 +169,7 @@ function AddPanel({
               value={form.merchantName}
               onChange={(e) => set("merchantName", e.target.value)}
               list="merchant-options"
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all placeholder:text-gray-600"
+              className="app-input w-full px-6 py-5 font-bold outline-none transition-all placeholder:text-gray-600 focus:border-cyan-500/50"
             />
             <datalist id="merchant-options">
               {merchants.map((m) => (
@@ -180,7 +180,7 @@ function AddPanel({
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+              <label className={UI_PATTERNS.eyebrow}>
                 Amount ($)
               </label>
               <input
@@ -190,17 +190,17 @@ function AddPanel({
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
+                className="app-input w-full px-6 py-5 font-bold outline-none transition-all focus:border-cyan-500/50"
               />
             </div>
             <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+              <label className={UI_PATTERNS.eyebrow}>
                 Billing Cycle
               </label>
               <select
                 value={form.billing_cycle}
                 onChange={(e) => set("billing_cycle", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
+                className="app-input w-full px-6 py-5 font-bold outline-none transition-all focus:border-cyan-500/50"
               >
                 {BILLING_CYCLES.map((c) => (
                   <option key={c} value={c}>
@@ -212,7 +212,7 @@ function AddPanel({
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            <label className={UI_PATTERNS.eyebrow}>
               Start Date
             </label>
             <div className="relative">
@@ -221,20 +221,20 @@ function AddPanel({
                 type="date"
                 value={form.started_at}
                 onChange={(e) => set("started_at", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 pl-16 pr-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
+                className="app-input w-full py-5 pl-16 pr-6 font-bold outline-none transition-all focus:border-cyan-500/50"
               />
             </div>
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            <label className={UI_PATTERNS.eyebrow}>
               Notes <span className="text-gray-600">(optional)</span>
             </label>
             <textarea
               placeholder="e.g. Premium plan, shared with family"
               value={form.notes || ""}
               onChange={(e) => set("notes", e.target.value)}
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all h-24 resize-none placeholder:text-gray-700"
+              className="app-input h-24 w-full resize-none px-6 py-5 font-bold outline-none transition-all placeholder:text-gray-700 focus:border-cyan-500/50"
             />
           </div>
         </div>
@@ -243,7 +243,7 @@ function AddPanel({
           <Button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] rounded-[2rem] py-10 text-xl font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-50"
+            className="app-button w-full rounded-[2rem] bg-cyan-500 py-10 text-xl font-black uppercase tracking-widest text-[#0B1220] shadow-2xl transition-all hover:scale-[1.02] hover:bg-cyan-600 disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Add Subscription"}
           </Button>
@@ -291,7 +291,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
       style={expanded ? undefined : { zIndex: 10 - (index % 10) }}
     >
       <div
-        className="bg-[#101A2E] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between gap-6"
+        className="app-card flex items-center justify-between gap-6 rounded-[2rem] p-8 shadow-2xl"
         style={{
           boxShadow: `${GLOWS.ambient(0.4)}, ${GLOWS.inner}, ${GLOWS.soft(statusColor)}`,
           borderColor: `${statusColor}20`,
@@ -325,14 +325,14 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
         </div>
 
         <div className="flex items-center gap-10">
-          <div className="text-center">
-            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Cost</div>
-            <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
-          </div>
+            <div className="text-center">
+              <div className={cn(UI_PATTERNS.eyebrow, "mb-1 text-xs")}>Cost</div>
+              <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
+            </div>
 
-          <div className="min-w-[170px]">
-            <div className="mb-2 flex items-center justify-between gap-4">
-              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">Value</div>
+            <div className="min-w-[170px]">
+              <div className="mb-2 flex items-center justify-between gap-4">
+                <div className={cn(UI_PATTERNS.eyebrow, "text-xs")}>Value</div>
               <div
                 className="text-3xl font-black"
                 style={{
@@ -370,12 +370,12 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mt-4 bg-white/[0.02] border border-white/5 rounded-[2rem] p-8"
+            className="app-panel mt-4 overflow-hidden rounded-[2rem] p-8"
           >
             <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Billing</div>
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-gray-600")}>Billing</div>
                   <p className="text-sm text-gray-400 leading-relaxed font-medium">
                     {sub.billing_cycle} · Started{" "}
                     {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
@@ -383,14 +383,14 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Notes</div>
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-gray-600")}>Notes</div>
                   <p className="text-sm text-gray-400 leading-relaxed font-medium">{sub.notes || "—"}</p>
                 </div>
 
-                <div className="md:col-span-2 rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6">
+                <div className="app-panel md:col-span-2 rounded-[1.5rem] p-6">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">Value score</div>
+                      <div className={UI_PATTERNS.eyebrow}>Value score</div>
                       <div className="mt-2 flex items-end gap-3">
                         <div
                           className="text-4xl font-black"
@@ -428,7 +428,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                  <div className={cn(UI_PATTERNS.eyebrow, "text-gray-600")}>
                     Recommendation & Evidence
                   </div>
                   <Button
@@ -440,7 +440,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 </div>
 
                 {valuations.length === 0 && (
-                  <div className="rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6 text-sm text-gray-500">
+                  <div className="app-panel rounded-[1.5rem] p-6 text-sm text-gray-500">
                     No valuation evidence yet for this subscription.
                   </div>
                 )}
@@ -448,11 +448,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 {valuations.map((valuation) => (
                   <div
                     key={valuation.id}
-                    className="rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6"
+                    className="app-panel rounded-[1.5rem] p-6"
                   >
                     {valuation.recommendation && (
                       <div className="mb-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Recommendation
                         </div>
                         <p className="text-sm font-bold text-white">{valuation.recommendation}</p>
@@ -460,7 +460,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                     )}
                     {valuation.confidence != null && (
                       <div className="mb-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
                         </div>
                         <div className="flex items-center gap-3">
@@ -481,7 +481,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                     )}
                     {valuation.evidence && (
                       <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
                         <p className="text-sm text-gray-300 leading-relaxed">{valuation.evidence}</p>
@@ -621,8 +621,8 @@ export function SubscriptionsPage() {
 
   if (error) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <div className="text-red-400 font-bold">{error}</div>
+        <div className="space-y-4 py-16 text-center">
+          <div className="text-red-400 font-bold">{error}</div>
         <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
           Retry
         </Button>
@@ -635,7 +635,7 @@ export function SubscriptionsPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-4xl font-black tracking-tight">Active Subscriptions</h2>
-          <div className="text-gray-500 font-bold uppercase text-xs tracking-widest flex items-center gap-2">
+          <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
             <div
               className="w-2 h-2 rounded-full"
               style={{
@@ -650,7 +650,7 @@ export function SubscriptionsPage() {
           whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsAddPanelOpen(true)}
-          className="flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
+          className="app-button flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
         >
           <Plus size={18} strokeWidth={3} />
           <span>Add Subscription</span>
@@ -658,8 +658,8 @@ export function SubscriptionsPage() {
       </div>
 
       {subscriptions.length === 0 && (
-        <div className="text-center py-24 space-y-4">
-          <div className="text-gray-500 font-bold uppercase text-sm tracking-widest">
+        <div className="space-y-4 py-24 text-center">
+          <div className={cn(UI_PATTERNS.emptyState, "text-sm")}>
             No subscriptions yet
           </div>
           <p className="text-gray-600 text-sm max-w-md mx-auto">
@@ -669,7 +669,7 @@ export function SubscriptionsPage() {
             whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsAddPanelOpen(true)}
-            className="mx-auto flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
+            className="app-button mx-auto flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
           >
             <Plus size={18} strokeWidth={3} />
             <span>Add Subscription</span>

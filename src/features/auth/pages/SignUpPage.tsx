@@ -3,11 +3,9 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
+import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 
 export function SignUpPage() {
   const { signUp, isAuthenticated, isAuthReady } = useAuth();
@@ -40,62 +38,51 @@ export function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg"
       >
-        <div
-          className="rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-xl"
-          style={{ backgroundColor: COLORS.bgCard, boxShadow: GLOWS.ambient() }}
-        >
-          <div className="flex justify-center mb-8">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: COLORS.electricCyan + "20", boxShadow: GLOWS.soft(COLORS.electricCyan) }}
-            >
-              <Zap className="w-7 h-7" style={{ color: COLORS.electricCyan }} />
-            </div>
+        <Surface variant="overlay" padding="xl" className="backdrop-blur-xl">
+          <div className="mb-8 flex justify-center">
+            <IconBadge tone="cyan" size="lg" className="shadow-[var(--app-shadow-interactive)]">
+              <Zap className="text-cyan-300" />
+            </IconBadge>
           </div>
-          <h1 className="text-2xl font-black text-center text-white uppercase tracking-tight mb-1">Create account</h1>
-          <p className="text-sm text-gray-400 text-center mb-8">Enter your details to get started</p>
+          <SectionHeader
+            align="center"
+            eyebrow="Create your account"
+            title="Join Zapp"
+            description="Enter your details to get started."
+            titleClassName="app-page-title text-[2.5rem] sm:text-[3rem]"
+            className="mb-8"
+          />
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="signup-name" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Full name
-              </Label>
-              <Input
+            <FormField label="Full name" htmlFor="signup-name">
+              <AppInput
                 id="signup-name"
                 type="text"
                 placeholder="Alex Chen"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-email" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Email
-              </Label>
-              <Input
+            </FormField>
+            <FormField label="Email" htmlFor="signup-email">
+              <AppInput
                 id="signup-email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-password" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Password
-              </Label>
-              <Input
+            </FormField>
+            <FormField label="Password" htmlFor="signup-password" helperText="Use at least 6 characters.">
+              <AppInput
                 id="signup-password"
                 type="password"
                 placeholder="At least 6 characters"
@@ -103,34 +90,24 @@ export function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-confirm" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Confirm password
-              </Label>
-              <Input
+            </FormField>
+            <FormField label="Confirm password" htmlFor="signup-confirm">
+              <AppInput
                 id="signup-confirm"
                 type="password"
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-sm"
-              style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
-            >
-              {loading ? "Creating account…" : "Sign up"}
-            </Button>
+            </FormField>
+            <AppButton type="submit" disabled={loading} size="lg" className="w-full">
+              {loading ? "Creating account..." : "Sign up"}
+            </AppButton>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-400">
+          <p className="mt-6 text-center text-sm text-[var(--app-color-text-secondary)]">
             Already have an account?{" "}
             <NavLink
               to="/login"
@@ -140,7 +117,7 @@ export function SignUpPage() {
               Sign in
             </NavLink>
           </p>
-        </div>
+        </Surface>
       </motion.div>
     </div>
   );

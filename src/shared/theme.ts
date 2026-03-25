@@ -1,15 +1,158 @@
-export const COLORS = {
-  bgPrimary: "#0B1220",
-  bgCard: "#101A2E",
-  bgCardHover: "#14203A",
-  electricGreen: "#3CFF9E",
-  electricRed: "#FF4D4D",
-  electricBlue: "#3B82FF",
-  electricCyan: "#22F0FF",
-  electricTeal: "#00FFD1",
-  electricPurple: "#B47CFF",
-  electricYellow: "#FFE066",
+export const APP_THEME = {
+  font: {
+    sans: '"Inter", "Segoe UI", sans-serif',
+  },
+  colors: {
+    canvas: "#0B1220",
+    surface: "#101A2E",
+    surfaceMuted: "#14203A",
+    surfaceStrong: "#08111F",
+    borderSubtle: "rgba(255,255,255,0.06)",
+    borderStrong: "rgba(255,255,255,0.12)",
+    textPrimary: "#FFFFFF",
+    textSecondary: "#CBD5E1",
+    textMuted: "#6B7280",
+    textFaint: "#4B5563",
+    accentGreen: "#3CFF9E",
+    accentRed: "#FF4D4D",
+    accentBlue: "#3B82FF",
+    accentCyan: "#22F0FF",
+    accentTeal: "#00FFD1",
+    accentPurple: "#B47CFF",
+    accentYellow: "#FFE066",
+  },
+  radius: {
+    sm: "0.75rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem",
+    pill: "2.5rem",
+  },
+  spacing: {
+    section: "3rem",
+    card: "2rem",
+    controlX: "1.25rem",
+    controlY: "0.875rem",
+  },
+  motion: {
+    fast: 0.18,
+    normal: 0.28,
+    slow: 0.45,
+  },
+  zIndex: {
+    chrome: 50,
+    floating: 100,
+    overlay: 110,
+  },
+} as const;
+
+export type AppTheme = typeof APP_THEME;
+export type ThemeMode = "light" | "dark";
+type ThemeSectionKey = keyof AppTheme;
+export type ThemeOverrides = {
+  [K in ThemeSectionKey]?: Partial<AppTheme[K]>;
 };
+
+export const LIGHT_THEME_OVERRIDES: ThemeOverrides = {
+  colors: {
+    canvas: "#EEF4FB",
+    surface: "#FFFFFF",
+    surfaceMuted: "#E4ECF6",
+    surfaceStrong: "#DCE6F2",
+    borderSubtle: "rgba(11,18,32,0.08)",
+    borderStrong: "rgba(11,18,32,0.14)",
+    textPrimary: "#08111F",
+    textSecondary: "#334155",
+    textMuted: "#64748B",
+    textFaint: "#94A3B8",
+  },
+};
+
+export const PAGE_ACCENTS = {
+  home: APP_THEME.colors.accentGreen,
+  transactions: APP_THEME.colors.accentCyan,
+  circles: APP_THEME.colors.accentYellow,
+  subscriptions: APP_THEME.colors.accentBlue,
+  analytics: APP_THEME.colors.accentCyan,
+  search: APP_THEME.colors.accentTeal,
+  profile: APP_THEME.colors.accentPurple,
+} as const;
+
+function mergeTheme(baseTheme: AppTheme, overrides?: ThemeOverrides): AppTheme {
+  if (!overrides) return baseTheme;
+
+  return {
+    font: { ...baseTheme.font, ...overrides.font },
+    colors: { ...baseTheme.colors, ...overrides.colors },
+    radius: { ...baseTheme.radius, ...overrides.radius },
+    spacing: { ...baseTheme.spacing, ...overrides.spacing },
+    motion: { ...baseTheme.motion, ...overrides.motion },
+    zIndex: { ...baseTheme.zIndex, ...overrides.zIndex },
+  };
+}
+
+export function buildThemeCssVars(theme: AppTheme) {
+  return {
+    "--app-font-sans": theme.font.sans,
+    "--app-bg-canvas": theme.colors.canvas,
+    "--app-surface": theme.colors.surface,
+    "--app-surface-muted": theme.colors.surfaceMuted,
+    "--app-surface-strong": theme.colors.surfaceStrong,
+    "--app-border-subtle": theme.colors.borderSubtle,
+    "--app-border-strong": theme.colors.borderStrong,
+    "--app-text-primary": theme.colors.textPrimary,
+    "--app-text-secondary": theme.colors.textSecondary,
+    "--app-text-muted": theme.colors.textMuted,
+    "--app-text-faint": theme.colors.textFaint,
+    "--app-accent-green": theme.colors.accentGreen,
+    "--app-accent-red": theme.colors.accentRed,
+    "--app-accent-blue": theme.colors.accentBlue,
+    "--app-accent-cyan": theme.colors.accentCyan,
+    "--app-accent-teal": theme.colors.accentTeal,
+    "--app-accent-purple": theme.colors.accentPurple,
+    "--app-accent-yellow": theme.colors.accentYellow,
+    "--app-radius-sm": theme.radius.sm,
+    "--app-radius-md": theme.radius.md,
+    "--app-radius-lg": theme.radius.lg,
+    "--app-radius-xl": theme.radius.xl,
+    "--app-radius-pill": theme.radius.pill,
+    "--app-space-section": theme.spacing.section,
+    "--app-space-card": theme.spacing.card,
+    "--app-space-control-x": theme.spacing.controlX,
+    "--app-space-control-y": theme.spacing.controlY,
+  } satisfies Record<string, string>;
+}
+
+export function getRuntimeThemeOverrides(): ThemeOverrides | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window.__ZAPP_THEME__;
+}
+
+export function resolveAppTheme(mode: ThemeMode = "dark", overrides?: ThemeOverrides) {
+  const baseTheme = mergeTheme(APP_THEME, mode === "light" ? LIGHT_THEME_OVERRIDES : undefined);
+  return mergeTheme(baseTheme, overrides ?? getRuntimeThemeOverrides());
+}
+
+export const themeCssVars = buildThemeCssVars(APP_THEME);
+
+export function applyThemeVariables(target: HTMLElement = document.documentElement, theme: AppTheme = APP_THEME) {
+  for (const [key, value] of Object.entries(buildThemeCssVars(theme))) {
+    target.style.setProperty(key, value);
+  }
+}
+
+export const COLORS = {
+  bgPrimary: APP_THEME.colors.canvas,
+  bgCard: APP_THEME.colors.surface,
+  bgCardHover: APP_THEME.colors.surfaceMuted,
+  electricGreen: APP_THEME.colors.accentGreen,
+  electricRed: APP_THEME.colors.accentRed,
+  electricBlue: APP_THEME.colors.accentBlue,
+  electricCyan: APP_THEME.colors.accentCyan,
+  electricTeal: APP_THEME.colors.accentTeal,
+  electricPurple: APP_THEME.colors.accentPurple,
+  electricYellow: APP_THEME.colors.accentYellow,
+} as const;
 
 export const GLOWS = {
   soft: (color: string) => `0 0 12px ${color}40`,
@@ -18,3 +161,16 @@ export const GLOWS = {
   inner: "inset 0 0 1px rgba(255,255,255,0.15)",
   ambient: (opacity = 0.6) => `0 20px 60px rgba(0,0,0,${opacity})`,
 };
+
+export const UI_PATTERNS = {
+  card: "app-card",
+  panel: "app-panel",
+  eyebrow: "app-eyebrow",
+  emptyState: "app-empty-state",
+} as const;
+
+declare global {
+  interface Window {
+    __ZAPP_THEME__?: ThemeOverrides;
+  }
+}

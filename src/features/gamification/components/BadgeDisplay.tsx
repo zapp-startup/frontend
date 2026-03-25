@@ -87,6 +87,7 @@ function getBadgeIcon(badge: Badge) {
 export function BadgeDisplay({ badges, maxDisplay, size = "md" }: BadgeDisplayProps) {
   const displayBadges = maxDisplay ? badges.slice(0, maxDisplay) : badges;
   const remaining = maxDisplay && badges.length > maxDisplay ? badges.length - maxDisplay : 0;
+  const [activeBadgeId, setActiveBadgeId] = React.useState<number | null>(null);
 
   const sizeClasses = {
     sm: "h-10 w-10 rounded-2xl",
@@ -113,18 +114,35 @@ export function BadgeDisplay({ badges, maxDisplay, size = "md" }: BadgeDisplayPr
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: idx * 0.05, duration: 0.25 }}
-            className={cn(
-              "group relative flex items-center justify-center border-2",
-              sizeClasses[size],
-            )}
-            style={{
-              backgroundColor: `${color}12`,
-              borderColor: `${color}35`,
-              boxShadow: GLOWS.soft(color),
-            }}
+            className="relative"
           >
-            <Icon size={iconSizes[size]} style={{ color }} />
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 min-w-[220px] -translate-x-1/2 rounded-2xl border border-white/10 bg-[#101A2E] p-4 opacity-0 shadow-2xl transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              aria-label={`${badge.name} badge details`}
+              aria-expanded={activeBadgeId === userBadge.id}
+              className={cn(
+                "peer flex items-center justify-center border-2 transition-transform hover:scale-105 focus-visible:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70",
+                sizeClasses[size],
+              )}
+              onMouseEnter={() => setActiveBadgeId(userBadge.id)}
+              onMouseLeave={() => setActiveBadgeId((current) => (current === userBadge.id ? null : current))}
+              onFocus={() => setActiveBadgeId(userBadge.id)}
+              onBlur={() => setActiveBadgeId((current) => (current === userBadge.id ? null : current))}
+              style={{
+                backgroundColor: `${color}12`,
+                borderColor: `${color}35`,
+                boxShadow: GLOWS.soft(color),
+              }}
+            >
+              <Icon size={iconSizes[size]} style={{ color }} />
+            </button>
+            <div
+              data-testid={`badge-tooltip-${userBadge.id}`}
+              className={cn(
+                "pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 min-w-[220px] -translate-x-1/2 rounded-2xl border border-white/10 bg-[#101A2E] p-4 shadow-2xl transition-opacity",
+                activeBadgeId === userBadge.id ? "opacity-100" : "opacity-0"
+              )}
+            >
               <div className="mb-1 flex items-center gap-2">
                 <Icon size={14} style={{ color }} />
                 <span className="text-sm font-black text-white">{badge.name}</span>

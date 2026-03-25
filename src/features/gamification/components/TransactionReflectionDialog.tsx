@@ -16,6 +16,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/components/ui/utils";
+import { UI_PATTERNS } from "@/shared/theme";
 import { toast } from "sonner";
 
 type TransactionReflectionDialogProps = {
@@ -76,7 +77,7 @@ export function TransactionReflectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-[2rem] border-white/10 bg-[#101A2E] text-white">
+      <DialogContent className="app-panel max-w-xl rounded-[2rem] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black">
             <MessageSquare size={20} className="text-cyan-400" />
@@ -88,11 +89,11 @@ export function TransactionReflectionDialog({
         </DialogHeader>
 
         {transaction && (
-          <div className="rounded-[1.5rem] border border-white/[0.06] bg-white/[0.02] p-5">
+          <div className="app-panel rounded-[1.5rem] p-5">
             <div className="text-lg font-black text-white">
               {transaction.description_raw || transaction.category}
             </div>
-            <div className="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
+            <div className={cn(UI_PATTERNS.eyebrow, "mt-2")}>
               ${Number(transaction.amount).toFixed(2)} • {new Date(transaction.occurred_at).toLocaleString()}
             </div>
           </div>
@@ -100,7 +101,7 @@ export function TransactionReflectionDialog({
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Regret Score</Label>
+            <Label className={UI_PATTERNS.eyebrow}>Regret Score</Label>
             <Input
               type="number"
               min="0"
@@ -108,12 +109,12 @@ export function TransactionReflectionDialog({
               placeholder="0 to 100"
               value={regretScore}
               onChange={(event) => setRegretScore(event.target.value)}
-              className="h-12 rounded-2xl border-white/10 bg-[#0B1220] text-white"
+              className="h-12"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Was It Worth It?</Label>
+            <Label className={UI_PATTERNS.eyebrow}>Was It Worth It?</Label>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Worth It", value: true },
@@ -127,7 +128,7 @@ export function TransactionReflectionDialog({
                     "rounded-2xl border px-4 py-3 text-sm font-black transition-all",
                     wasWorthIt === option.value
                       ? "border-cyan-400 bg-cyan-500/15 text-cyan-200"
-                      : "border-white/10 bg-[#0B1220] text-gray-400 hover:border-white/20 hover:text-white",
+                        : "app-input text-gray-400 hover:border-white/20 hover:text-white",
                   )}
                 >
                   {option.label}
@@ -137,16 +138,16 @@ export function TransactionReflectionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Notes</Label>
+            <Label className={UI_PATTERNS.eyebrow}>Notes</Label>
             <Textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="What drove the purchase, and how do you feel about it now?"
-              className="min-h-28 rounded-2xl border-white/10 bg-[#0B1220] text-white"
+              className="app-input min-h-28 text-white"
             />
           </div>
 
-          <div className="rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/8 p-4 text-sm text-gray-300">
+          <div className="app-panel rounded-[1.5rem] border-cyan-500/20 bg-cyan-500/8 p-4 text-sm text-gray-300">
             <div className="mb-1 flex items-center gap-2 font-black text-cyan-300">
               <Sparkles size={14} />
               Same-day reflection helps your streak and badges.

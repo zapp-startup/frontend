@@ -3,13 +3,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
+import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 
 export function LoginPage() {
   const { login, isAuthenticated, isAuthReady } = useAuth();
@@ -59,93 +57,74 @@ export function LoginPage() {
     }
   };
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg"
       >
-        <div
-          className="rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-xl"
-          style={{ backgroundColor: COLORS.bgCard, boxShadow: GLOWS.ambient() }}
-        >
-          <div className="flex justify-center mb-8">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{
-                backgroundColor: COLORS.electricCyan + "20",
-                boxShadow: GLOWS.soft(COLORS.electricCyan),
-              }}
-            >
-              <Zap className="w-7 h-7" style={{ color: COLORS.electricCyan }} />
-            </div>
+        <Surface variant="overlay" padding="xl" className="backdrop-blur-xl">
+          <div className="mb-8 flex justify-center">
+            <IconBadge tone="cyan" size="lg" className="shadow-[var(--app-shadow-interactive)]">
+              <Zap className="text-cyan-300" />
+            </IconBadge>
           </div>
 
-          <h1 className="text-2xl font-black text-center text-white uppercase tracking-tight mb-1">
-            Sign in
-          </h1>
-          <p className="text-sm text-gray-400 text-center mb-6">
-            Enter your credentials to continue
-          </p>
+          <SectionHeader
+            align="center"
+            eyebrow="Welcome back"
+            title="Sign in"
+            description="Enter your credentials to continue."
+            titleClassName="app-page-title text-[2.5rem] sm:text-[3rem]"
+            className="mb-8"
+          />
 
-          <Button
+          <AppButton
             type="button"
+            variant="outline"
+            size="md"
             onClick={handleGoogleSignIn}
-            className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-sm"
-            style={{ backgroundColor: "white", color: COLORS.bgPrimary }}
+            className="w-full bg-white text-[var(--app-color-text-inverse)] hover:bg-slate-100"
           >
             Continue with Google
-          </Button>
+          </AppButton>
 
-          <div className="flex items-center gap-3 my-6">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
-            <div className="h-px flex-1 bg-white/10" />
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[var(--app-color-border-subtle)]" />
+            <span className="app-label text-[var(--app-color-text-tertiary)]">or</span>
+            <div className="h-px flex-1 bg-[var(--app-color-border-subtle)]" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="login-email" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Email
-              </Label>
-              <Input
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <FormField label="Email" htmlFor="login-email">
+              <AppInput
                 id="login-email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="login-password" className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                Password
-              </Label>
-              <Input
+            <FormField label="Password" htmlFor="login-password">
+              <AppInput
                 id="login-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl"
               />
-            </div>
+            </FormField>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-sm"
-              style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
+            <AppButton type="submit" disabled={loading} size="lg" className="w-full">
+              {loading ? "Signing in..." : "Sign in"}
+            </AppButton>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-400">
+          <p className="mt-6 text-center text-sm text-[var(--app-color-text-secondary)]">
             Don't have an account?{" "}
             <NavLink
               to="/signup"
@@ -155,7 +134,7 @@ export function LoginPage() {
               Sign up
             </NavLink>
           </p>
-        </div>
+        </Surface>
       </motion.div>
     </div>
   );

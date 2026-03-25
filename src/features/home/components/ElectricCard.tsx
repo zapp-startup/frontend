@@ -2,6 +2,7 @@ import * as React from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
+import { surfaceVariants } from "@/shared/components/system";
 
 type ElectricCardProps = {
   children: React.ReactNode;
@@ -36,7 +37,8 @@ export const ElectricCard = ({
       viewport={shouldReduceMotion ? undefined : { once: true }}
       transition={{ duration: 0.24, delay, ease: "easeOut" }}
       className={cn(
-        "relative group bg-[#101A2E] rounded-[2.5rem] border border-white/[0.03] p-8 transition-all duration-500",
+        surfaceVariants({ variant: "card", padding: "lg" }),
+        "relative group transition-all duration-500",
         className
       )}
       style={{

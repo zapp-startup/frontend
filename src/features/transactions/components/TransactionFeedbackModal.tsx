@@ -1,15 +1,5 @@
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
 import { Slider } from "@/shared/components/ui/slider";
-import { COLORS } from "@/shared/theme";
 import {
   TransactionsAPI,
   type TransactionFeedbackPayload,
@@ -18,6 +8,21 @@ import { BankingAPI } from "@/api/banking.api";
 import { toast } from "sonner";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
 import { getFeedbackWording } from "../utils/feedbackWording";
+import {
+  AppButton,
+  AppDialog,
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogDescription,
+  AppDialogFooter,
+  AppDialogHeader,
+  AppDialogTitle,
+  AppInput,
+  AppTextarea,
+  FormField,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
 
 type FeedbackForm = {
   satisfaction_rating: number | null;
@@ -131,51 +136,42 @@ export function TransactionFeedbackModal({
   if (!transaction) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-lg bg-[#101A2E] border-white/10 text-white"
-        style={{ borderColor: "rgba(255,255,255,0.1)" }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black text-white tracking-tight">
-            Transaction Feedback
-          </DialogTitle>
-          <DialogDescription className="text-gray-400">
+    <AppDialog open={open} onOpenChange={onOpenChange}>
+      <AppDialogContent className="max-w-2xl">
+        <AppDialogHeader>
+          <AppDialogTitle>Transaction Feedback</AppDialogTitle>
+          <AppDialogDescription>
             {transaction.description_raw || "This purchase"} — $
             {Math.abs(Number(transaction.amount)).toFixed(2)}
-          </DialogDescription>
-        </DialogHeader>
+          </AppDialogDescription>
+        </AppDialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Satisfaction 1–10 */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Satisfaction <span className="text-red-400">*</span>
-            </label>
-            <div className="flex gap-2 flex-wrap">
+        <AppDialogBody className="space-y-6">
+          <FormField
+            label={
+              <>
+                <span>Satisfaction</span> <span className="text-red-400">*</span>
+              </>
+            }
+            helperText="Rate the outcome from 1 to 10."
+          >
+            <div className="flex flex-wrap gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <button
+                <AppButton
                   key={n}
                   type="button"
+                  variant={form.satisfaction_rating === n ? "primary" : "secondary"}
+                  size="sm"
                   onClick={() => set("satisfaction_rating", form.satisfaction_rating === n ? null : n)}
-                  className="flex-1 min-w-[2.5rem] py-2.5 rounded-xl text-xs font-black transition-all"
-                  style={{
-                    backgroundColor: form.satisfaction_rating === n ? COLORS.electricCyan : "rgba(255,255,255,0.04)",
-                    color: form.satisfaction_rating === n ? "#0B1220" : "#64748b",
-                    border: `1px solid ${form.satisfaction_rating === n ? COLORS.electricCyan : "rgba(255,255,255,0.06)"}`,
-                  }}
+                  className="min-w-[2.75rem] px-0"
                 >
                   {n}
-                </button>
+                </AppButton>
               ))}
             </div>
-          </div>
+          </FormField>
 
-          {/* Regret 0–100 */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Regret (0 = none, 100 = high)
-            </label>
+          <FormField label="Regret" helperText="0 means none. 100 means high regret.">
             <div className="flex items-center gap-4">
               <Slider
                 value={[form.regret_rating]}
@@ -185,17 +181,14 @@ export function TransactionFeedbackModal({
                 step={1}
                 className="flex-1"
               />
-              <span className="text-lg font-black w-12 text-right" style={{ color: COLORS.electricCyan }}>
-                {Math.round(form.regret_rating)}
-              </span>
+              <StatusChip tone="info">{Math.round(form.regret_rating)}</StatusChip>
             </div>
-          </div>
+          </FormField>
 
-          {/* Repurchase likelihood 0–100 — category-aware label */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              {wording?.repurchaseLabel ?? "Would you buy or use this again?"} (0–100)
-            </label>
+          <FormField
+            label={wording?.repurchaseLabel ?? "Would you buy or use this again?"}
+            helperText="0 means never. 100 means definitely."
+          >
             <div className="flex items-center gap-4">
               <Slider
                 value={[form.repurchase_likelihood]}
@@ -205,61 +198,57 @@ export function TransactionFeedbackModal({
                 step={1}
                 className="flex-1"
               />
-              <span className="text-lg font-black w-12 text-right" style={{ color: COLORS.electricCyan }}>
-                {Math.round(form.repurchase_likelihood)}
-              </span>
+              <StatusChip tone="accent">{Math.round(form.repurchase_likelihood)}</StatusChip>
             </div>
-          </div>
+          </FormField>
 
-          {/* Usage frequency — shown only when meaningful for category */}
           {wording?.showUsageFrequency && (
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                {wording.usageFrequencyLabel ?? "Usage frequency"} <span className="text-gray-600">(optional)</span>
-              </label>
-              <input
+            <FormField
+              label={wording.usageFrequencyLabel ?? "Usage frequency"}
+              helperText="Optional."
+            >
+              <AppInput
                 type="number"
                 min={0}
                 step={1}
                 placeholder={wording.usageFrequencyPlaceholder ?? "e.g. 5"}
                 value={form.usage_frequency}
                 onChange={(e) => set("usage_frequency", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-3 px-4 text-white font-bold outline-none focus:border-cyan-500/50 transition-all placeholder:text-gray-700"
               />
-            </div>
+            </FormField>
           )}
 
-          {/* Reflection text (optional) */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Reflection <span className="text-gray-600">(optional)</span>
-            </label>
-            <textarea
+          <FormField label="Reflection" helperText="Optional. Capture anything you want to remember.">
+            <AppTextarea
               placeholder="Any thoughts on this purchase..."
               value={form.reflection_text}
               onChange={(e) => set("reflection_text", e.target.value)}
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-4 px-5 text-white font-bold outline-none focus:border-cyan-500/50 transition-all h-24 resize-none placeholder:text-gray-700"
             />
-          </div>
-        </div>
+          </FormField>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
+          <Surface variant="inset" padding="sm" className="space-y-2 border-cyan-500/20 bg-cyan-500/6">
+            <div className="app-label text-cyan-300">Category guidance</div>
+            <p className="app-helper">
+              Feedback is most useful when it captures how this spend felt after real use, not just the purchase moment.
+            </p>
+          </Surface>
+        </AppDialogBody>
+
+        <AppDialogFooter className="gap-3 sm:gap-3">
+          <AppButton
+            variant="quiet"
             onClick={() => onOpenChange(false)}
-            className="border-white/10 text-gray-400 hover:bg-white/5"
           >
             Cancel
-          </Button>
-          <Button
+          </AppButton>
+          <AppButton
             onClick={handleSubmit}
             disabled={submitting || !canSubmit}
-            className="bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] font-black"
           >
-            {submitting ? "Saving..." : "Submit Feedback"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {submitting ? "Saving..." : "Submit feedback"}
+          </AppButton>
+        </AppDialogFooter>
+      </AppDialogContent>
+    </AppDialog>
   );
 }

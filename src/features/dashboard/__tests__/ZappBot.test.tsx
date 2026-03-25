@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ZappBot } from "../components/ZappBot";
 import { PanelProvider } from "../context/PanelContext";
 
@@ -16,13 +16,19 @@ vi.mock("@/api/ai.api", () => ({
 
 vi.mock("motion/react", () => {
   const React = require("react") as typeof import("react");
+  const stripMotionProps = <T extends Record<string, unknown>>(props: T) => {
+    const { animate, initial, exit, whileTap, transition, viewport, ...domProps } = props;
+    return domProps;
+  };
   return {
     motion: {
       div: (props: React.ComponentProps<"div">) =>
-        React.createElement("div", props, props.children),
+        React.createElement("div", stripMotionProps(props), props.children),
+      button: (props: React.ComponentProps<"button">) =>
+        React.createElement("button", stripMotionProps(props), props.children),
     },
-    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
+      AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+        React.createElement(React.Fragment, null, children),
     useMotionValue: (v: number) => ({ set: vi.fn(), get: () => v }),
     useSpring: (v: unknown) => v,
     useTransform: () => 0,
@@ -34,9 +40,16 @@ describe("ZappBot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockUseAuth.mockReturnValue({
+      user: { supabaseUid: "uid-abc", username: "seed_user_0", name: "T", email: "t@e.com", id: "x", createdAt: "" },
+    });
   });
 
   afterEach(() => {
+    if (vi.isFakeTimers()) {
+      vi.runOnlyPendingTimers();
+      vi.useRealTimers();
+    }
     localStorage.clear();
   });
 
@@ -60,7 +73,6 @@ describe("ZappBot", () => {
 
   it("does not reuse a different user's stored conversation id", async () => {
     localStorage.setItem("zapp_conversation_id_uid-other", "99");
-
     mockUseAuth.mockReturnValue({
       user: { supabaseUid: "uid-me", username: "seed_user_0", name: "T", email: "t@e.com", id: "x", createdAt: "" },
     });
@@ -75,5 +87,46 @@ describe("ZappBot", () => {
       expect(localStorage.getItem("zapp_conversation_id_uid-me")).toBeNull();
     });
     expect(localStorage.getItem("zapp_conversation_id_uid-other")).toBe("99");
+  });
+
+  it("shows hover highlight only while the trigger is hovered", () => {
+    render(
+      <PanelProvider>
+        <ZappBot />
+      </PanelProvider>
+    );
+
+    const trigger = screen.getByRole("button", { name: /open zapp assistant/i });
+    expect(screen.queryByTestId("zappbot-hover-highlight")).toBeNull();
+
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByTestId("zappbot-hover-highlight")).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("data-hovered", "true");
+
+    fireEvent.mouseLeave(trigger);
+    expect(screen.queryByTestId("zappbot-hover-highlight")).toBeNull();
+    expect(trigger).toHaveAttribute("data-hovered", "false");
+  });
+
+  it("shows the ask a question prompt once on initial load and then stops repeating", () => {
+    vi.useFakeTimers();
+
+    render(
+      <PanelProvider>
+        <ZappBot />
+      </PanelProvider>
+    );
+
+    expect(screen.getByText(/ask a question/i)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3201);
+    });
+    expect(screen.queryByText(/ask a question/i)).toBeNull();
+
+    const trigger = screen.getByRole("button", { name: /open zapp assistant/i });
+    fireEvent.mouseEnter(trigger);
+    fireEvent.mouseLeave(trigger);
+    expect(screen.queryByText(/ask a question/i)).toBeNull();
   });
 });
