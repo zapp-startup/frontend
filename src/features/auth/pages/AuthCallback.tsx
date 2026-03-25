@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
-import { setApiAccessToken } from "@/api/client";
+import { apiRequest, setApiAccessToken } from "@/api/client";
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -33,7 +33,6 @@ export function AuthCallback() {
         if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            console.error("exchangeCodeForSession error:", error);
             if (!cancelled) {
               navigate("/login", { replace: true });
             }
@@ -49,7 +48,6 @@ export function AuthCallback() {
 
         const { data, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("getSession error:", error);
           if (!cancelled) {
             navigate("/login", { replace: true });
           }

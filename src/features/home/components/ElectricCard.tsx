@@ -1,5 +1,5 @@
 import * as React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
 
@@ -22,6 +22,7 @@ export const ElectricCard = ({
   glowIntensity = "soft",
   elevation = 1,
 }: ElectricCardProps) => {
+  const shouldReduceMotion = useReducedMotion();
   const elevationStyles = {
     0: { shadow: GLOWS.ambient(0.2), y: 0, scale: 1 },
     1: { shadow: GLOWS.ambient(0.6), y: 0, scale: 1 },
@@ -30,24 +31,20 @@ export const ElectricCard = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: elevationStyles.y }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, delay, ease: [0.23, 1, 0.32, 1] }}
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      whileInView={shouldReduceMotion ? undefined : { opacity: 1 }}
+      viewport={shouldReduceMotion ? undefined : { once: true }}
+      transition={{ duration: 0.24, delay, ease: "easeOut" }}
       className={cn(
         "relative group bg-[#101A2E] rounded-[2.5rem] border border-white/[0.03] p-8 transition-all duration-500",
         className
       )}
       style={{
+        transform: elevationStyles.y !== 0 || elevationStyles.scale !== 1
+          ? `translateY(${elevationStyles.y}px) scale(${elevationStyles.scale})`
+          : undefined,
         boxShadow: `${elevationStyles.shadow}, ${GLOWS.inner}, ${GLOWS[glowIntensity](semanticColor)}`,
         ...style,
-      }}
-      whileHover={{
-        y: elevationStyles.y - 4,
-        boxShadow: `${GLOWS.ambient(0.8)}, ${GLOWS.inner}, ${GLOWS.medium(semanticColor)}`,
-        borderColor: `${semanticColor}20`,
-        rotateX: elevation === 2 ? 1 : 0,
-        rotateY: elevation === 2 ? 1 : 0,
       }}
     >
       {children}

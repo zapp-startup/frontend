@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiRequest, setApiAccessToken } from "@/api/client";
+import { apiRequest, getApiAccessToken, setApiAccessToken } from "@/api/client";
 import { supabase } from "@/api/supabaseClient";
 
 export type User = {
@@ -27,9 +27,9 @@ type AuthContextValue = {
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; session?: Session | null }>;
-  signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string }>;
+  signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<void>;
+  updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
 };
 
 export type SignUpData = {
@@ -75,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
   const backendUserRef = React.useRef<BackendUserProfile | null>(null);
+  const syncBackendUserPromiseRef = React.useRef<Promise<BackendUserProfile | null> | null>(null);
+  const lastSyncedAccessTokenRef = React.useRef<string | null>(null);
 
   const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
     backendUserRef.current = profile;
@@ -82,19 +84,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncBackendUser = React.useCallback(async () => {
-    try {
-      const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
-        requireAuth: true,
-        method: "POST",
-      });
-      updateBackendUser(profile);
-      setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
-      return profile;
-    } catch (error) {
-      console.error("Failed to sync backend user:", error);
-      updateBackendUser(null);
-      return null;
+    const currentAccessToken = getApiAccessToken();
+    if (currentAccessToken && lastSyncedAccessTokenRef.current === currentAccessToken && backendUserRef.current) {
+      return backendUserRef.current;
     }
+
+    if (syncBackendUserPromiseRef.current) {
+      return syncBackendUserPromiseRef.current;
+    }
+
+    syncBackendUserPromiseRef.current = (async () => {
+      try {
+        const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
+          requireAuth: true,
+          method: "POST",
+        });
+        lastSyncedAccessTokenRef.current = currentAccessToken;
+        updateBackendUser(profile);
+        setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
+        return profile;
+      } catch {
+        updateBackendUser(null);
+        return null;
+      } finally {
+        syncBackendUserPromiseRef.current = null;
+      }
+    })();
+
+    return syncBackendUserPromiseRef.current;
   }, [updateBackendUser]);
 
   const applySession = React.useCallback(
@@ -106,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!sbUser) {
         setUser(null);
         updateBackendUser(null);
+        lastSyncedAccessTokenRef.current = null;
         return;
       }
 
@@ -127,7 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (error) {
-        console.error("getSession error:", error);
         setApiAccessToken(null);
         setUser(null);
         updateBackendUser(null);
@@ -157,9 +174,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return { ok: false, error: error.message };
 
     setApiAccessToken(data.session?.access_token ?? null);
+    if (data.session) {
+      await syncBackendUser();
+    }
 
     return { ok: true, session: data.session };
-  }, []);
+  }, [syncBackendUser]);
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
@@ -184,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await applySession(resp.session, true);
     }
 
-    return { ok: true };
+    return { ok: true, requiresVerification: !resp.session };
   }, [applySession]);
 
   const logout = React.useCallback(async () => {
@@ -192,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiAccessToken(null);
     setUser(null);
     updateBackendUser(null);
+    lastSyncedAccessTokenRef.current = null;
   }, [updateBackendUser]);
 
   const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
@@ -203,24 +224,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) {
-      console.error("updateUser error:", error);
-      return;
+      return { ok: false as const, error: error.message };
     }
 
     const sbUser = resp.user ?? null;
     setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
+    return { ok: true as const };
   }, []);
 
-  const value: AuthContextValue = {
-    user,
-    backendUser,
-    isAuthenticated: !!user,
-    isAuthReady: !authLoading,
-    login,
-    signUp,
-    logout,
-    updateProfile,
-  };
+  const value = React.useMemo<AuthContextValue>(
+    () => ({
+      user,
+      backendUser,
+      isAuthenticated: !!user,
+      isAuthReady: !authLoading,
+      login,
+      signUp,
+      logout,
+      updateProfile,
+    }),
+    [user, backendUser, authLoading, login, signUp, logout, updateProfile]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -46,7 +46,7 @@ export const TransactionsAPI = {
   /** Fetch transactions recommended for feedback by the ML pipeline. */
   getFeedbackCandidates: () =>
     apiRequest<FeedbackCandidate[]>("/api/transactions/feedback-candidates/", { requireAuth: true }),
-  list: (params?: { category?: string; direction?: string; date_from?: string; date_to?: string; limit?: number }) => {
+  list: (params?: { category?: string; direction?: string; date_from?: string; date_to?: string; limit?: number; signal?: AbortSignal; }) => {
   const query = new URLSearchParams();
   if (params?.category) query.set("category", params.category);
   if (params?.direction) query.set("direction", params.direction);
@@ -54,7 +54,7 @@ export const TransactionsAPI = {
   if (params?.date_to) query.set("date_to", params.date_to);
   if (params?.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
-  return apiRequest<Transaction[]>(`/api/transactions/${qs ? `?${qs}` : ""}`, { requireAuth: true });
+  return apiRequest<Transaction[]>(`/api/transactions/${qs ? `?${qs}` : ""}`, { requireAuth: true, signal: params?.signal, });
 },
   create: (data: NewTransaction) =>
     apiRequest<Transaction>("/api/transactions/", {
