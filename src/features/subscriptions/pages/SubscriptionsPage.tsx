@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, X, Calendar, Loader2 } from "lucide-react";
+import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
@@ -636,13 +636,15 @@ export function SubscriptionsPage() {
             Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
-        <Button
+        <motion.button
+          whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => setIsAddPanelOpen(true)}
-          className="bg-cyan-500 text-[#0B1220] rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs shadow-lg shadow-cyan-500/20"
-          style={{ backgroundColor: COLORS.electricCyan }}
+          className="flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
         >
-          Add Subscription
-        </Button>
+          <Plus size={18} strokeWidth={3} />
+          <span>Add Subscription</span>
+        </motion.button>
       </div>
 
       {subscriptions.length === 0 && (
@@ -653,13 +655,15 @@ export function SubscriptionsPage() {
           <p className="text-gray-600 text-sm max-w-md mx-auto">
             Add your first subscription to track recurring costs and value scores.
           </p>
-          <Button
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setIsAddPanelOpen(true)}
-            style={{ backgroundColor: COLORS.electricCyan }}
-            className="text-[#0B1220] rounded-2xl px-8"
+            className="mx-auto flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
           >
-            Add Subscription
-          </Button>
+            <Plus size={18} strokeWidth={3} />
+            <span>Add Subscription</span>
+          </motion.button>
         </div>
       )}
 
