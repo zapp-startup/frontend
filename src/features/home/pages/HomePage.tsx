@@ -12,9 +12,8 @@ import {
   Cell,
 } from "recharts";
 import { toast } from "sonner";
-import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/components/ui/utils";
 import { ElectricCard, ReflectionPulse } from "../components/ElectricCard";
+import { DashboardGamification } from "@/features/gamification";
 import { COLORS, GLOWS } from "@/shared/theme";
 
 export function HomePage() {
@@ -32,6 +31,8 @@ export function HomePage() {
 
   return (
     <div className="space-y-12 pb-32 relative z-10">
+      <DashboardGamification />
+
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         <ElectricCard className="md:col-span-8 overflow-hidden" semanticColor={COLORS.electricBlue} elevation={2}>
           <div className="flex items-start justify-between">

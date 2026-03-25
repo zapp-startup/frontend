@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
+import { TransactionReflectionDialog } from "@/features/gamification";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
@@ -621,6 +622,8 @@ export const TransactionsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([]);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [reflectionTransaction, setReflectionTransaction] = React.useState<Transaction | null>(null);
+  const [isReflectionOpen, setIsReflectionOpen] = React.useState(false);
 
   const { transactions, loading, error, refetch } = useMergedTransactions({
     category: filters.category || undefined,
@@ -838,6 +841,21 @@ export const TransactionsPage = () => {
                             </div>
                             <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{tx.direction}</div>
                           </div>
+                          {!isIncome && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setReflectionTransaction(tx);
+                                setIsReflectionOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/8 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300 transition-all hover:bg-cyan-500/15"
+                              title="Reflect"
+                            >
+                              <MessageSquare size={12} />
+                              Reflect
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
