@@ -41,7 +41,7 @@ describe("ZappBot", () => {
 
   it("scopes conversation id in localStorage by supabaseUid", async () => {
     mockUseAuth.mockReturnValue({
-      user: { supabaseUid: "uid-abc", name: "T", email: "t@e.com", id: "x", createdAt: "" },
+      user: { supabaseUid: "uid-abc", username: "seed_user_0", name: "T", email: "t@e.com", id: "x", createdAt: "" },
     });
 
     localStorage.setItem("zapp_conversation_id_uid-abc", "42");
@@ -61,7 +61,7 @@ describe("ZappBot", () => {
     localStorage.setItem("zapp_conversation_id_uid-other", "99");
 
     mockUseAuth.mockReturnValue({
-      user: { supabaseUid: "uid-me", name: "T", email: "t@e.com", id: "x", createdAt: "" },
+      user: { supabaseUid: "uid-me", username: "seed_user_0", name: "T", email: "t@e.com", id: "x", createdAt: "" },
     });
 
     render(

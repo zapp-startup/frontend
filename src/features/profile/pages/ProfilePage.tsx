@@ -249,8 +249,9 @@ export function ProfilePage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className="max-w-2xl mx-auto space-y-8"
     >
       <div className="flex items-center justify-between">

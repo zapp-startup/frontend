@@ -1,5 +1,4 @@
 // src/api/ai.api.ts
-import { getCurrentApiAccessToken } from "@/api/client";
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type ApiMessage = {
@@ -9,23 +8,30 @@ export type ApiMessage = {
   created_at?: string;
 };
 
-async function buildAuthHeaders() {
-  const token = await getCurrentApiAccessToken();
-  if (!token) {
-    throw new Error("Authentication required for AI API request, but no Supabase access token is available.");
+type DevAuthParams = {
+  devUsername: string;
+};
+
+function buildDevAuthHeaders(params: DevAuthParams) {
+  const username = params.devUsername.trim();
+  if (!username) {
+    throw new Error("AI API request requires a backend username for X-Dev-User.");
   }
 
   return {
-    Authorization: `Bearer ${token}`,
+    "X-Dev-User": username,
   } as Record<string, string>;
 }
 
-export async function createConversation(params?: { context_type?: string }) {
+export async function createConversation(
+  auth: DevAuthParams,
+  params?: { context_type?: string; title?: string; linked_subscription?: number; linked_item_valuation?: number }
+) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(await buildAuthHeaders()),
+      ...buildDevAuthHeaders(auth),
     },
     body: JSON.stringify(params ?? {}),
   });
@@ -34,12 +40,12 @@ export async function createConversation(params?: { context_type?: string }) {
   return (await res.json()) as { conversation_id: number };
 }
 
-export async function sendMessage(conversationId: number, content: string) {
+export async function sendMessage(auth: DevAuthParams, conversationId: number, content: string) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(await buildAuthHeaders()),
+      ...buildDevAuthHeaders(auth),
     },
     body: JSON.stringify({ content }),
   });
@@ -51,10 +57,10 @@ export async function sendMessage(conversationId: number, content: string) {
   };
 }
 
-export async function listMessages(conversationId: number) {
+export async function listMessages(auth: DevAuthParams, conversationId: number) {
   const res = await fetch(`${BASE_URL}/api/ai/conversations/${conversationId}/messages/`, {
     headers: {
-      ...(await buildAuthHeaders()),
+      ...buildDevAuthHeaders(auth),
     },
   });
 

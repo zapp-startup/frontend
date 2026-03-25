@@ -18,6 +18,7 @@ export function ZappBot() {
   const { user } = useAuth();
   const { isRightPanelOpen } = usePanelContext();
   const conversationStorageKey = user?.supabaseUid ? `zapp_conversation_id_${user.supabaseUid}` : null;
+  const devUsername = user?.username?.trim() ?? "";
 
   const [isOpen, setIsOpen] = React.useState(false);
   const [input, setInput] = React.useState("");
@@ -73,7 +74,10 @@ export function ZappBot() {
 
   const createFreshConversation = async () => {
     if (!createConversationPromiseRef.current) {
-      createConversationPromiseRef.current = createConversation({ context_type: "general" });
+      createConversationPromiseRef.current = createConversation(
+        { devUsername },
+        { context_type: "general" }
+      );
     }
     const created = await createConversationPromiseRef.current;
     const cid = created.conversation_id;
@@ -90,6 +94,18 @@ export function ZappBot() {
     if (!input.trim() || isTyping) return;
 
     const prompt = input.trim();
+    if (!devUsername) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 3).toString(),
+          text: "AI chat is unavailable because no backend username is loaded for this session.",
+          sender: "assistant",
+          timestamp: new Date(),
+        },
+      ]);
+      return;
+    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -111,7 +127,7 @@ export function ZappBot() {
 
       let resp;
       try {
-        resp = await sendMessage(cid, prompt);
+        resp = await sendMessage({ devUsername }, cid, prompt);
       } catch (err) {
         // Conversation may be stale (deleted/migrated/user-context mismatch). Recreate once and retry.
         if (!isNotFoundError(err)) throw err;
@@ -121,12 +137,17 @@ export function ZappBot() {
         setConversationId(null);
         createConversationPromiseRef.current = null;
         const freshCid = await createFreshConversation();
-        resp = await sendMessage(freshCid, prompt);
+        resp = await sendMessage({ devUsername }, freshCid, prompt);
       }
+
+      const assistantText =
+        resp.assistant_message.content.includes("LLM not connected yet")
+          ? "Your message has been stored."
+          : resp.assistant_message.content;
 
       const assistantMsg: Message = {
         id: String(resp.assistant_message.id ?? Date.now() + 1),
-        text: resp.assistant_message.content,
+        text: assistantText,
         sender: "assistant",
         timestamp: new Date(resp.assistant_message.created_at ?? Date.now()),
       };
