@@ -52,10 +52,8 @@ type PageId =
 const NAV_ITEMS: { id: Exclude<PageId, "profile">; path: string; label: string; icon: LucideIcon }[] = [
   { id: "home", path: "/", label: "Dashboard", icon: Home },
   { id: "transactions", path: "/transactions", label: "Transactions", icon: List },
-  { id: "circles", path: "/circles", label: "Circles", icon: Users },
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
-  { id: "analytics", path: "/analytics", label: "Analytics", icon: BarChart2 },
-  { id: "search", path: "/search", label: "Search", icon: Search },
+  { id: "circles", path: "/circles", label: "Circles", icon: Users },
 ];
 
 const PAGE_COLORS: Record<PageId, string> = {
