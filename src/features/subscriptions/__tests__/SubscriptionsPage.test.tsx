@@ -18,6 +18,7 @@ describe("SubscriptionsPage", () => {
     vi.mocked(api.MerchantsAPI.list).mockResolvedValue([
       { id: 1, name: "Netflix", category: "streaming" },
     ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockResolvedValue([]);
   });
 
   it("loads and displays empty state when no subscriptions", async () => {
@@ -59,5 +60,30 @@ describe("SubscriptionsPage", () => {
     });
 
     expect(screen.getByText("$15.99")).toBeInTheDocument();
+  });
+
+  it("uses the 0-150 value scale labels on subscription cards", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 100,
+      },
+    ]);
+
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Decent").length).toBeGreaterThan(0);
+    });
   });
 });

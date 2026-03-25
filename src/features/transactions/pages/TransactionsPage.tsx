@@ -6,6 +6,8 @@ import {
   Pencil, Trash2,
 } from "lucide-react";
 import { COLORS, GLOWS } from "@/shared/theme";
+import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
+import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { Button } from "@/shared/components/ui/button";
@@ -64,6 +66,10 @@ type TransactionRowViewModel = {
   satisfactionLabel: string | null;
   amountText: string;
   isIncome: boolean;
+  valueScore: number | null;
+  valueLabel: string;
+  valueTone: string;
+  valueColor: string;
 };
 
 type TransactionGroupViewModel = {
@@ -776,6 +782,14 @@ const TransactionGroups = React.memo(function TransactionGroups({
                               <span>{row.categoryLabel}</span>
                               <span className="w-1 h-1 rounded-full bg-gray-700" />
                               <span>{row.timeLabel}</span>
+                              {row.valueScore != null && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
+                                  <span style={{ color: row.valueColor }}>
+                                    Value {row.valueScore} · {row.valueLabel}
+                                  </span>
+                                </>
+                              )}
                               {row.satisfactionLabel && (
                                 <>
                                   <span className="w-1 h-1 rounded-full bg-gray-700" />
@@ -786,6 +800,31 @@ const TransactionGroups = React.memo(function TransactionGroups({
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
+                          {row.valueScore != null && (
+                            <div className="min-w-[138px] rounded-2xl border border-white/5 bg-[#0B1220]/80 px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-500">Value</div>
+                                <div className="text-lg font-black" style={{ color: row.valueColor }}>
+                                  {row.valueScore}
+                                </div>
+                              </div>
+                              <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min(100, (row.valueScore / 150) * 100)}%`,
+                                    backgroundColor: row.valueColor,
+                                  }}
+                                />
+                              </div>
+                              <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: row.valueColor }}>
+                                {row.valueLabel}
+                              </div>
+                              <div className="mt-1 text-[10px] leading-tight text-gray-500">
+                                {row.valueTone}
+                              </div>
+                            </div>
+                          )}
                           <div className="text-right">
                             <div className={cn("text-xl font-black", row.isIncome ? "text-emerald-400" : "text-white")}>{row.amountText}</div>
                             <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{row.directionLabel}</div>
@@ -894,6 +933,8 @@ export const TransactionsPage = () => {
           const category = getCategoryMeta(tx.category);
           const isIncome = tx.direction === "income";
           const amount = Math.abs(Number(tx.amount));
+          const valueScore = deriveTransactionValueScore(tx);
+          const value = getValuePresentation(valueScore);
           const row: TransactionRowViewModel = {
             tx,
             categoryLabel: category.label,
@@ -905,6 +946,13 @@ export const TransactionsPage = () => {
             satisfactionLabel: tx.satisfaction_rating ? `★ ${tx.satisfaction_rating}/10` : null,
             amountText: `${isIncome ? "+" : "-"}$${amount.toFixed(2)}`,
             isIncome,
+            valueScore,
+            valueLabel: value.label,
+            valueTone:
+              valueScore == null
+                ? "Waiting for satisfaction or regret data."
+                : value.tone,
+            valueColor: value.accentColor,
           };
           const existing = acc.get(date);
           if (existing) existing.push(row);
