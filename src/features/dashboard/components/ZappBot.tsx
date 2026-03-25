@@ -1,6 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
 import { X, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { createConversation, sendMessage } from "@/api/ai.api";
@@ -10,9 +11,15 @@ interface Message {
   text: string;
   sender: "user" | "assistant";
   timestamp: Date;
+  quickActions?: {
+    label: string;
+    route: string;
+    reason?: string;
+  }[];
 }
 
 export function ZappBot() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
   const [input, setInput] = React.useState("");
   const [isHovered, setIsHovered] = React.useState(false);
@@ -113,6 +120,7 @@ export function ZappBot() {
         text: resp.assistant_message.content,
         sender: "assistant",
         timestamp: new Date(resp.assistant_message.created_at ?? Date.now()),
+        quickActions: resp.assistant_message.metadata_json?.quick_actions,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -182,6 +190,25 @@ export function ZappBot() {
                   <span className="mt-2 text-[8px] font-black uppercase tracking-widest text-gray-600">
                     {msg.sender === "user" ? "You" : "ZappBot"} • {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
+
+                  {msg.sender === "assistant" && !!msg.quickActions?.length && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {msg.quickActions.map((action) => (
+                        <button
+                          key={`${msg.id}-${action.route}-${action.label}`}
+                          type="button"
+                          onClick={() => {
+                            navigate(action.route);
+                            setIsOpen(false);
+                          }}
+                          className="rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:text-cyan-200"
+                          title={action.reason ?? `Navigate to ${action.route}`}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               ))}
 

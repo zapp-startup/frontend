@@ -7,6 +7,24 @@ export type ApiMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at?: string;
+  metadata_json?: Record<string, unknown>;
+};
+
+export type AiQuickAction = {
+  label: string;
+  route: string;
+  reason?: string;
+};
+
+export type AiAssistantMetadata = {
+  action?: string;
+  action_status?: string;
+  created_transaction_id?: number | null;
+  quick_actions?: AiQuickAction[];
+  intent_detection?: {
+    intent?: string;
+    confidence?: number;
+  };
 };
 
 function parseJwtPayload(token: string) {
@@ -72,7 +90,7 @@ export async function sendMessage(conversationId: number, content: string) {
   if (!res.ok) throw new Error(`sendMessage failed: ${res.status}`);
   return (await res.json()) as {
     user_message: ApiMessage;
-    assistant_message: ApiMessage;
+    assistant_message: ApiMessage & { metadata_json?: AiAssistantMetadata };
   };
 }
 
