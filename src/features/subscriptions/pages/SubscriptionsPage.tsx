@@ -153,10 +153,10 @@ function AddPanel({
           <div className="flex items-start justify-between gap-4">
             <div>
               <AppSheetTitle>Add Subscription</AppSheetTitle>
-              <AppSheetDescription>
+                        <AppSheetDescription>
                 Create a manual subscription entry from the merchant catalog and recurring billing details.
               </AppSheetDescription>
-              <div className="app-eyebrow mt-3 text-cyan-400">
+              <div className="app-eyebrow mt-3 text-[var(--app-accent-cyan)]">
                 Manual Entry
               </div>
             </div>
@@ -340,13 +340,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             </div>
           </div>
 
-          <button
+          <AppButton
             onClick={(e) => onDelete(sub, e)}
-            className="rounded-xl p-2 text-[var(--app-color-text-tertiary)] transition-colors hover:bg-red-500/10 hover:text-red-400"
+            variant="quietDanger"
+            size="icon"
+            className="rounded-xl"
             aria-label={`Delete ${name}`}
           >
             <X size={20} />
-          </button>
+          </AppButton>
         </div>
       </Surface>
 
@@ -454,13 +456,13 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)] h-2.5">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
-                                backgroundColor: COLORS.electricCyan,
-                              }}
-                            />
+                             <div
+                               className="h-full rounded-full transition-all"
+                               style={{
+                                 width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
+                                 backgroundColor: "var(--app-accent-cyan)",
+                               }}
+                             />
                           </div>
                           <span className="text-sm font-black text-[var(--app-color-text-primary)]">
                             {Math.round(valuation.confidence)}%
@@ -623,11 +625,11 @@ export function SubscriptionsPage() {
   return (
     <div className="space-y-12 pb-32 relative z-10">
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tight">Active Subscriptions</h2>
-          <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
-            <div
-              className="w-2 h-2 rounded-full"
+          <div className="space-y-1">
+            <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">Active Subscriptions</h2>
+            <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
+              <div
+                className="w-2 h-2 rounded-full"
               style={{
                 backgroundColor: COLORS.electricGreen,
                 boxShadow: `0 0 8px ${COLORS.electricGreen}`,
@@ -637,7 +639,7 @@ export function SubscriptionsPage() {
           </div>
         </div>
         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
-          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="primary" size="md">
+          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
             <Plus size={18} strokeWidth={3} />
             <span>Add Subscription</span>
           </AppButton>
@@ -650,7 +652,7 @@ export function SubscriptionsPage() {
             title="No subscriptions yet"
             description="Add your first subscription to track recurring costs and value scores."
             action={
-              <AppButton onClick={() => setIsAddPanelOpen(true)} variant="primary" size="md">
+              <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
                 <Plus size={18} strokeWidth={3} />
                 <span>Add Subscription</span>
               </AppButton>

@@ -36,8 +36,8 @@ export function getValuePresentation(score: number | null | undefined): ValuePre
       tier: "unknown",
       label: "No score yet",
       tone: "Waiting for more usage data.",
-      accentColor: "#94A3B8",
-      trackColor: "rgba(148,163,184,0.2)",
+      accentColor: "var(--app-color-text-tertiary)",
+      trackColor: "color-mix(in srgb, var(--app-color-text-tertiary) 20%, transparent)",
     };
   }
 
@@ -89,8 +89,8 @@ export function getValuePresentation(score: number | null | undefined): ValuePre
       tier: "below_optimal",
       label: "Low Value",
       tone: "Some value is there, but the payoff is uneven.",
-      accentColor: "#fb923c",
-      trackColor: "rgba(251,146,60,0.18)",
+      accentColor: COLORS.electricYellow,
+      trackColor: `${COLORS.electricYellow}22`,
     };
   }
 

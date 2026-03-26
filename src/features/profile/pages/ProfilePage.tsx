@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion } from "motion/react";
-import { Loader2, LogOut, Mail, Pencil, Plus, Sparkles, User, X } from "lucide-react";
+import { LogOut, Mail, Pencil, Plus, Sparkles, User, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ import {
   AppSelect,
   EmptyState,
   FormField,
+  LoadingState,
   SectionHeader,
   StatusChip,
   Surface,
@@ -191,17 +192,14 @@ const FinancialProfileSection = React.memo(function FinancialProfileSection({
       <div className="flex items-center justify-between">
         <h3 className="app-card-title">Financial Profile</h3>
         {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
-          <AppButton type="button" variant="quiet" size="sm" onClick={onStartEdit} className="gap-1 text-cyan-400">
+          <AppButton type="button" variant="quietAccent" size="sm" onClick={onStartEdit} className="gap-1">
             <Pencil size={14} />
             Edit
           </AppButton>
         )}
       </div>
       {financialLoading && (
-        <div className="flex items-center gap-2 text-sm text-[var(--app-color-text-tertiary)]">
-          <Loader2 size={16} className="animate-spin" />
-          Loading...
-        </div>
+        <LoadingState label="Loading financial profile..." lines={2} compact />
       )}
       {!financialLoading && rawExplicit.length === 0 && (
         <EmptyState title="No financial profile yet" description="Complete onboarding to set your financial profile." />
@@ -252,17 +250,14 @@ const PreferencesSection = React.memo(function PreferencesSection({
       <div className="flex items-center justify-between">
         <h3 className="app-card-title">Preferences</h3>
         {!prefsLoading && !addingPref && (
-          <AppButton type="button" variant="quiet" size="sm" onClick={onStartAdd} className="gap-1 text-cyan-400">
+          <AppButton type="button" variant="quietAccent" size="sm" onClick={onStartAdd} className="gap-1">
             <Plus size={14} />
             Add
           </AppButton>
         )}
       </div>
       {prefsLoading && (
-        <div className="flex items-center gap-2 text-sm text-[var(--app-color-text-tertiary)]">
-          <Loader2 size={16} className="animate-spin" />
-          Loading...
-        </div>
+        <LoadingState label="Loading preferences..." lines={2} compact />
       )}
       {!prefsLoading && preferences.length === 0 && !addingPref && (
         <EmptyState title="No preferences yet." description="Add preference keys to store UI or behavior settings." />
@@ -281,9 +276,9 @@ const PreferencesSection = React.memo(function PreferencesSection({
               <AppButton
                 type="button"
                 onClick={() => void onRemovePref(p.id)}
-                variant="quiet"
+                variant="quietDanger"
                 size="sm"
-                className="h-8 w-8 rounded-lg px-0 text-[var(--app-color-text-tertiary)] hover:bg-red-500/10 hover:text-red-400"
+                className="h-8 w-8 rounded-lg px-0"
               >
                 <X size={14} />
               </AppButton>
@@ -447,15 +442,15 @@ export function ProfilePage() {
         <div
           className="flex h-28 items-end px-8 pb-6"
           style={{
-            background: `linear-gradient(135deg, ${COLORS.electricCyan}22, ${COLORS.electricPurple}22)`,
+            background: "linear-gradient(135deg, color-mix(in srgb, var(--app-accent-cyan-soft) 12%, transparent), color-mix(in srgb, var(--app-accent-purple-soft) 14%, transparent))",
             borderBottom: "1px solid var(--app-color-border-subtle)",
           }}
         >
-          <div
-            className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-white/20 text-2xl font-black text-white shadow-xl"
-            style={{
-              background: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})`,
-              boxShadow: GLOWS.soft(COLORS.electricCyan),
+            <div
+              className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-[color:color-mix(in_srgb,var(--app-color-text-inverse)_20%,transparent)] text-2xl font-black text-[var(--app-color-text-inverse)] shadow-xl"
+              style={{
+                background: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})`,
+                boxShadow: GLOWS.soft(COLORS.electricCyan),
             }}
           >
             {initials}

@@ -109,7 +109,7 @@ function SliderInput({
           min={0}
           max={100}
           step={1}
-          className="flex-1 [&_[data-slot=slider-range]]:bg-cyan-400 [&_[data-slot=slider-thumb]]:border-cyan-400 [&_[data-slot=slider-thumb]]:bg-[var(--app-color-surface-base)] [&_[data-slot=slider-track]]:bg-[var(--app-color-border-subtle)]"
+          className="flex-1 [&_[data-slot=slider-range]]:bg-[var(--app-accent-cyan-soft)] [&_[data-slot=slider-thumb]]:border-[var(--app-accent-cyan-soft)] [&_[data-slot=slider-thumb]]:bg-[var(--app-color-surface-base)] [&_[data-slot=slider-track]]:bg-[var(--app-color-border-subtle)]"
         />
         <StatusChip tone="info" className="min-w-12 justify-center">
           {value}
@@ -182,7 +182,7 @@ export function OnboardingPage() {
 
   const steps = [
     <div className="space-y-6 py-4 text-center" key="welcome">
-      <div className="mx-auto flex size-20 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-500/10 text-cyan-300">
+      <div className="mx-auto flex size-20 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_10%,transparent)] text-[var(--app-accent-cyan-soft)]">
         <Zap className="size-9" />
       </div>
       <div className="space-y-3">
@@ -193,8 +193,8 @@ export function OnboardingPage() {
         </p>
       </div>
       <div className="flex items-center justify-center gap-2">
-        <Sparkles className="size-4 text-cyan-300" aria-hidden="true" />
-        <span className="app-label text-cyan-300">Takes about 2 minutes</span>
+        <Sparkles className="size-4 text-[var(--app-accent-cyan-soft)]" aria-hidden="true" />
+        <span className="app-label text-[var(--app-accent-cyan-soft)]">Takes about 2 minutes</span>
       </div>
     </div>,
 
@@ -382,7 +382,7 @@ export function OnboardingPage() {
         <Surface variant="card" padding="sm" className="overflow-hidden">
           <div className="h-2 rounded-full bg-[var(--app-color-border-subtle)]">
             <motion.div
-              className="h-full rounded-full bg-cyan-400"
+              className="h-full rounded-full bg-[var(--app-accent-cyan-soft)]"
               animate={
                 shouldReduceMotion
                   ? undefined

@@ -67,7 +67,7 @@ export function HomePage() {
           <div className="flex items-start justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#3B82FF]" style={{ backgroundColor: COLORS.electricBlue }} />
+                <span className="h-1.5 w-1.5 rounded-full shadow-[0_0_8px_color-mix(in_srgb,var(--app-accent-blue-soft)_30%,transparent)]" style={{ backgroundColor: "var(--app-accent-blue-soft)" }} />
                 <h2 className="app-eyebrow">Financial Health</h2>
               </div>
               <div className="text-6xl font-black tracking-tight text-[var(--app-color-text-primary)]">$2,450.00</div>
@@ -97,7 +97,7 @@ export function HomePage() {
                   transition={{ duration: 2, ease: [0.23, 1, 0.32, 1] }}
                   strokeLinecap="round"
                   fill="transparent"
-                  style={{ filter: `drop-shadow(0 0 12px ${recentValueSummary.accentColor}80)` }}
+                  style={{ filter: `drop-shadow(0 0 10px ${recentValueSummary.accentColor}66)` }}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -106,12 +106,11 @@ export function HomePage() {
                 </span>
                 <span
                   className="text-[10px] uppercase font-black tracking-[0.2em]"
-                  style={{ color: recentValueSummary.average == null ? "#6B7280" : recentValueSummary.accentColor }}
+                  style={{ color: recentValueSummary.average == null ? "var(--app-color-text-tertiary)" : recentValueSummary.accentColor }}
                 >
                   {recentValueSummary.average == null ? "No score" : recentValueSummary.label}
                 </span>
               </div>
-              <div className="absolute inset-0 rounded-full bg-electric-green/5 blur-3xl -z-10 group-hover:bg-electric-green/10 transition-colors" />
             </div>
           </div>
           <div className="h-48 mt-12">
@@ -126,7 +125,7 @@ export function HomePage() {
                   </linearGradient>
                 </defs>
                 <Area type="monotone" dataKey="v" stroke={COLORS.electricBlue} strokeWidth={4} fill="url(#areaGlow)" animationDuration={2500} />
-                <Tooltip contentStyle={{ backgroundColor: COLORS.bgCard, border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px" }} itemStyle={{ color: COLORS.electricBlue, fontWeight: "900" }} />
+                <Tooltip contentStyle={{ backgroundColor: COLORS.bgCard, border: "1px solid var(--app-color-border-strong)", borderRadius: "20px" }} itemStyle={{ color: COLORS.electricBlue, fontWeight: "900" }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -136,7 +135,7 @@ export function HomePage() {
             <div className="flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center border border-[var(--app-color-border-subtle)]"
-                style={{ backgroundColor: `${COLORS.electricCyan}15`, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
+                style={{ backgroundColor: `${COLORS.electricCyan}12`, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
               >
                 <TrendingUp size={28} style={{ color: COLORS.electricCyan }} />
               </div>
@@ -146,14 +145,14 @@ export function HomePage() {
               </div>
             </div>
             <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
-              <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} className="h-full rounded-full" style={{ backgroundColor: COLORS.electricCyan, boxShadow: `0 0 10px ${COLORS.electricCyan}` }} />
+              <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} className="h-full rounded-full" style={{ backgroundColor: "var(--app-accent-cyan-soft)", boxShadow: `0 0 10px ${COLORS.electricCyan}66` }} />
             </div>
           </ElectricCard>
           <ElectricCard className="flex-1 flex flex-col justify-center gap-2" semanticColor={COLORS.electricRed} elevation={1}>
             <div className="flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center border border-[var(--app-color-border-subtle)]"
-                style={{ backgroundColor: `${COLORS.electricRed}15`, boxShadow: GLOWS.soft(COLORS.electricRed) }}
+                style={{ backgroundColor: `${COLORS.electricRed}12`, boxShadow: GLOWS.soft(COLORS.electricRed) }}
               >
                 <AlertCircle size={28} style={{ color: COLORS.electricRed }} />
               </div>
@@ -175,7 +174,6 @@ export function HomePage() {
             <h3 className="app-card-title">Category Breakdown</h3>
           </div>
           <div className="h-64 flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-electric-teal/5 blur-3xl rounded-full" style={{ backgroundColor: `${COLORS.electricTeal}10` }} />
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -222,7 +220,7 @@ export function HomePage() {
         <ElectricCard className="lg:col-span-8 overflow-hidden" semanticColor={COLORS.electricGreen} elevation={1}>
           <div className="flex items-center justify-between mb-10">
             <h3 className="app-card-title text-xl">Recent Spending History</h3>
-            <AppButton variant="quiet" size="sm" className="px-0 text-cyan-400 hover:text-cyan-300">
+            <AppButton variant="quietAccent" size="sm" className="px-0">
               View Timeline
             </AppButton>
           </div>
@@ -300,7 +298,7 @@ export function HomePage() {
                 className="text-4xl font-black tracking-tighter"
                 style={{
                   color: value.accentColor,
-                  filter: `drop-shadow(0 0 10px ${value.accentColor}80)`,
+                  filter: `drop-shadow(0 0 8px ${value.accentColor}55)`,
                 }}
               >
                 {value.displayScoreText}
@@ -309,9 +307,9 @@ export function HomePage() {
                 {value.label}
               </div>
               {value.overflowText ? (
-                <div className="mt-1 text-[10px] font-bold text-blue-300">
-                  {value.overflowText.replace("+", "")} above target
-                </div>
+                 <div className="mt-1 text-[10px] font-bold text-[var(--app-accent-blue-soft)]">
+                   {value.overflowText.replace("+", "")} above target
+                 </div>
               ) : null}
             </>
           ) : (

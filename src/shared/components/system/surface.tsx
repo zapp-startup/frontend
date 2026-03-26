@@ -30,6 +30,26 @@ type SurfaceProps = React.ComponentProps<"div"> &
     accentMode?: "border" | "glow" | "top-border";
   };
 
+function getSurfaceAccentStyle(
+  accentColor?: string,
+  accentMode: "border" | "glow" | "top-border" = "glow"
+): React.CSSProperties | undefined {
+  if (accentColor == null) return undefined;
+
+  if (accentMode === "border") {
+    return { borderColor: `${accentColor}55` };
+  }
+
+  if (accentMode === "top-border") {
+    return { borderTopColor: accentColor, borderTopWidth: "1px" };
+  }
+
+  return {
+    borderColor: `${accentColor}26`,
+    boxShadow: `var(--app-shadow-raised), inset 0 0 1px rgba(255,255,255,0.15), 0 0 24px ${accentColor}2d`,
+  };
+}
+
 function Surface({
   className,
   variant,
@@ -39,19 +59,9 @@ function Surface({
   style,
   ...props
 }: SurfaceProps) {
-  const accentStyle =
-    accentColor == null
-      ? undefined
-      : accentMode === "border"
-        ? { borderColor: `${accentColor}55` }
-        : accentMode === "top-border"
-          ? { borderTopColor: accentColor, borderTopWidth: "1px" }
-          : {
-              borderColor: `${accentColor}26`,
-              boxShadow: `var(--app-shadow-raised), inset 0 0 1px rgba(255,255,255,0.15), 0 0 24px ${accentColor}2d`,
-            };
+  const accentStyle = getSurfaceAccentStyle(accentColor, accentMode);
 
   return <div className={cn(surfaceVariants({ variant, padding, className }))} style={{ ...accentStyle, ...style }} {...props} />;
 }
 
-export { Surface, surfaceVariants };
+export { Surface, getSurfaceAccentStyle, surfaceVariants };

@@ -78,9 +78,8 @@ export function MonthlyTargetsWidget({ compact = false }: MonthlyTargetsWidgetPr
           </div>
           <AppButton
             onClick={() => setIsCreateOpen(true)}
-            variant="secondary"
+            variant="accent"
             size="sm"
-            className="border-purple-400/20 bg-purple-500/12 text-purple-200 hover:bg-purple-500/20"
           >
             <Plus size={14} />
             New
@@ -183,7 +182,8 @@ function MonthlyTargetCard({
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5 }}
-          className={completed ? "h-full rounded-full bg-green-500" : "h-full rounded-full bg-purple-500"}
+          className="h-full rounded-full"
+          style={{ backgroundColor: completed ? "var(--app-accent-green)" : "var(--app-accent-purple)" }}
         />
       </div>
 
@@ -200,8 +200,7 @@ function MonthlyTargetCard({
           <AppButton
             onClick={handleProgress}
             disabled={submittingProgress}
-            variant="secondary"
-            className="border-purple-400/20 bg-purple-500/90 text-white hover:bg-purple-400"
+            variant="accent"
           >
             {submittingProgress ? "Updating..." : "Log progress"}
           </AppButton>
@@ -307,8 +306,7 @@ function CreateTargetDialog({
               <AppButton
                 type="submit"
                 disabled={submitting}
-                variant="secondary"
-                className="border-purple-400/20 bg-purple-500/90 text-white hover:bg-purple-400"
+                variant="accent"
               >
                 {submitting ? "Creating..." : "Create Target"}
               </AppButton>

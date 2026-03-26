@@ -2,7 +2,7 @@ import * as React from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
-import { surfaceVariants } from "@/shared/components/system";
+import { getSurfaceAccentStyle, surfaceVariants } from "@/shared/components/system";
 
 type ElectricCardProps = {
   children: React.ReactNode;
@@ -30,6 +30,8 @@ export const ElectricCard = ({
     2: { shadow: GLOWS.ambient(0.8), y: -8, scale: 1.01 },
   }[elevation];
 
+  const accentStyle = getSurfaceAccentStyle(semanticColor, "glow");
+
   return (
     <motion.div
       initial={shouldReduceMotion ? false : { opacity: 0 }}
@@ -45,6 +47,7 @@ export const ElectricCard = ({
         transform: elevationStyles.y !== 0 || elevationStyles.scale !== 1
           ? `translateY(${elevationStyles.y}px) scale(${elevationStyles.scale})`
           : undefined,
+        ...accentStyle,
         boxShadow: `${elevationStyles.shadow}, ${GLOWS.inner}, ${GLOWS[glowIntensity](semanticColor)}`,
         ...style,
       }}

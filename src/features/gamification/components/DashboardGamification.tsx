@@ -129,7 +129,7 @@ export function DashboardGamification() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-black text-cyan-300">Lv {streak.level}</div>
+              <div className="text-3xl font-black text-[var(--app-accent-cyan-soft)]">Lv {streak.level}</div>
               <div className="app-eyebrow">Level</div>
             </div>
           </div>
@@ -141,7 +141,7 @@ export function DashboardGamification() {
           </div>
           <div className="h-2 rounded-full bg-[var(--app-color-surface-inset)]">
             <div
-              className="h-full rounded-full bg-cyan-500"
+              className="h-full rounded-full bg-[var(--app-accent-cyan-soft)]"
               style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%` }}
             />
           </div>
@@ -192,20 +192,20 @@ export function DashboardGamification() {
             Keep your weekly and monthly reviews current so your progress stays visible.
           </p>
           <div className="space-y-3">
-            <AppButton
-              onClick={() => handleReview("weekly")}
-              disabled={submittingReview !== null}
-              variant="secondary"
-              className="w-full border-emerald-400/20 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/20"
-            >
+              <AppButton
+                onClick={() => handleReview("weekly")}
+                disabled={submittingReview !== null}
+                variant="success"
+                className="w-full"
+              >
               {submittingReview === "weekly" ? "Completing..." : "Complete Weekly Review"}
             </AppButton>
-            <AppButton
-              onClick={() => handleReview("monthly")}
-              disabled={submittingReview !== null}
-              variant="secondary"
-              className="w-full border-blue-400/20 bg-blue-500/12 text-blue-200 hover:bg-blue-500/20"
-            >
+              <AppButton
+                onClick={() => handleReview("monthly")}
+                disabled={submittingReview !== null}
+                variant="info"
+                className="w-full"
+              >
               {submittingReview === "monthly" ? "Completing..." : "Complete Monthly Review"}
             </AppButton>
           </div>

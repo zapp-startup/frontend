@@ -7,13 +7,19 @@ type IconBadgeProps = React.ComponentProps<"div"> & {
 };
 
 const toneStyles = {
-  cyan: "bg-cyan-500/12 text-cyan-300 border-cyan-400/25",
-  green: "bg-emerald-500/12 text-emerald-300 border-emerald-400/25",
-  blue: "bg-blue-500/12 text-blue-300 border-blue-400/25",
-  purple: "bg-purple-500/12 text-purple-300 border-purple-400/25",
-  red: "bg-red-500/12 text-red-300 border-red-400/25",
-  yellow: "bg-yellow-500/12 text-yellow-300 border-yellow-400/25",
-  neutral: "bg-white/5 text-[var(--app-color-text-secondary)] border-[var(--app-color-border-strong)]",
+  cyan:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)] text-[var(--app-accent-cyan-soft)] border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_25%,transparent)]",
+  green:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-green-soft)_12%,transparent)] text-[var(--app-accent-green-soft)] border-[color:color-mix(in_srgb,var(--app-accent-green-soft)_25%,transparent)]",
+  blue:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_12%,transparent)] text-[var(--app-accent-blue-soft)] border-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_25%,transparent)]",
+  purple:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_12%,transparent)] text-[var(--app-accent-purple-soft)] border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_25%,transparent)]",
+  red:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-red-soft)_12%,transparent)] text-[var(--app-accent-red-soft)] border-[color:color-mix(in_srgb,var(--app-accent-red-soft)_25%,transparent)]",
+  yellow:
+    "bg-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_12%,transparent)] text-[var(--app-accent-yellow-soft)] border-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_25%,transparent)]",
+  neutral: "bg-[var(--app-color-surface-inset)] text-[var(--app-color-text-secondary)] border-[var(--app-color-border-strong)]",
 } as const;
 
 const sizeStyles = {

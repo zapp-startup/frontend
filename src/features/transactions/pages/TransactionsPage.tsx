@@ -19,7 +19,7 @@ import {
   Trash2,
   MessageSquare,
 } from "lucide-react";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS } from "@/shared/theme";
 import {
   formatDateLabel,
   formatLocalDateYYYYMMDD,
@@ -52,6 +52,7 @@ import {
   MetricCard,
   StatusChip,
   Surface,
+  appButtonVariants,
 } from "@/shared/components/system";
 import { toast } from "sonner";
 
@@ -331,7 +332,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                   fontWeight: 900,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "#6b7280",
+                  color: "var(--app-color-text-tertiary)",
                   opacity: i % 2 === 0 ? 1 : 0,
                   userSelect: "none",
                 }}
@@ -391,7 +392,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                             borderRadius: Math.max(4, cellSize * 0.2),
                             backgroundColor: isFuture ? "transparent" : getColor(spend, isSelected),
                             boxShadow: isSelected ? `0 0 12px ${COLORS.electricCyan}60` : undefined,
-                            outline: isToday && !isSelected ? `2px solid rgba(255,255,255,0.25)` : undefined,
+                            outline: isToday && !isSelected ? "2px solid var(--app-color-border-strong)" : undefined,
                             outlineOffset: -1,
                             cursor: isFuture ? "default" : "pointer",
                           }}
@@ -410,15 +411,15 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                           >
                             <div
                               style={{
-                                background: "#0B1220",
-                                border: "1px solid rgba(255,255,255,0.1)",
+                                background: "var(--app-color-surface-overlay)",
+                                border: "1px solid var(--app-color-border-strong)",
                                 borderRadius: 10,
                                 padding: "6px 10px",
                                 boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>
+                              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--app-color-text-primary)" }}>
                                 {formatDateLabel(date, {
                                   weekday: "short",
                                   month: "short",
@@ -433,7 +434,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                                   fontSize: 11,
                                   fontWeight: 700,
                                   marginTop: 2,
-                                  color: spend > 0 ? COLORS.electricCyan : "#6b7280",
+                                  color: spend > 0 ? COLORS.electricCyan : "var(--app-color-text-tertiary)",
                                 }}
                               >
                                 {spend > 0 ? `$${spend.toFixed(2)} spent` : "No spend"}
@@ -452,21 +453,26 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
       </div>
 
       {selectedDate && (
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          onClick={() => onSelectDate(null)}
-          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-400 transition-colors hover:text-cyan-300"
         >
-          <X size={10} />
-          Showing{" "}
-          {formatDateLabel(selectedDate, {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          })}{" "}
-          · Clear
-        </motion.button>
+          <AppButton
+          onClick={() => onSelectDate(null)}
+            variant="quietAccent"
+            size="sm"
+            className="h-auto px-0 py-0 text-[10px] uppercase tracking-widest"
+          >
+            <X size={10} />
+            Showing{" "}
+            {formatDateLabel(selectedDate, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            · Clear
+          </AppButton>
+        </motion.div>
       )}
 
       <div
@@ -476,7 +482,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
           fontWeight: 900,
           textTransform: "uppercase",
           letterSpacing: "0.1em",
-          color: "#6b7280",
+          color: "var(--app-color-text-tertiary)",
         }}
       >
         <span>Less</span>
@@ -594,7 +600,7 @@ function AddPanel({
               <AppSheetDescription>
                 {isEdit ? "Update a manual transaction and keep the feed consistent." : "Log a manual transaction with type, category, date, and satisfaction context."}
               </AppSheetDescription>
-              <div className="mt-3 text-[10px] font-black uppercase tracking-[0.32em] text-cyan-400">
+              <div className="mt-3 text-[10px] font-black uppercase tracking-[0.32em] text-[var(--app-accent-cyan-soft)]">
                 {isEdit ? "Update" : "Manual Entry"}
               </div>
             </div>
@@ -644,9 +650,11 @@ function AddPanel({
           </div>
 
           <FormField label="Category" className="relative">
-            <button
+            <AppButton
               onClick={() => setCategoryOpen((o) => !o)}
-              className="flex w-full items-center justify-between rounded-[var(--app-radius-control)] border border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-inset)] px-6 py-5 text-left transition-all hover:border-[var(--app-color-border-focus)]"
+              variant="outline"
+              size="lg"
+              className="w-full justify-between px-6 text-left"
             >
               <div className="flex items-center gap-3">
                 <selectedCat.icon size={18} style={{ color: selectedCat.color }} />
@@ -657,7 +665,7 @@ function AddPanel({
               ) : (
                 <ChevronDown size={18} className="text-[var(--app-color-text-tertiary)]" />
               )}
-            </button>
+            </AppButton>
 
             {categoryOpen && (
               <Surface
@@ -667,17 +675,19 @@ function AddPanel({
                 style={{ top: "100%" }}
               >
                 {CATEGORY_OPTIONS.map((cat) => (
-                  <button
+                  <AppButton
                     key={cat.value}
                     onClick={() => {
                       set("category", cat.value);
                       setCategoryOpen(false);
                     }}
-                    className="flex w-full items-center gap-3 px-6 py-4 text-left transition-all hover:bg-[var(--app-color-surface-inset)]"
+                    variant="quiet"
+                    size="lg"
+                    className="w-full justify-start rounded-none px-6 text-left hover:bg-[var(--app-color-surface-inset)]"
                   >
                     <cat.icon size={16} style={{ color: cat.color }} />
                     <span className="text-sm font-bold text-[var(--app-color-text-primary)]">{cat.label}</span>
-                  </button>
+                  </AppButton>
                 ))}
               </Surface>
             )}
@@ -751,25 +761,28 @@ const FilterBar = React.memo(function FilterBar({
 
   const btnClass = (active: boolean) =>
     cn(
-      "flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all",
+      appButtonVariants({ variant: active ? "info" : "outline", size: "sm" }),
+      "justify-between rounded-xl px-4 text-[10px] tracking-widest shadow-none",
       active
-        ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400"
-        : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] text-[var(--app-color-text-secondary)] hover:border-[var(--app-color-border-strong)] hover:text-[var(--app-color-text-primary)]"
+        ? ""
+        : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] text-[var(--app-color-text-secondary)]"
     );
 
   return (
     <div data-filterbar className="flex items-center gap-2 flex-wrap" style={{ position: "relative", zIndex: 100 }}>
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "date" ? null : "date")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!(filters.date_from || filters.date_to))}
         >
           {filters.date_from || filters.date_to
             ? `${filters.date_from || "…"} → ${filters.date_to || "…"}`
             : "Date Range"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "date" && (
           <div
@@ -794,7 +807,7 @@ const FilterBar = React.memo(function FilterBar({
                 size="sm"
               />
             </div>
-            <AppButton type="button" variant="quiet" size="sm" onClick={() => setOpen(null)} className="w-full justify-center text-cyan-400">
+            <AppButton type="button" variant="quietAccent" size="sm" onClick={() => setOpen(null)} className="w-full justify-center">
               Apply
             </AppButton>
           </div>
@@ -802,56 +815,61 @@ const FilterBar = React.memo(function FilterBar({
       </div>
 
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "cat" ? null : "cat")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!filters.category)}
         >
           {filters.category ? getCategoryMeta(filters.category).label : "Category"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "cat" && (
           <div
             style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 9999, minWidth: 180 }}
             className="app-surface-overlay overflow-hidden rounded-2xl shadow-2xl"
           >
-            <button
+            <AppButton
               type="button"
               onClick={() => {
                 onChange({ ...filters, category: "" });
                 setOpen(null);
               }}
-              className="w-full px-5 py-3 text-left text-[10px] font-black uppercase text-[var(--app-color-text-tertiary)] hover:bg-[var(--app-color-surface-inset)]"
+              variant="quiet"
+              size="sm"
+              className="w-full justify-start rounded-none px-5 text-left text-[var(--app-color-text-tertiary)] hover:bg-[var(--app-color-surface-inset)]"
             >
               All
-            </button>
+            </AppButton>
 
             {CATEGORY_OPTIONS.map((cat) => (
-              <button
+              <AppButton
                 key={cat.value}
                 type="button"
                 onClick={() => {
                   onChange({ ...filters, category: cat.value });
                   setOpen(null);
                 }}
-                className={cn(
-                  "flex w-full items-center gap-3 px-5 py-3 text-left transition-all hover:bg-[var(--app-color-surface-inset)]",
-                  filters.category === cat.value && "bg-[var(--app-color-surface-inset)]"
-                )}
+                variant={filters.category === cat.value ? "secondary" : "quiet"}
+                size="sm"
+                className="w-full justify-start rounded-none px-5 text-left hover:bg-[var(--app-color-surface-inset)]"
               >
                 <cat.icon size={14} style={{ color: cat.color }} />
                 <span className="text-xs font-bold text-[var(--app-color-text-primary)]">{cat.label}</span>
-              </button>
+              </AppButton>
             ))}
           </div>
         )}
       </div>
 
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "type" ? null : "type")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!filters.direction)}
         >
           {filters.direction
@@ -860,7 +878,7 @@ const FilterBar = React.memo(function FilterBar({
               : filters.direction.charAt(0).toUpperCase() + filters.direction.slice(1)
             : "Type"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "type" && (
           <div
@@ -873,20 +891,19 @@ const FilterBar = React.memo(function FilterBar({
               { label: "Income", value: "income" },
               { label: "Refund", value: "refund" },
             ].map((opt) => (
-              <button
+              <AppButton
                 key={opt.value}
                 type="button"
                 onClick={() => {
                   onChange({ ...filters, direction: opt.value });
                   setOpen(null);
                 }}
-                className={cn(
-                  "w-full px-5 py-3 text-left text-xs font-black text-[var(--app-color-text-primary)] transition-all hover:bg-[var(--app-color-surface-inset)]",
-                  filters.direction === opt.value && "bg-[var(--app-color-surface-inset)]"
-                )}
+                variant={filters.direction === opt.value ? "secondary" : "quiet"}
+                size="sm"
+                className="w-full justify-start rounded-none px-5 text-left hover:bg-[var(--app-color-surface-inset)]"
               >
                 {opt.label}
-              </button>
+              </AppButton>
             ))}
           </div>
         )}
@@ -949,7 +966,7 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
           placeholder="Search transactions..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          startAdornment={<Search size={18} className="text-[var(--app-color-text-tertiary)] group-focus-within:text-cyan-400 transition-colors" />}
+          startAdornment={<Search size={18} className="text-[var(--app-color-text-tertiary)] group-focus-within:text-[var(--app-accent-cyan-soft)] transition-colors" />}
         />
       </div>
 
@@ -957,20 +974,16 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
         <FilterBar filters={filters} onChange={onFiltersChange} onClear={onClearFilters} />
       </div>
 
-      <motion.div
-        whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-        whileTap={{ scale: 0.95 }}
-        className="inline-flex rounded-full"
+      <AppButton
+        type="button"
+        onClick={onOpenAdd}
+        aria-label="Add transaction"
+        variant="info"
+        size="icon"
+        className="size-14 rounded-full"
       >
-        <motion.button
-          type="button"
-          onClick={onOpenAdd}
-          aria-label="Add transaction"
-          className="inline-flex size-14 items-center justify-center rounded-full border-0 bg-cyan-400 text-[#08111f] shadow-[var(--app-shadow-interactive)] transition-colors hover:bg-cyan-300 focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-        >
-          <Plus size={22} strokeWidth={3} />
-        </motion.button>
-      </motion.div>
+        <Plus size={22} strokeWidth={3} />
+      </AppButton>
     </div>
   );
 });
@@ -1036,7 +1049,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
 
         return (
           <div key={group.date} className="space-y-4">
-            <button onClick={() => toggleGroup(group.date)} className="flex items-center gap-4 w-full text-left group">
+            <AppButton onClick={() => toggleGroup(group.date)} variant="quiet" className="group h-auto w-full justify-start gap-4 px-0 py-0 text-left">
               <div className="rounded-full border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] px-4 py-1 text-[10px] font-black uppercase tracking-[0.3em] text-[var(--app-color-text-tertiary)]">
                 {group.dateLabel}
               </div>
@@ -1045,7 +1058,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
                 size={16}
                 className={cn("text-[var(--app-color-text-tertiary)] transition-transform duration-300", !isExpanded && "-rotate-90")}
               />
-            </button>
+            </AppButton>
 
             <AnimatePresence initial={false}>
               {isExpanded && (
@@ -1172,7 +1185,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
                             }}
                             variant="quiet"
                             size="sm"
-                            className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-cyan-400"
+                            className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-[var(--app-accent-cyan-soft)]"
                              title="Give feedback"
                            >
                              <MessageSquare size={18} />
@@ -1187,7 +1200,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
                                 }}
                                 variant="quiet"
                                 size="sm"
-                                className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-cyan-400"
+                                className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-[var(--app-accent-cyan-soft)]"
                                 title="Edit"
                               >
                                 <Pencil size={18} />
@@ -1402,7 +1415,7 @@ export const TransactionsPage = () => {
 
       <div className="space-y-4">
         <h3 className="flex items-center gap-2 text-xl font-black tracking-tight text-[var(--app-color-text-primary)]">
-          <Calendar size={20} className="text-cyan-400" /> Spending Calendar
+          <Calendar size={20} className="text-[var(--app-accent-cyan-soft)]" /> Spending Calendar
         </h3>
         <ElectricCard className="p-8" elevation={0}>
           <SpendingCalendar

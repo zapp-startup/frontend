@@ -54,7 +54,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
 
   return (
     <AppDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AppDialogContent className="max-h-[min(92vh,920px)] max-w-2xl overflow-hidden border-cyan-400/20 p-0 [&>[data-slot=dialog-close]]:top-6 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:rounded-[var(--app-radius-md)] [&>[data-slot=dialog-close]]:border [&>[data-slot=dialog-close]]:border-[var(--app-color-border-strong)] [&>[data-slot=dialog-close]]:bg-[var(--app-color-surface-inset)] [&>[data-slot=dialog-close]]:p-2 [&>[data-slot=dialog-close]]:text-[var(--app-color-text-secondary)] [&>[data-slot=dialog-close]]:opacity-100">
+      <AppDialogContent className="max-h-[min(92vh,920px)] max-w-2xl overflow-hidden border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)] p-0 [&>[data-slot=dialog-close]]:top-6 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:rounded-[var(--app-radius-md)] [&>[data-slot=dialog-close]]:border [&>[data-slot=dialog-close]]:border-[var(--app-color-border-strong)] [&>[data-slot=dialog-close]]:bg-[var(--app-color-surface-inset)] [&>[data-slot=dialog-close]]:p-2 [&>[data-slot=dialog-close]]:text-[var(--app-color-text-secondary)] [&>[data-slot=dialog-close]]:opacity-100">
         {step === "input" && (
           <>
             <AppDialogHeader className="gap-4 px-8 pt-8 pr-20">
@@ -78,22 +78,24 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               <Surface
                 variant="inset"
                 padding="lg"
-                className="space-y-4 border-cyan-400/20 bg-cyan-500/6"
+                className="space-y-4 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2">
-                    <div className="app-label text-cyan-300">Quick capture</div>
+                    <div className="app-label text-[var(--app-accent-cyan-soft)]">Quick capture</div>
                     <p className="app-helper max-w-xl">
                       Start with an estimated price and category, or scan a product
                       when image intake is wired up.
                     </p>
                   </div>
-                  <Sparkles className="size-5 text-cyan-300" aria-hidden="true" />
+                  <Sparkles className="size-5 text-[var(--app-accent-cyan-soft)]" aria-hidden="true" />
                 </div>
 
-                <button
+                <AppButton
                   type="button"
-                  className="flex w-full flex-col items-center justify-center gap-3 rounded-[var(--app-radius-panel)] border border-dashed border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-base)]/55 px-6 py-10 text-center transition-colors hover:border-cyan-400/45 hover:bg-cyan-500/8 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                  variant="outline"
+                  size="hero"
+                  className="flex h-auto w-full flex-col items-center justify-center gap-3 rounded-[var(--app-radius-panel)] border-dashed bg-[var(--app-color-surface-base)]/55 px-6 py-10 text-center normal-case tracking-normal hover:border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_8%,transparent)]"
                 >
                   <IconBadge tone="neutral" size="md">
                     <Camera />
@@ -104,7 +106,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
                       Placeholder entry point for the upcoming capture flow.
                     </p>
                   </div>
-                </button>
+                </AppButton>
               </Surface>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -176,11 +178,11 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
               className="flex flex-col items-center gap-5"
             >
-              <IconBadge
-                tone="cyan"
-                size="lg"
-                className="size-24 rounded-full border-cyan-400/35 bg-cyan-500/10"
-              >
+                <IconBadge
+                  tone="cyan"
+                  size="lg"
+                  className="size-24 rounded-full border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_10%,transparent)]"
+                >
                 <motion.div
                   animate={shouldReduceMotion ? undefined : { rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
@@ -210,7 +212,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               <div className="space-y-3">
                 <div
                   className="text-7xl font-black tracking-tight sm:text-8xl"
-                  style={{ color: COLORS.electricRed }}
+                    style={{ color: "var(--app-accent-red-soft)" }}
                 >
                   72
                 </div>
@@ -226,14 +228,14 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               <Surface
                 variant="inset"
                 padding="lg"
-                className="space-y-4 border-red-400/25 bg-red-500/8"
+                className="space-y-4 border-[color:color-mix(in_srgb,var(--app-accent-red-soft)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-red-soft)_8%,transparent)]"
               >
                 <div className="flex items-center gap-3">
                   <IconBadge tone="red" size="sm">
                     <AlertCircle />
                   </IconBadge>
                   <div>
-                    <div className="app-label text-red-300">Recommendation</div>
+                    <div className="app-label text-[var(--app-accent-red-soft)]">Recommendation</div>
                     <h3 className="app-card-title text-[var(--app-color-text-primary)]">
                       Delay recommended
                     </h3>
@@ -252,9 +254,8 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
                   Skip
                 </AppButton>
                 <AppButton
-                  variant="outline"
+                  variant="danger"
                   size="lg"
-                  className="border-red-400/35 bg-red-500/8 text-red-300 hover:bg-red-500/12"
                 >
                   Delay 24h
                 </AppButton>

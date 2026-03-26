@@ -31,6 +31,7 @@ import {
   AppDialogHeader,
   AppDialogTitle,
   AppInput,
+  AppSwitch,
   EmptyState,
   FormField,
   LoadingState,
@@ -282,7 +283,7 @@ export function CirclesPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <AppButton onClick={() => handleAcceptInvite(invite.id)} variant="secondary" className="border-green-500/20 bg-green-500/20 text-green-300 hover:bg-green-500/30">
+                  <AppButton onClick={() => handleAcceptInvite(invite.id)} variant="success">
                     Accept
                   </AppButton>
                   <AppButton onClick={() => handleDeclineInvite(invite.id)} variant="outline">
@@ -309,28 +310,29 @@ export function CirclesPage() {
             />
           )}
           {groups.map((group) => (
-            <motion.button
+            <AppButton
               key={group.id}
-              whileHover={{ scale: 1.01 }}
               onClick={() => {
                 setSelectedGroupId(group.id);
                 setPage(1);
               }}
+              variant="outline"
+              size="lg"
               className={cn(
-                "w-full rounded-[2rem] border p-5 text-left transition-all",
+                "h-auto w-full rounded-[2rem] p-5 text-left transition-all",
                 selectedGroupId === group.id
-                  ? "border-cyan-500/40 bg-cyan-500/8"
-                  : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] hover:border-[var(--app-color-border-strong)]",
+                  ? "justify-start border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_28%,var(--app-color-border-strong))] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_8%,var(--app-color-surface-base))] text-[var(--app-color-text-primary)]"
+                  : "justify-start border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)]",
               )}
             >
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-black text-[var(--app-color-text-primary)]">{group.name}</h3>
-                {selectedGroupId === group.id && <div className="h-2 w-2 rounded-full bg-cyan-400" />}
+                {selectedGroupId === group.id && <div className="h-2 w-2 rounded-full bg-[var(--app-accent-cyan-soft)] shadow-[0_0_8px_color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)]" />}
               </div>
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                 {group.member_count} members • {group.is_private ? "private" : "public"}
               </div>
-            </motion.button>
+            </AppButton>
           ))}
         </div>
 
@@ -358,8 +360,7 @@ export function CirclesPage() {
                   </div>
                   <AppButton
                     onClick={handleLeave}
-                    variant="outline"
-                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    variant="quietDanger"
                   >
                     <LogOut size={16} />
                     Leave
@@ -371,8 +372,8 @@ export function CirclesPage() {
                     Invite Code
                   </div>
                   <div className="flex items-center gap-3">
-                    <code className="flex-1 text-lg font-black text-cyan-300">{selectedGroup.invite_code}</code>
-                    <AppButton onClick={copyInviteCode} variant="secondary" className="border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20">
+                    <code className="flex-1 text-lg font-black text-[var(--app-accent-cyan-soft)]">{selectedGroup.invite_code}</code>
+                    <AppButton onClick={copyInviteCode} variant="info">
                       {copied ? <Check size={16} /> : <Copy size={16} />}
                     </AppButton>
                   </div>
@@ -411,11 +412,11 @@ export function CirclesPage() {
                           setDays(window);
                           setPage(1);
                         }}
-                        variant={days === window ? "secondary" : "outline"}
+                        variant={days === window ? "quietAccent" : "outline"}
                         className={cn(
                           "rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em]",
                           days === window
-                            ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/20"
+                            ? "border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)] text-[var(--app-accent-cyan-soft)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)]"
                             : "",
                         )}
                       >
@@ -440,7 +441,8 @@ export function CirclesPage() {
                             padding="md"
                             className={cn(
                               "flex items-center gap-5",
-                              entry.rank === leaderboard.current_user_rank && "border-cyan-400/30 bg-cyan-500/10",
+                              entry.rank === leaderboard.current_user_rank &&
+                                 "border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_8%,var(--app-color-surface-inset))]",
                             )}
                           >
                             <div className="w-10 text-center">
@@ -453,7 +455,7 @@ export function CirclesPage() {
                             <div className="flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-lg font-black text-[var(--app-color-text-primary)]">{entry.username}</span>
-                                {entry.role === "admin" && <Shield size={14} className="text-purple-400" />}
+                                {entry.role === "admin" && <Shield size={14} className="text-[var(--app-accent-purple-soft)]" />}
                                 {entry.rank === leaderboard.current_user_rank && <StatusChip tone="info">You</StatusChip>}
                               </div>
                               <div className="mt-2 flex flex-wrap gap-2">
@@ -463,7 +465,7 @@ export function CirclesPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-2xl font-black text-cyan-300">{entry.points_total}</div>
+                              <div className="text-2xl font-black text-[var(--app-accent-cyan-soft)]">{entry.points_total}</div>
                               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                                 points
                               </div>
@@ -510,7 +512,7 @@ export function CirclesPage() {
 
               <section className="space-y-4">
                 <h2 className="flex items-center gap-2 text-2xl font-black text-[var(--app-color-text-primary)]">
-                  <Users size={20} className="text-purple-400" />
+                  <Users size={20} className="text-[var(--app-accent-purple-soft)]" />
                   Members
                 </h2>
                 <Surface variant="card" padding="none" className="overflow-hidden">
@@ -521,7 +523,7 @@ export function CirclesPage() {
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-base font-black text-[var(--app-color-text-primary)]">{member.username}</span>
-                            {member.role === "admin" && <Shield size={14} className="text-purple-400" />}
+                            {member.role === "admin" && <Shield size={14} className="text-[var(--app-accent-purple-soft)]" />}
                             {isCurrentUser && <StatusChip tone="info">You</StatusChip>}
                             <StatusChip tone={member.role === "admin" ? "accent" : "neutral"}>{member.role}</StatusChip>
                           </div>
@@ -541,8 +543,8 @@ export function CirclesPage() {
                             </AppButton>
                             <AppButton
                               onClick={() => handleRemoveMember(member.id)}
-                              variant="outline"
-                              className="rounded-2xl border-red-500/30 text-red-400 hover:bg-red-500/10"
+                              variant="danger"
+                              className="rounded-2xl"
                             >
                               Remove
                             </AppButton>
@@ -608,19 +610,14 @@ function CreateCircleDialog({
               placeholder="Budget Warriors"
             />
           </FormField>
-          <button
-            type="button"
-            onClick={() => setIsPrivate((current) => !current)}
-            className="flex w-full items-center justify-between rounded-[1.6rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] px-5 py-4"
-          >
-            <div className="text-left">
-              <div className="font-black text-[var(--app-color-text-primary)]">Private Circle</div>
-              <div className="text-xs text-[var(--app-color-text-tertiary)]">Members join with the invite code.</div>
-            </div>
-            <div className={cn("h-7 w-14 rounded-full p-1 transition-all", isPrivate ? "bg-cyan-500" : "bg-white/10")}>
-              <div className={cn("h-5 w-5 rounded-full bg-white transition-all", isPrivate ? "translate-x-7" : "translate-x-0")} />
-            </div>
-          </button>
+          <Surface variant="inset" padding="md" className="rounded-[1.6rem]">
+            <AppSwitch
+              checked={isPrivate}
+              onCheckedChange={setIsPrivate}
+              label="Private Circle"
+              description="Members join with the invite code."
+            />
+          </Surface>
           <AppDialogFooter className="px-0 pb-0">
             <AppButton type="submit" disabled={submitting}>
               {submitting ? "Creating..." : "Create Circle"}

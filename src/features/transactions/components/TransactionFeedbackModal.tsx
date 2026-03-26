@@ -183,7 +183,7 @@ export function TransactionFeedbackModal({
           <FormField
             label={
               <>
-                <span>Satisfaction</span> <span className="text-red-400">*</span>
+                <span>Satisfaction</span> <span className="text-[var(--app-accent-red-soft)]">*</span>
               </>
             }
             helperText="Rate the outcome from 1 to 10."
@@ -271,8 +271,8 @@ export function TransactionFeedbackModal({
             </div>
           </FormField>
 
-          <Surface variant="inset" padding="sm" className="space-y-2 border-cyan-500/20 bg-cyan-500/6">
-            <div className="app-label text-cyan-300">Category guidance</div>
+          <Surface variant="inset" padding="sm" className="space-y-2 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]">
+            <div className="app-label text-[var(--app-accent-cyan-soft)]">Category guidance</div>
             <p className="app-helper">
               Feedback is most useful when it captures how this spend felt after real use, not just the purchase moment.
             </p>

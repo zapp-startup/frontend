@@ -8,6 +8,7 @@ import {
   AppDialogHeader,
   AppDialogTitle,
   AppInput,
+  AppSwitch,
   EmptyState,
   FormField,
   LoadingState,
@@ -41,6 +42,21 @@ describe("system components", () => {
 
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
     expect(screen.getByText("Loading data")).toBeInTheDocument();
+  });
+
+  it("renders semantic button variants and the app switch wrapper", () => {
+    render(
+      <div>
+        <AppButton variant="info">Info action</AppButton>
+        <AppButton variant="accent">Accent action</AppButton>
+        <AppSwitch checked onCheckedChange={() => undefined} label="Private" description="Invite only" />
+      </div>
+    );
+
+    expect(screen.getByRole("button", { name: "Info action" })).toHaveClass("app-button");
+    expect(screen.getByRole("button", { name: "Accent action" })).toHaveClass("app-button");
+    expect(screen.getByRole("switch", { name: /private/i })).toBeInTheDocument();
+    expect(screen.getByText("Invite only")).toBeInTheDocument();
   });
 
   it("renders the app dialog wrapper", () => {

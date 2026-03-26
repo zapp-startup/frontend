@@ -3,7 +3,6 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 
@@ -48,7 +47,7 @@ export function SignUpPage() {
         <Surface variant="overlay" padding="xl" className="backdrop-blur-xl">
           <div className="mb-8 flex justify-center">
             <IconBadge tone="cyan" size="lg" className="shadow-[var(--app-shadow-interactive)]">
-              <Zap className="text-cyan-300" />
+              <Zap />
             </IconBadge>
           </div>
           <SectionHeader
@@ -111,8 +110,7 @@ export function SignUpPage() {
             Already have an account?{" "}
             <NavLink
               to="/login"
-              className="font-semibold transition-colors hover:opacity-90"
-              style={{ color: COLORS.electricCyan }}
+              className="font-semibold text-[var(--app-accent-cyan)] transition-colors hover:opacity-90"
             >
               Sign in
             </NavLink>

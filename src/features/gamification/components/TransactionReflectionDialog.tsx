@@ -79,11 +79,11 @@ export function TransactionReflectionDialog({
   return (
     <AppDialog open={open} onOpenChange={onOpenChange}>
       <AppDialogContent className="max-w-xl">
-        <AppDialogHeader>
-          <AppDialogTitle className="flex items-center gap-2 text-2xl font-black">
-            <MessageSquare size={20} className="text-cyan-400" />
-            Reflect On This Purchase
-          </AppDialogTitle>
+          <AppDialogHeader>
+            <AppDialogTitle className="flex items-center gap-2 text-2xl font-black">
+             <MessageSquare size={20} className="text-[var(--app-accent-cyan-soft)]" />
+             Reflect On This Purchase
+            </AppDialogTitle>
           <AppDialogDescription>
             Capture whether this spend felt worth it while the context is still fresh.
           </AppDialogDescription>
@@ -115,23 +115,24 @@ export function TransactionReflectionDialog({
 
           <FormField label="Was It Worth It?">
             <div className="grid grid-cols-2 gap-3">
-              {[
+              {[ 
                 { label: "Worth It", value: true },
                 { label: "Not Worth It", value: false },
               ].map((option) => (
-                <button
+                <AppButton
                   key={option.label}
                   type="button"
                   onClick={() => setWasWorthIt(option.value)}
-                  className={cn(
-                    "rounded-2xl border px-4 py-3 text-sm font-black transition-all",
-                    wasWorthIt === option.value
-                      ? "border-cyan-400 bg-cyan-500/15 text-cyan-200"
-                        : "app-input text-[var(--app-color-text-secondary)] hover:border-[var(--app-color-border-focus)] hover:text-[var(--app-color-text-primary)]",
-                  )}
-                >
+                    variant={wasWorthIt === option.value ? "quietAccent" : "outline"}
+                    className={cn(
+                      "rounded-2xl text-sm font-black transition-all",
+                      wasWorthIt === option.value
+                      ? "border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_10%,transparent)]"
+                      : "app-input text-[var(--app-color-text-secondary)] hover:border-[var(--app-color-border-focus)] hover:text-[var(--app-color-text-primary)]",
+                    )}
+                  >
                   {option.label}
-                </button>
+                </AppButton>
               ))}
             </div>
           </FormField>
@@ -144,8 +145,16 @@ export function TransactionReflectionDialog({
             />
           </FormField>
 
-          <Surface variant="inset" padding="sm" className="rounded-[1.5rem] border-cyan-500/20 bg-cyan-500/8 text-sm text-[var(--app-color-text-secondary)]">
-            <div className="mb-1 flex items-center gap-2 font-black text-cyan-300">
+          <Surface
+            variant="inset"
+            padding="sm"
+            className="rounded-[1.5rem] text-sm text-[var(--app-color-text-secondary)]"
+            style={{
+              borderColor: "color-mix(in srgb, var(--app-accent-cyan-soft) 20%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--app-accent-cyan-soft) 8%, transparent)",
+            }}
+          >
+            <div className="mb-1 flex items-center gap-2 font-black text-[var(--app-accent-cyan-soft)]">
               <Sparkles size={14} />
               Same-day reflection helps your streak and badges.
             </div>

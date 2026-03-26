@@ -3,6 +3,7 @@ export { AppDialog, AppDialogBody, AppDialogContent, AppDialogDescription, AppDi
 export { AppInput } from "./app-input";
 export { AppSelect, type AppSelectOption } from "./app-select";
 export { AppSheet, AppSheetBody, AppSheetContent, AppSheetDescription, AppSheetFooter, AppSheetHeader, AppSheetTitle, AppSheetTrigger } from "./app-sheet";
+export { AppSwitch } from "./app-switch";
 export { AppTextarea } from "./app-textarea";
 export { EmptyState } from "./empty-state";
 export { FormField } from "./form-field";
@@ -12,4 +13,4 @@ export { LoadingState } from "./loading-state";
 export { MetricCard } from "./metric-card";
 export { SectionHeader } from "./section-header";
 export { StatusChip } from "./status-chip";
-export { Surface, surfaceVariants } from "./surface";
+export { Surface, getSurfaceAccentStyle, surfaceVariants } from "./surface";

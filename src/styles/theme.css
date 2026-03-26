@@ -50,8 +50,20 @@
   --app-text-secondary: #cbd5e1;
   --app-text-muted: #6b7280;
   --app-text-faint: #4b5563;
+  --app-accent-green: #3cff9e;
+  --app-accent-red: #ff4d4d;
+  --app-accent-blue: #3b82ff;
   --app-accent-cyan: #22f0ff;
+  --app-accent-teal: #00ffd1;
   --app-accent-purple: #b47cff;
+  --app-accent-yellow: #ffe066;
+  --app-accent-green-soft: #3cff9e;
+  --app-accent-red-soft: #ff4d4d;
+  --app-accent-blue-soft: #3b82ff;
+  --app-accent-cyan-soft: #22f0ff;
+  --app-accent-teal-soft: #00ffd1;
+  --app-accent-purple-soft: #b47cff;
+  --app-accent-yellow-soft: #ffe066;
   --app-radius-lg: 1.5rem;
   --app-radius-xl: 2rem;
   --app-radius-pill: 2.5rem;
@@ -71,7 +83,7 @@
   --app-color-text-tertiary: var(--app-text-muted);
   --app-color-text-faint: var(--app-text-faint);
   --app-color-text-inverse: #08111f;
-  --app-color-action-primary-bg: var(--app-accent-cyan);
+  --app-color-action-primary-bg: var(--app-accent-cyan-soft);
   --app-color-action-primary-fg: #08111f;
   --app-color-action-secondary-bg: color-mix(in srgb, var(--app-surface-muted) 84%, transparent);
   --app-color-action-secondary-fg: var(--app-text-primary);
@@ -160,6 +172,13 @@
   --ring: rgba(59, 130, 246, 0.35);
   --app-color-border-focus: rgba(59, 130, 246, 0.4);
   --app-color-text-inverse: #ffffff;
+  --app-accent-green-soft: #1faf68;
+  --app-accent-red-soft: #d64c5f;
+  --app-accent-blue-soft: #2f6fdd;
+  --app-accent-cyan-soft: #0f8fa5;
+  --app-accent-teal-soft: #0d9e86;
+  --app-accent-purple-soft: #7c5bcf;
+  --app-accent-yellow-soft: #b98519;
   --app-shadow-ambient: 0 18px 40px rgba(8, 17, 31, 0.08);
   --app-shadow-raised: 0 16px 28px rgba(8, 17, 31, 0.08);
   --app-shadow-interactive: 0 0 24px rgba(59, 130, 246, 0.14);
@@ -425,6 +444,14 @@
     color: var(--app-color-text-secondary);
     font-size: 0.6875rem;
     font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .app-mini-label {
+    color: var(--app-color-text-tertiary);
+    font-size: 0.625rem;
+    font-weight: 900;
     letter-spacing: 0.18em;
     text-transform: uppercase;
   }

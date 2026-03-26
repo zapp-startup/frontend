@@ -3,7 +3,6 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
@@ -67,7 +66,7 @@ export function LoginPage() {
         <Surface variant="overlay" padding="xl" className="backdrop-blur-xl">
           <div className="mb-8 flex justify-center">
             <IconBadge tone="cyan" size="lg" className="shadow-[var(--app-shadow-interactive)]">
-              <Zap className="text-cyan-300" />
+              <Zap />
             </IconBadge>
           </div>
 
@@ -85,7 +84,7 @@ export function LoginPage() {
             variant="outline"
             size="md"
             onClick={handleGoogleSignIn}
-            className="w-full bg-white text-[var(--app-color-text-inverse)] hover:bg-slate-100"
+            className="w-full border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-base)]"
           >
             Continue with Google
           </AppButton>
@@ -128,8 +127,7 @@ export function LoginPage() {
             Don't have an account?{" "}
             <NavLink
               to="/signup"
-              className="font-semibold transition-colors hover:opacity-90"
-              style={{ color: COLORS.electricCyan }}
+              className="font-semibold text-[var(--app-accent-cyan)] transition-colors hover:opacity-90"
             >
               Sign up
             </NavLink>

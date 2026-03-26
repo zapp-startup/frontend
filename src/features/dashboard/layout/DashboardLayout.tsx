@@ -6,9 +6,9 @@ import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
 import { ThemeModeToggle } from "@/shared/components/layout/theme-mode-toggle";
-import { appButtonVariants } from "@/shared/components/system";
+import { AppButton, IconBadge } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
-import { COLORS, GLOWS, PAGE_ACCENTS } from "@/shared/theme";
+import { COLORS, PAGE_ACCENTS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
 import { PanelProvider } from "../context/PanelContext";
@@ -174,14 +174,14 @@ export function DashboardLayout() {
                         className="absolute inset-0 rounded-2xl border border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]"
                       />
                     )}
-                    <item.icon
-                      className={cn(
-                        "relative z-10 h-4 w-4 transition-colors",
-                        isActive
-                          ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]"
-                          : "text-[var(--app-color-text-tertiary)]"
-                      )}
-                    />
+                        <item.icon
+                          className={cn(
+                            "relative z-10 h-4 w-4 transition-colors",
+                            isActive
+                              ? "text-[var(--app-accent-cyan-soft)] drop-shadow-[0_0_12px_color-mix(in_srgb,var(--app-accent-cyan-soft)_45%,transparent)]"
+                              : "text-[var(--app-color-text-tertiary)]"
+                          )}
+                        />
                     <span className="relative z-10">{item.label}</span>
                   </>
                 )}
@@ -193,14 +193,16 @@ export function DashboardLayout() {
             <ThemeModeToggle />
             <div className="flex items-center gap-3 border-l border-[var(--app-color-border-subtle)] pl-3 sm:pl-4">
               <NavLink to="/profile" className="group/avatar flex items-center">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] border border-[var(--app-color-border-strong)] text-sm font-black uppercase tracking-[0.18em] text-white shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14 sm:text-base"
+                <IconBadge
+                  tone="cyan"
+                  size="md"
+                  className="h-12 w-12 border-[var(--app-color-border-strong)] text-sm font-black uppercase tracking-[0.18em] text-[var(--app-color-text-inverse)] shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14 sm:text-base"
                   style={{
                     backgroundImage: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})`,
                   }}
                 >
                   {userInitials}
-                </div>
+                </IconBadge>
               </NavLink>
             </div>
           </div>
@@ -214,17 +216,14 @@ export function DashboardLayout() {
       </main>
 
       <div className="fixed bottom-10 left-10 z-[100]">
-        <motion.button
-          whileHover={{ scale: 1.1, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
-          whileTap={{ scale: 0.9 }}
+        <AppButton
           onClick={() => setIsBuyAdvisorOpen(true)}
-          className={cn(
-            appButtonVariants({ variant: "floating", size: "icon" }),
-            "h-14 w-14 rounded-full shadow-2xl"
-          )}
+          variant="floating"
+          size="icon"
+          className="h-14 w-14 rounded-full shadow-2xl"
         >
           <Camera size={24} />
-        </motion.button>
+        </AppButton>
       </div>
 
       <ZappBot />

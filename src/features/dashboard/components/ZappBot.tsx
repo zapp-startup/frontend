@@ -216,7 +216,7 @@ export function ZappBot() {
           >
             <Surface
               variant="overlay"
-              className="flex h-[32rem] flex-col overflow-hidden border-purple-400/20"
+              className="flex h-[32rem] flex-col overflow-hidden border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)]"
               style={{ boxShadow: `${GLOWS.ambient(0.72)}, ${GLOWS.soft(COLORS.electricPurple)}` }}
             >
               <div className="flex items-center justify-between border-b border-[var(--app-color-border-subtle)] px-6 py-5">
@@ -263,14 +263,14 @@ export function ZappBot() {
                       className={cn(
                         "max-w-full rounded-[1.4rem] text-sm leading-relaxed break-words",
                         msg.sender === "user"
-                          ? "rounded-br-md border-purple-400/25 text-[var(--app-color-text-primary)]"
+                          ? "rounded-br-md border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_25%,transparent)] text-[var(--app-color-text-primary)]"
                           : "rounded-bl-md text-[var(--app-color-text-secondary)]"
                       )}
                       style={
                         msg.sender === "user"
                           ? {
-                              backgroundColor: `${COLORS.electricPurple}1f`,
-                              borderColor: `${COLORS.electricPurple}40`,
+                              backgroundColor: "color-mix(in srgb, var(--app-accent-purple-soft) 10%, transparent)",
+                              borderColor: "color-mix(in srgb, var(--app-accent-purple-soft) 22%, transparent)",
                             }
                           : undefined
                       }
@@ -329,7 +329,7 @@ export function ZappBot() {
                     size="icon"
                     disabled={!input.trim() || isTyping}
                     className="absolute top-1/2 right-2 size-10 -translate-y-1/2 rounded-full"
-                    style={{ backgroundColor: COLORS.electricPurple, color: "white" }}
+                    style={{ backgroundColor: "var(--app-accent-purple-soft)", color: "white" }}
                   >
                     <Send />
                   </AppButton>
@@ -349,14 +349,14 @@ export function ZappBot() {
               exit={shouldReduceMotion ? undefined : { opacity: 0, x: 12 }}
               className="absolute top-1/2 right-full mr-4 -translate-y-1/2"
             >
-              <Surface
-                variant="overlay"
-                padding="sm"
-                className="relative whitespace-nowrap border-purple-400/20 px-4 py-2"
-              >
-                <span className="app-label text-cyan-300">Ask a question</span>
-                <div className="absolute top-1/2 right-[-5px] size-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]" />
-              </Surface>
+                <Surface
+                  variant="overlay"
+                  padding="sm"
+                  className="relative whitespace-nowrap border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)] px-4 py-2"
+                >
+                  <span className="app-label text-[var(--app-accent-cyan-soft)]">Ask a question</span>
+                  <div className="absolute top-1/2 right-[-5px] size-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]" />
+                </Surface>
             </motion.div>
           )}
         </AnimatePresence>
@@ -385,7 +385,7 @@ export function ZappBot() {
             onMouseLeave={() => setIsHovered(false)}
             onClick={() => setIsOpen(true)}
             whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-            className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-purple-400/20 bg-[var(--app-color-surface-overlay)]"
+            className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)] bg-[var(--app-color-surface-overlay)]"
             style={{
               boxShadow: isHovered
                 ? `${GLOWS.medium(COLORS.electricPurple)}, ${GLOWS.ambient(0.72)}`

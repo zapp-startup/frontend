@@ -4,6 +4,7 @@ import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { formatDateLabel } from "@/shared/date";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS } from "@/shared/theme";
+import { AppButton, IconBadge, Surface } from "@/shared/components/system";
 import type { BankTransaction } from "@/api/banking.api";
 
 type RecentBankTransactionsSectionProps = {
@@ -43,12 +44,13 @@ export function RecentBankTransactionsSection({
   if (loading && transactions.length === 0) {
     return (
       <ElectricCard className="p-6" semanticColor={COLORS.electricGreen} elevation={1}>
-        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">
-          Recent bank transactions
-        </div>
+        <div className="mb-4 app-mini-label">Recent bank transactions</div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+            <div
+              key={i}
+              className="h-14 rounded-xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] animate-pulse"
+            />
           ))}
         </div>
       </ElectricCard>
@@ -61,18 +63,12 @@ export function RecentBankTransactionsSection({
 
   return (
     <ElectricCard className="p-6" semanticColor={COLORS.electricGreen} elevation={1}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-          Recent bank transactions
-        </div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="app-mini-label">Recent bank transactions</div>
         {onViewAll && transactions.length > 8 && (
-          <button
-            type="button"
-            onClick={onViewAll}
-            className="text-[10px] font-black uppercase tracking-widest text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
+          <AppButton type="button" onClick={onViewAll} variant="quietAccent" size="sm">
             View all
-          </button>
+          </AppButton>
         )}
       </div>
       <div className="space-y-2">
@@ -80,39 +76,40 @@ export function RecentBankTransactionsSection({
           const { text, isIncome } = formatAmount(tx.amount, tx.direction);
           const name = tx.merchant_name ?? tx.name ?? tx.description_raw ?? "Transaction";
           return (
-            <div
+            <Surface
               key={tx.id}
-              className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 border border-white/5"
+              variant="inset"
+              padding="sm"
+              className="flex items-center justify-between rounded-xl"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                    isIncome ? "bg-emerald-500/20" : "bg-white/10"
-                  )}
+                <IconBadge
+                  tone={isIncome ? "green" : "neutral"}
+                  size="sm"
+                  className="shrink-0 rounded-lg"
                 >
                   {isIncome ? (
-                    <ArrowDownRight size={14} className="text-emerald-400" />
+                    <ArrowDownRight size={14} />
                   ) : (
-                    <ArrowUpRight size={14} className="text-gray-400" />
+                    <ArrowUpRight size={14} className="text-[var(--app-color-text-tertiary)]" />
                   )}
-                </div>
+                </IconBadge>
                 <div className="min-w-0">
-                  <div className="font-bold text-white text-sm truncate">{name}</div>
-                  <div className="text-[10px] font-bold text-gray-500">
+                  <div className="truncate text-sm font-bold text-[var(--app-color-text-primary)]">{name}</div>
+                  <div className="app-mini-label">
                     {formatDate(tx.date ?? tx.occurred_at)}
                   </div>
                 </div>
               </div>
               <div
                 className={cn(
-                  "font-black text-sm flex-shrink-0 ml-2",
-                  isIncome ? "text-emerald-400" : "text-white"
+                  "ml-2 shrink-0 text-sm font-black",
+                  isIncome ? "text-[var(--app-accent-green-soft)]" : "text-[var(--app-color-text-primary)]"
                 )}
               >
                 {text}
               </div>
-            </div>
+            </Surface>
           );
         })}
       </div>

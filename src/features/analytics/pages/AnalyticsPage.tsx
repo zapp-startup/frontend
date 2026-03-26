@@ -33,8 +33,8 @@ export function AnalyticsPage() {
           <ElectricCard semanticColor={COLORS.electricBlue} className="relative z-20">
             <div className="mb-16 flex items-center justify-between">
               <div>
-                <h3 className="text-3xl font-black tracking-tight text-[var(--app-color-text-primary)]">Utility Overlap Analysis</h3>
-                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.3em] text-[var(--app-color-text-tertiary)]">
+                <h3 className="app-section-title text-[2rem]">Utility Overlap Analysis</h3>
+                <div className="mt-2 app-mini-label">
                   Subscription Stacking
                 </div>
               </div>
@@ -52,7 +52,7 @@ export function AnalyticsPage() {
                     </div>
                     <div
                       className="text-4xl font-black"
-                      style={{ color: bar.color, filter: `drop-shadow(0 0 10px ${bar.color}60)` }}
+                      style={{ color: bar.color }}
                     >
                       {bar.val}%
                     </div>
@@ -63,7 +63,7 @@ export function AnalyticsPage() {
                       animate={{ width: `${bar.val}%` }}
                       transition={{ duration: 2, delay: i * 0.3, ease: [0.23, 1, 0.32, 1] }}
                       className="h-full rounded-full"
-                      style={{ backgroundColor: bar.color, boxShadow: `0 0 25px ${bar.color}` }}
+                       style={{ backgroundColor: bar.color, boxShadow: `0 0 18px ${bar.color}66` }}
                     />
                   </div>
                 </div>
@@ -71,17 +71,10 @@ export function AnalyticsPage() {
             </div>
           </ElectricCard>
 
-          <div className="relative h-[400px]">
-            <ElectricCard
-              semanticColor={COLORS.electricCyan}
-              className="pointer-events-none absolute inset-0 z-10 translate-x-4 translate-y-8 grayscale opacity-40"
-              elevation={0}
-            >
-              <div className="h-40" />
-            </ElectricCard>
-            <ElectricCard semanticColor={COLORS.electricCyan} className="absolute inset-0 z-30">
+          <div className="relative">
+            <ElectricCard semanticColor={COLORS.electricCyan} className="relative z-10 min-h-[400px]">
               <div className="mb-10 flex items-center justify-between">
-                <h3 className="text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">Transaction History</h3>
+                <h3 className="app-card-title text-2xl">Transaction History</h3>
                 <StatusChip tone="neutral">Sample Feed</StatusChip>
               </div>
               <div className="space-y-4">
@@ -94,7 +87,7 @@ export function AnalyticsPage() {
                   >
                     <div className="flex items-center gap-8">
                       <div
-                        className="h-2 w-2 rounded-full shadow-[0_0_12px_#22F0FF]"
+                        className="h-2 w-2 rounded-full shadow-[0_0_12px_color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)]"
                         style={{ backgroundColor: COLORS.electricCyan }}
                       />
                       <span className="text-xl font-black tracking-tight text-[var(--app-color-text-primary)]">
@@ -114,10 +107,10 @@ export function AnalyticsPage() {
 
         <div className="space-y-8 lg:col-span-4">
           <div className="flex items-center gap-2 px-6">
-            <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.electricPurple }} />
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--app-color-text-tertiary)]">
-              Zapp CFO Intelligence
-            </h3>
+                <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--app-accent-purple-soft)" }} />
+                <h3 className="app-mini-label tracking-[0.4em]">
+                  Zapp CFO Intelligence
+                </h3>
           </div>
 
           <ElectricCard
@@ -127,7 +120,7 @@ export function AnalyticsPage() {
             elevation={1}
           >
             <div className="mb-8 flex items-center gap-5">
-              <div className="rounded-2xl p-4" style={{ backgroundColor: `${COLORS.electricGreen}10` }}>
+              <div className="rounded-2xl p-4" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.electricGreen} 10%, transparent)` }}>
                 <TrendingUp size={28} style={{ color: COLORS.electricGreen }} />
               </div>
               <h4 className="text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">Efficiency Insight</h4>
@@ -145,7 +138,7 @@ export function AnalyticsPage() {
             elevation={1}
           >
             <div className="mb-8 flex items-center gap-5">
-              <div className="rounded-2xl p-4" style={{ backgroundColor: `${COLORS.electricRed}10` }}>
+              <div className="rounded-2xl p-4" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.electricRed} 10%, transparent)` }}>
                 <ZapOff size={28} style={{ color: COLORS.electricRed }} />
               </div>
               <h4 className="text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">Low Value Item</h4>
@@ -158,7 +151,7 @@ export function AnalyticsPage() {
 
           <Surface variant="panel" padding="md" className="space-y-4">
             <div className="flex items-center gap-3">
-              <BarChart3 size={18} className="text-cyan-400" />
+              <BarChart3 size={18} className="text-[var(--app-accent-cyan-soft)]" />
               <div className="app-card-title">Signal Summary</div>
             </div>
             <div className="space-y-3">

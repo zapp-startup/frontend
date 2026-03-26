@@ -10,14 +10,24 @@ const appButtonVariants = cva(
       variant: {
         primary:
           "border-transparent bg-[var(--app-color-action-primary-bg)] text-[var(--app-color-action-primary-fg)] shadow-[var(--app-shadow-interactive)] hover:brightness-110 active:scale-[0.99]",
+        info:
+          "border-transparent bg-[var(--app-accent-cyan-soft)] text-[var(--app-color-text-inverse)] shadow-[var(--app-shadow-interactive)] hover:brightness-110 active:scale-[0.99]",
         secondary:
           "border-[var(--app-color-border-strong)] bg-[var(--app-color-action-secondary-bg)] text-[var(--app-color-action-secondary-fg)] hover:border-[var(--app-color-border-focus)] hover:bg-[var(--app-color-surface-base)]",
         quiet:
           "border-transparent bg-transparent text-[var(--app-color-action-quiet-fg)] hover:bg-[var(--app-color-surface-inset)] hover:text-[var(--app-color-text-primary)]",
+        quietAccent:
+          "border-transparent bg-transparent text-[var(--app-accent-cyan-soft)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_10%,transparent)] hover:text-[var(--app-accent-cyan-soft)]",
+        quietDanger:
+          "border-transparent bg-transparent text-[var(--app-color-status-danger)] hover:bg-[color:color-mix(in_srgb,var(--app-color-status-danger)_10%,transparent)] hover:text-[var(--app-color-status-danger)]",
         outline:
           "border-[var(--app-color-border-strong)] bg-transparent text-[var(--app-color-text-primary)] hover:bg-[var(--app-color-surface-inset)]",
         danger:
           "border-transparent bg-[var(--app-color-status-danger)] text-white shadow-[0_0_24px_rgba(255,77,77,0.18)] hover:brightness-105",
+        success:
+          "border-[color:color-mix(in_srgb,var(--app-accent-green-soft)_24%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-green-soft)_16%,transparent)] text-[var(--app-accent-green-soft)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-green-soft)_22%,transparent)]",
+        accent:
+          "border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_24%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_16%,transparent)] text-[var(--app-accent-purple-soft)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_22%,transparent)]",
         floating:
           "border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)] text-[var(--app-color-text-secondary)] shadow-[var(--app-shadow-raised)] hover:text-[var(--app-color-text-primary)] hover:shadow-[var(--app-shadow-interactive)]",
         hero:
