@@ -13,26 +13,36 @@ import {
   Trophy,
   UserPlus,
   Users,
-  X,
 } from "lucide-react";
 
 import { GamificationAPI, type Group, type GroupInvite, type GroupMember, type LeaderboardResponse } from "@/api/gamification.api";
 import { useAuth } from "@/features/auth";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { Button } from "@/shared/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 import { COLORS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { toast } from "sonner";
+import {
+  AppButton,
+  AppDialog,
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogDescription,
+  AppDialogFooter,
+  AppDialogHeader,
+  AppDialogTitle,
+  AppInput,
+  EmptyState,
+  FormField,
+  LoadingState,
+  MetricCard,
+  SectionHeader,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
+
+function formatDateLabel(value: string) {
+  return new Date(value).toLocaleDateString();
+}
 
 export function CirclesPage() {
   const { backendUser } = useAuth();
@@ -225,57 +235,61 @@ export function CirclesPage() {
 
   return (
     <div className="space-y-10 pb-32">
-      <div className="flex items-center justify-between gap-6">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-white">Circles</h1>
-          <p className="mt-2 text-lg font-medium text-gray-500">
-            Rolling leaderboards for accountability, streaks, and better spending habits.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
+      <SectionHeader
+        eyebrow="Gamification"
+        title="Circles"
+        titleClassName="app-page-title"
+        description="Rolling leaderboards for accountability, streaks, and better spending habits."
+        action={
+          <div className="flex items-center gap-3">
+          <AppButton
             onClick={() => setIsJoinOpen(true)}
-            className="rounded-2xl border border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+            variant="outline"
           >
             <UserPlus size={16} />
             Join
-          </Button>
-          <Button
+          </AppButton>
+          <AppButton
             onClick={() => setIsCreateOpen(true)}
-            className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400"
           >
             <Plus size={16} />
             Create
-          </Button>
+          </AppButton>
         </div>
-      </div>
+        }
+      />
 
       {invites.length > 0 && (
         <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="p-6">
           <div className="mb-4 flex items-center gap-2">
             <AlertCircle size={18} className="text-yellow-400" />
-            <h2 className="text-lg font-black text-white">Pending Invites</h2>
+            <h2 className="text-lg font-black text-[var(--app-color-text-primary)]">Pending Invites</h2>
           </div>
           <div className="space-y-3">
             {invites.map((invite) => (
-              <div key={invite.id} className="flex items-center justify-between rounded-[1.6rem] border border-white/[0.05] bg-white/[0.02] p-4">
+              <Surface
+                key={invite.id}
+                variant="inset"
+                padding="sm"
+                className="flex items-center justify-between rounded-[1.6rem]"
+              >
                 <div>
-                  <div className="font-black text-white">
+                  <div className="font-black text-[var(--app-color-text-primary)]">
                     {invite.group_name ?? `Circle #${invite.group}`}
                   </div>
-                  <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
+                  <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                     {invite.inviter_username ?? "Pending invite"} {invite.note ? `• ${invite.note}` : ""}
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => handleAcceptInvite(invite.id)} className="rounded-2xl bg-green-500/20 text-green-300 hover:bg-green-500/30">
+                  <AppButton onClick={() => handleAcceptInvite(invite.id)} variant="secondary" className="border-green-500/20 bg-green-500/20 text-green-300 hover:bg-green-500/30">
                     Accept
-                  </Button>
-                  <Button onClick={() => handleDeclineInvite(invite.id)} variant="outline" className="rounded-2xl border-white/10">
+                  </AppButton>
+                  <AppButton onClick={() => handleDeclineInvite(invite.id)} variant="outline">
                     Decline
-                  </Button>
+                  </AppButton>
                 </div>
-              </div>
+              </Surface>
             ))}
           </div>
         </ElectricCard>
@@ -283,21 +297,16 @@ export function CirclesPage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-4">
-          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">My Circles</div>
+          <div className="app-eyebrow">My Circles</div>
           {loading && (
-            <ElectricCard elevation={0}>
-              <div className="py-12 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
-                Loading circles...
-              </div>
-            </ElectricCard>
+            <LoadingState label="Loading circles..." lines={3} compact />
           )}
           {!loading && groups.length === 0 && (
-            <ElectricCard elevation={0}>
-              <div className="py-12 text-center">
-                <Users size={36} className="mx-auto mb-4 text-gray-700" />
-                <div className="font-bold text-gray-400">No circles yet.</div>
-              </div>
-            </ElectricCard>
+            <EmptyState
+              icon={<Users size={36} />}
+              title="No circles yet."
+              description="Create one or join an existing group to view rankings and members."
+            />
           )}
           {groups.map((group) => (
             <motion.button
@@ -311,14 +320,14 @@ export function CirclesPage() {
                 "w-full rounded-[2rem] border p-5 text-left transition-all",
                 selectedGroupId === group.id
                   ? "border-cyan-500/40 bg-cyan-500/8"
-                  : "border-white/[0.05] bg-[#101A2E] hover:border-white/10",
+                  : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] hover:border-[var(--app-color-border-strong)]",
               )}
             >
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-lg font-black text-white">{group.name}</h3>
+                <h3 className="text-lg font-black text-[var(--app-color-text-primary)]">{group.name}</h3>
                 {selectedGroupId === group.id && <div className="h-2 w-2 rounded-full bg-cyan-400" />}
               </div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                 {group.member_count} members • {group.is_private ? "private" : "public"}
               </div>
             </motion.button>
@@ -327,13 +336,11 @@ export function CirclesPage() {
 
         <div className="space-y-8 lg:col-span-8">
           {!selectedGroup && (
-            <ElectricCard elevation={0}>
-              <div className="py-20 text-center">
-                <Users size={52} className="mx-auto mb-5 text-gray-700" />
-                <h2 className="text-2xl font-black text-white">Pick a circle</h2>
-                <p className="mt-2 text-gray-500">Select a circle or create a new one to view rankings and members.</p>
-              </div>
-            </ElectricCard>
+            <EmptyState
+              icon={<Users size={52} />}
+              title="Pick a circle"
+              description="Select a circle or create a new one to view rankings and members."
+            />
           )}
 
           {selectedGroup && (
@@ -341,179 +348,210 @@ export function CirclesPage() {
               <ElectricCard semanticColor={COLORS.electricCyan} elevation={2} className="p-8">
                 <div className="mb-6 flex items-start justify-between gap-6">
                   <div>
-                    <h2 className="text-3xl font-black text-white">{selectedGroup.name}</h2>
-                    <div className="mt-2 text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
-                      {selectedGroup.member_count} members
+                    <h2 className="text-3xl font-black text-[var(--app-color-text-primary)]">{selectedGroup.name}</h2>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <StatusChip tone="neutral">{selectedGroup.member_count} members</StatusChip>
+                      <StatusChip tone={selectedGroup.is_private ? "accent" : "info"}>
+                        {selectedGroup.is_private ? "Private" : "Public"}
+                      </StatusChip>
                     </div>
                   </div>
-                  <Button
+                  <AppButton
                     onClick={handleLeave}
                     variant="outline"
-                    className="rounded-2xl border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                   >
                     <LogOut size={16} />
                     Leave
-                  </Button>
+                  </AppButton>
                 </div>
 
-                <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5">
-                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
+                <Surface variant="inset" padding="md" className="rounded-[1.8rem]">
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-color-text-tertiary)]">
                     Invite Code
                   </div>
                   <div className="flex items-center gap-3">
                     <code className="flex-1 text-lg font-black text-cyan-300">{selectedGroup.invite_code}</code>
-                    <Button onClick={copyInviteCode} className="rounded-2xl bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20">
+                    <AppButton onClick={copyInviteCode} variant="secondary" className="border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20">
                       {copied ? <Check size={16} /> : <Copy size={16} />}
-                    </Button>
+                    </AppButton>
                   </div>
+                </Surface>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <MetricCard
+                    label="Current Window"
+                    value={`${days} days`}
+                    detail="Leaderboard scope for accountability and streak tracking."
+                  />
+                  <MetricCard
+                    label="Your Rank"
+                    value={leaderboard?.current_user_rank ? `#${leaderboard.current_user_rank}` : "Unranked"}
+                    detail={leaderboard?.window_end ? `Updated through ${formatDateLabel(leaderboard.window_end)}` : "No scoring window loaded yet."}
+                  />
+                  <MetricCard
+                    label="Leaderboard Entries"
+                    value={leaderboard?.count ?? 0}
+                    detail="Paginated positions available in this circle."
+                  />
                 </div>
               </ElectricCard>
 
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="flex items-center gap-2 text-2xl font-black text-white">
+                  <h2 className="flex items-center gap-2 text-2xl font-black text-[var(--app-color-text-primary)]">
                     <Trophy size={20} className="text-yellow-400" />
                     Weekly Leaderboard
                   </h2>
                   <div className="flex gap-2">
                     {[7, 30, 90].map((window) => (
-                      <button
+                      <AppButton
                         key={window}
                         onClick={() => {
                           setDays(window);
                           setPage(1);
                         }}
+                        variant={days === window ? "secondary" : "outline"}
                         className={cn(
-                          "rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] transition-all",
+                          "rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em]",
                           days === window
-                            ? "bg-cyan-500 text-[#0B1220]"
-                            : "bg-white/[0.05] text-gray-500 hover:bg-white/[0.1] hover:text-white",
+                            ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/20"
+                            : "",
                         )}
                       >
                         {window}d
-                      </button>
+                      </AppButton>
                     ))}
                   </div>
                 </div>
 
-                <ElectricCard elevation={1} className="overflow-hidden p-0">
+                <Surface variant="card" padding="none" className="overflow-hidden">
                   {leaderboard?.results.length ? (
-                    <div className="divide-y divide-white/[0.05]">
+                    <div className="space-y-3 p-3">
                       {leaderboard.results.map((entry, index) => (
                         <motion.div
                           key={entry.user_id}
                           initial={{ opacity: 0, x: -12 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.04 }}
-                          className={cn(
-                            "flex items-center gap-5 px-6 py-5",
-                            entry.rank === leaderboard.current_user_rank && "bg-cyan-500/6",
-                          )}
                         >
-                          <div className="w-10 text-center">
-                            {entry.rank === 1 ? (
-                              <Crown size={22} className="mx-auto text-yellow-400" />
-                            ) : (
-                              <div className="text-lg font-black text-gray-400">#{entry.rank}</div>
+                          <Surface
+                            variant="inset"
+                            padding="md"
+                            className={cn(
+                              "flex items-center gap-5",
+                              entry.rank === leaderboard.current_user_rank && "border-cyan-400/30 bg-cyan-500/10",
                             )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-black text-white">{entry.username}</span>
-                              {entry.role === "admin" && <Shield size={14} className="text-purple-400" />}
+                          >
+                            <div className="w-10 text-center">
+                              {entry.rank === 1 ? (
+                                <Crown size={22} className="mx-auto text-yellow-400" />
+                              ) : (
+                                <div className="text-lg font-black text-[var(--app-color-text-secondary)]">#{entry.rank}</div>
+                              )}
                             </div>
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
-                              Level {entry.level} • {entry.current_streak_days}d streak • {entry.reflections_count} reflections
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-lg font-black text-[var(--app-color-text-primary)]">{entry.username}</span>
+                                {entry.role === "admin" && <Shield size={14} className="text-purple-400" />}
+                                {entry.rank === leaderboard.current_user_rank && <StatusChip tone="info">You</StatusChip>}
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <StatusChip tone="neutral">Level {entry.level}</StatusChip>
+                                <StatusChip tone="success">{entry.current_streak_days}d streak</StatusChip>
+                                <StatusChip tone="warning">{entry.reflections_count} reflections</StatusChip>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-black text-cyan-300">{entry.points_total}</div>
-                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-600">
-                              points
+                            <div className="text-right">
+                              <div className="text-2xl font-black text-cyan-300">{entry.points_total}</div>
+                              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
+                                points
+                              </div>
                             </div>
-                          </div>
+                          </Surface>
                         </motion.div>
                       ))}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-sm font-bold text-gray-500">No leaderboard activity yet.</div>
+                    <EmptyState
+                      icon={<Trophy size={32} />}
+                      title="No leaderboard activity yet."
+                      description="Points will appear here once members start completing reflections and streak actions."
+                    />
                   )}
 
                   {leaderboard && (leaderboard.next || leaderboard.previous) && (
-                    <div className="flex items-center justify-between border-t border-white/[0.05] px-5 py-4">
-                      <Button
+                    <div className="flex items-center justify-between border-t border-[var(--app-color-border-subtle)] px-5 py-4">
+                      <AppButton
                         onClick={() => setPage((current) => Math.max(1, current - 1))}
                         disabled={!leaderboard.previous}
                         variant="outline"
-                        className="rounded-2xl border-white/10"
+                        className="rounded-2xl"
                       >
                         <ChevronLeft size={16} />
                         Previous
-                      </Button>
-                      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
+                      </AppButton>
+                      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                         Page {page}
                       </div>
-                      <Button
+                      <AppButton
                         onClick={() => setPage((current) => current + 1)}
                         disabled={!leaderboard.next}
                         variant="outline"
-                        className="rounded-2xl border-white/10"
+                        className="rounded-2xl"
                       >
                         Next
                         <ChevronRight size={16} />
-                      </Button>
+                      </AppButton>
                     </div>
                   )}
-                </ElectricCard>
+                </Surface>
               </section>
 
               <section className="space-y-4">
-                <h2 className="flex items-center gap-2 text-2xl font-black text-white">
+                <h2 className="flex items-center gap-2 text-2xl font-black text-[var(--app-color-text-primary)]">
                   <Users size={20} className="text-purple-400" />
                   Members
                 </h2>
-                <ElectricCard elevation={0} className="overflow-hidden p-0">
+                <Surface variant="card" padding="none" className="overflow-hidden">
                   {members.map((member) => {
                     const isCurrentUser = member.user === backendUser?.id;
                     return (
-                      <div key={member.id} className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5 last:border-b-0">
+                      <div key={member.id} className="flex items-center justify-between border-b border-[var(--app-color-border-subtle)] px-6 py-5 last:border-b-0">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base font-black text-white">{member.username}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-black text-[var(--app-color-text-primary)]">{member.username}</span>
                             {member.role === "admin" && <Shield size={14} className="text-purple-400" />}
-                            {isCurrentUser && (
-                              <span className="rounded-full bg-cyan-500/15 px-2 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300">
-                                You
-                              </span>
-                            )}
+                            {isCurrentUser && <StatusChip tone="info">You</StatusChip>}
+                            <StatusChip tone={member.role === "admin" ? "accent" : "neutral"}>{member.role}</StatusChip>
                           </div>
-                          <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
-                            Joined {new Date(member.joined_at).toLocaleDateString()}
+                          <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
+                            Joined {formatDateLabel(member.joined_at)}
                           </div>
                         </div>
 
                         {isAdmin && !isCurrentUser && member.role !== "admin" && (
                           <div className="flex gap-2">
-                            <Button
+                            <AppButton
                               onClick={() => handlePromote(member.id)}
                               variant="outline"
-                              className="rounded-2xl border-white/10"
+                              className="rounded-2xl"
                             >
                               Promote
-                            </Button>
-                            <Button
+                            </AppButton>
+                            <AppButton
                               onClick={() => handleRemoveMember(member.id)}
                               variant="outline"
                               className="rounded-2xl border-red-500/30 text-red-400 hover:bg-red-500/10"
                             >
                               Remove
-                            </Button>
+                            </AppButton>
                           </div>
                         )}
                       </div>
                     );
                   })}
-                </ElectricCard>
+                </Surface>
               </section>
             </>
           )}
@@ -553,45 +591,45 @@ function CreateCircleDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-[2rem] border-white/10 bg-[#101A2E] text-white">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black">Create Circle</DialogTitle>
-          <DialogDescription className="text-gray-400">
+    <AppDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AppDialogContent className="max-w-lg">
+        <AppDialogHeader>
+          <AppDialogTitle>Create Circle</AppDialogTitle>
+          <AppDialogDescription>
             Start a private accountability group and invite members with a code.
-          </DialogDescription>
-        </DialogHeader>
+          </AppDialogDescription>
+        </AppDialogHeader>
+        <AppDialogBody>
         <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Circle Name</Label>
-            <Input
+          <FormField label="Circle Name">
+            <AppInput
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Budget Warriors"
-              className="h-12 rounded-2xl border-white/10 bg-[#0B1220] text-white"
             />
-          </div>
+          </FormField>
           <button
             type="button"
             onClick={() => setIsPrivate((current) => !current)}
-            className="flex w-full items-center justify-between rounded-[1.6rem] border border-white/[0.05] bg-white/[0.02] px-5 py-4"
+            className="flex w-full items-center justify-between rounded-[1.6rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] px-5 py-4"
           >
             <div className="text-left">
-              <div className="font-black text-white">Private Circle</div>
-              <div className="text-xs text-gray-500">Members join with the invite code.</div>
+              <div className="font-black text-[var(--app-color-text-primary)]">Private Circle</div>
+              <div className="text-xs text-[var(--app-color-text-tertiary)]">Members join with the invite code.</div>
             </div>
             <div className={cn("h-7 w-14 rounded-full p-1 transition-all", isPrivate ? "bg-cyan-500" : "bg-white/10")}>
               <div className={cn("h-5 w-5 rounded-full bg-white transition-all", isPrivate ? "translate-x-7" : "translate-x-0")} />
             </div>
           </button>
-          <DialogFooter>
-            <Button type="submit" disabled={submitting} className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400">
+          <AppDialogFooter className="px-0 pb-0">
+            <AppButton type="submit" disabled={submitting}>
               {submitting ? "Creating..." : "Create Circle"}
-            </Button>
-          </DialogFooter>
+            </AppButton>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+        </AppDialogBody>
+      </AppDialogContent>
+    </AppDialog>
   );
 }
 
@@ -620,31 +658,32 @@ function JoinCircleDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-[2rem] border-white/10 bg-[#101A2E] text-white">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black">Join Circle</DialogTitle>
-          <DialogDescription className="text-gray-400">
+    <AppDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AppDialogContent className="max-w-lg">
+        <AppDialogHeader>
+          <AppDialogTitle>Join Circle</AppDialogTitle>
+          <AppDialogDescription>
             Paste an invite code to join an existing accountability group.
-          </DialogDescription>
-        </DialogHeader>
+          </AppDialogDescription>
+        </AppDialogHeader>
+        <AppDialogBody>
         <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Invite Code</Label>
-            <Input
+          <FormField label="Invite Code">
+            <AppInput
               value={inviteCode}
               onChange={(event) => setInviteCode(event.target.value)}
               placeholder="abc123xyz"
-              className="h-12 rounded-2xl border-white/10 bg-[#0B1220] font-mono text-white"
+              className="font-mono"
             />
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={submitting} className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400">
+          </FormField>
+          <AppDialogFooter className="px-0 pb-0">
+            <AppButton type="submit" disabled={submitting}>
               {submitting ? "Joining..." : "Join Circle"}
-            </Button>
-          </DialogFooter>
+            </AppButton>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+        </AppDialogBody>
+      </AppDialogContent>
+    </AppDialog>
   );
 }

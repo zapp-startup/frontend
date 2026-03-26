@@ -1,7 +1,6 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { CreditCard, X, Calendar, Plus } from "lucide-react";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS, UI_PATTERNS } from "@/shared/theme";
 import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
@@ -16,6 +15,24 @@ import {
 import { ApiError } from "@/api/client";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
+import {
+  AppButton,
+  AppInput,
+  AppSheet,
+  AppSheetBody,
+  AppSheetContent,
+  AppSheetDescription,
+  AppSheetFooter,
+  AppSheetHeader,
+  AppSheetTitle,
+  AppSelect,
+  AppTextarea,
+  EmptyState,
+  FormField,
+  LoadingState,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
@@ -130,126 +147,96 @@ function AddPanel({
   };
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-[#0B1220]/80 backdrop-blur-md z-[110]"
-      />
-      <motion.div
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="app-panel fixed top-0 right-0 bottom-0 z-[120] flex w-full max-w-lg flex-col rounded-none border-l border-white/5 p-12 shadow-2xl"
-        style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.5)" }}
-      >
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter">Add Subscription</h2>
-            <div className={cn(UI_PATTERNS.eyebrow, "mt-1 text-cyan-400")}>
-              Manual Entry
+    <AppSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <AppSheetContent className="flex w-full max-w-lg flex-col rounded-none border-l shadow-2xl">
+        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)] pb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <AppSheetTitle>Add Subscription</AppSheetTitle>
+              <AppSheetDescription>
+                Create a manual subscription entry from the merchant catalog and recurring billing details.
+              </AppSheetDescription>
+              <div className="app-eyebrow mt-3 text-cyan-400">
+                Manual Entry
+              </div>
             </div>
+            <AppButton aria-label="Close add subscription panel" onClick={onClose} variant="quiet" size="icon">
+              <X size={20} />
+            </AppButton>
           </div>
-          <button aria-label="Close add subscription panel" onClick={onClose} className="rounded-2xl p-3 transition-all hover:bg-white/5">
-            <X size={24} className="text-gray-500" />
-          </button>
-        </div>
+        </AppSheetHeader>
 
-        <div className="flex-1 space-y-8 overflow-y-auto pr-2">
-          <div className="space-y-3">
-            <label className={UI_PATTERNS.eyebrow}>
-              Merchant
-            </label>
-            <input
+        <AppSheetBody className="space-y-8 pt-8">
+          <FormField label="Merchant" helperText="Pick an existing merchant from the catalog.">
+            <AppInput
               type="text"
               placeholder="e.g. Netflix, Spotify"
               value={form.merchantName}
               onChange={(e) => set("merchantName", e.target.value)}
               list="merchant-options"
-              className="app-input w-full px-6 py-5 font-bold outline-none transition-all placeholder:text-gray-600 focus:border-cyan-500/50"
             />
             <datalist id="merchant-options">
               {merchants.map((m) => (
                 <option key={m.id} value={m.name} />
               ))}
             </datalist>
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className={UI_PATTERNS.eyebrow}>
-                Amount ($)
-              </label>
-              <input
+            <FormField label="Amount ($)">
+              <AppInput
                 type="number"
                 min="0"
                 step="0.01"
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
-                className="app-input w-full px-6 py-5 font-bold outline-none transition-all focus:border-cyan-500/50"
               />
-            </div>
-            <div className="space-y-3">
-              <label className={UI_PATTERNS.eyebrow}>
-                Billing Cycle
-              </label>
-              <select
+            </FormField>
+            <FormField label="Billing Cycle">
+              <AppSelect
                 value={form.billing_cycle}
-                onChange={(e) => set("billing_cycle", e.target.value)}
-                className="app-input w-full px-6 py-5 font-bold outline-none transition-all focus:border-cyan-500/50"
-              >
-                {BILLING_CYCLES.map((c) => (
-                  <option key={c} value={c}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                onValueChange={(value) => set("billing_cycle", value)}
+                options={BILLING_CYCLES.map((c) => ({
+                  value: c,
+                  label: c.charAt(0).toUpperCase() + c.slice(1),
+                }))}
+              />
+            </FormField>
           </div>
 
-          <div className="space-y-3">
-            <label className={UI_PATTERNS.eyebrow}>
-              Start Date
-            </label>
-            <div className="relative">
-              <Calendar size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
+          <FormField label="Start Date">
+            <AppInput
                 type="date"
                 value={form.started_at}
                 onChange={(e) => set("started_at", e.target.value)}
-                className="app-input w-full py-5 pl-16 pr-6 font-bold outline-none transition-all focus:border-cyan-500/50"
+                startAdornment={<Calendar size={18} />}
               />
-            </div>
-          </div>
+          </FormField>
 
-          <div className="space-y-3">
-            <label className={UI_PATTERNS.eyebrow}>
-              Notes <span className="text-gray-600">(optional)</span>
-            </label>
-            <textarea
+          <FormField label={<>Notes <span className="text-[var(--app-color-text-tertiary)]">(optional)</span></>}>
+            <AppTextarea
               placeholder="e.g. Premium plan, shared with family"
               value={form.notes || ""}
               onChange={(e) => set("notes", e.target.value)}
-              className="app-input h-24 w-full resize-none px-6 py-5 font-bold outline-none transition-all placeholder:text-gray-700 focus:border-cyan-500/50"
+              className="resize-none"
             />
-          </div>
-        </div>
+          </FormField>
+        </AppSheetBody>
 
-        <div className="pt-8 mt-auto">
-          <Button
+        <AppSheetFooter className="mt-auto border-t border-[var(--app-color-border-subtle)]">
+          <AppButton
             onClick={handleSubmit}
             disabled={submitting}
-            className="app-button w-full rounded-[2rem] bg-cyan-500 py-10 text-xl font-black uppercase tracking-widest text-[#0B1220] shadow-2xl transition-all hover:scale-[1.02] hover:bg-cyan-600 disabled:opacity-50"
+            variant="hero"
+            size="hero"
+            className="w-full text-sm"
           >
             {submitting ? "Saving..." : "Add Subscription"}
-          </Button>
-        </div>
-      </motion.div>
-    </>
+          </AppButton>
+        </AppSheetFooter>
+      </AppSheetContent>
+    </AppSheet>
   );
 }
 
@@ -290,22 +277,21 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
       )}
       style={expanded ? undefined : { zIndex: 10 - (index % 10) }}
     >
-      <div
-        className="app-card flex items-center justify-between gap-6 rounded-[2rem] p-8 shadow-2xl"
-        style={{
-          boxShadow: `${GLOWS.ambient(0.4)}, ${GLOWS.inner}, ${GLOWS.soft(statusColor)}`,
-          borderColor: `${statusColor}20`,
-        }}
+      <Surface
+        variant="card"
+        padding="lg"
+        className="flex items-center justify-between gap-6 rounded-[2rem] shadow-2xl"
+        accentColor={statusColor}
       >
         <div className="flex min-w-0 flex-1 items-center gap-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/[0.02] border border-white/5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)]">
             <CreditCard size={32} style={{ color: statusColor }} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h4 className="text-2xl font-black text-white">{name}</h4>
-              <span
-                className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em]"
+              <h4 className="text-2xl font-black text-[var(--app-color-text-primary)]">{name}</h4>
+              <StatusChip
+                tone="neutral"
                 style={{
                   color: value.accentColor,
                   borderColor: `${value.accentColor}40`,
@@ -313,12 +299,12 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 }}
               >
                 {value.label}
-              </span>
+              </StatusChip>
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: statusColor }}>
               {sub.status || "Active"}
             </span>
-            <p className="mt-3 max-w-xl truncate text-sm font-medium text-gray-400">
+            <p className="mt-3 max-w-xl truncate text-sm font-medium text-[var(--app-color-text-secondary)]">
               {recommendation}
             </p>
           </div>
@@ -327,7 +313,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
         <div className="flex items-center gap-10">
             <div className="text-center">
               <div className={cn(UI_PATTERNS.eyebrow, "mb-1 text-xs")}>Cost</div>
-              <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
+              <div className="text-2xl font-black text-[var(--app-color-text-primary)]">${cost.toFixed(2)}</div>
             </div>
 
             <div className="min-w-[170px]">
@@ -339,11 +325,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                   color: value.accentColor,
                   filter: `drop-shadow(0 0 8px ${value.accentColor}60)`,
                 }}
-              >
-                {value.scoreText}
+                >
+                  {value.scoreText}
+                </div>
               </div>
-            </div>
-            <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
@@ -356,13 +342,13 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
           <button
             onClick={(e) => onDelete(sub, e)}
-            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+            className="rounded-xl p-2 text-[var(--app-color-text-tertiary)] transition-colors hover:bg-red-500/10 hover:text-red-400"
             aria-label={`Delete ${name}`}
           >
             <X size={20} />
           </button>
         </div>
-      </div>
+      </Surface>
 
       <AnimatePresence initial={false}>
         {expanded && (
@@ -370,24 +356,24 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="app-panel mt-4 overflow-hidden rounded-[2rem] p-8"
+            className="mt-4 overflow-hidden rounded-[2rem]"
           >
-            <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+            <Surface variant="panel" padding="lg" className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-gray-600")}>Billing</div>
-                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>Billing</div>
+                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">
                     {sub.billing_cycle} · Started{" "}
                     {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
                   </p>
                 </div>
 
                 <div>
-                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-gray-600")}>Notes</div>
-                  <p className="text-sm text-gray-400 leading-relaxed font-medium">{sub.notes || "—"}</p>
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>Notes</div>
+                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">{sub.notes || "—"}</p>
                 </div>
 
-                <div className="app-panel md:col-span-2 rounded-[1.5rem] p-6">
+                <Surface variant="inset" padding="md" className="md:col-span-2 rounded-[1.5rem]">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <div className={UI_PATTERNS.eyebrow}>Value score</div>
@@ -401,11 +387,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         >
                           {value.scoreText}
                         </div>
-                        <div className="pb-1 text-sm font-bold text-gray-400">out of 150</div>
+                        <div className="pb-1 text-sm font-bold text-[var(--app-color-text-secondary)]">out of 150</div>
                       </div>
                     </div>
-                    <span
-                      className="inline-flex items-center rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.24em]"
+                    <StatusChip
+                      tone="neutral"
                       style={{
                         color: value.accentColor,
                         borderColor: `${value.accentColor}40`,
@@ -413,49 +399,52 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       }}
                     >
                       {value.label}
-                    </span>
+                    </StatusChip>
                   </div>
 
-                  <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-3 overflow-hidden rounded-full bg-[var(--app-color-surface-base)]">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
                     />
                   </div>
-                  <p className="mt-3 text-sm font-medium text-gray-400">{value.tone}</p>
-                </div>
+                  <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">{value.tone}</p>
+                </Surface>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
-                  <div className={cn(UI_PATTERNS.eyebrow, "text-gray-600")}>
+                  <div className={cn(UI_PATTERNS.eyebrow, "text-[var(--app-color-text-tertiary)]")}>
                     Recommendation & Evidence
                   </div>
-                  <Button
+                  <AppButton
+                    variant="danger"
+                    size="sm"
                     onClick={(e) => onDelete(sub, e)}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest"
                   >
                     Cancel Service
-                  </Button>
+                  </AppButton>
                 </div>
 
                 {valuations.length === 0 && (
-                  <div className="app-panel rounded-[1.5rem] p-6 text-sm text-gray-500">
+                  <Surface variant="inset" padding="md" className="rounded-[1.5rem] text-sm text-[var(--app-color-text-tertiary)]">
                     No valuation evidence yet for this subscription.
-                  </div>
+                  </Surface>
                 )}
 
                 {valuations.map((valuation) => (
-                  <div
+                  <Surface
                     key={valuation.id}
-                    className="app-panel rounded-[1.5rem] p-6"
+                    variant="inset"
+                    padding="md"
+                    className="rounded-[1.5rem]"
                   >
                     {valuation.recommendation && (
                       <div className="mb-4">
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Recommendation
                         </div>
-                        <p className="text-sm font-bold text-white">{valuation.recommendation}</p>
+                        <p className="text-sm font-bold text-[var(--app-color-text-primary)]">{valuation.recommendation}</p>
                       </div>
                     )}
                     {valuation.confidence != null && (
@@ -464,7 +453,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                           Confidence
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)] h-2.5">
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
@@ -473,7 +462,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                               }}
                             />
                           </div>
-                          <span className="text-sm font-black text-white">
+                          <span className="text-sm font-black text-[var(--app-color-text-primary)]">
                             {Math.round(valuation.confidence)}%
                           </span>
                         </div>
@@ -484,13 +473,13 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
-                        <p className="text-sm text-gray-300 leading-relaxed">{valuation.evidence}</p>
+                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">{valuation.evidence}</p>
                       </div>
                     )}
-                  </div>
+                  </Surface>
                 ))}
               </div>
-            </div>
+            </Surface>
           </motion.div>
         )}
       </AnimatePresence>
@@ -613,20 +602,21 @@ export function SubscriptionsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 size={48} className="animate-spin text-cyan-400" />
-      </div>
+      <LoadingState label="Loading subscriptions..." lines={4} />
     );
   }
 
   if (error) {
     return (
-        <div className="space-y-4 py-16 text-center">
-          <div className="text-red-400 font-bold">{error}</div>
-        <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
-          Retry
-        </Button>
-      </div>
+      <EmptyState
+        title="Subscriptions failed to load"
+        description={error}
+        action={
+          <AppButton variant="outline" onClick={() => window.location.reload()}>
+            Retry
+          </AppButton>
+        }
+      />
     );
   }
 
@@ -646,35 +636,27 @@ export function SubscriptionsPage() {
             Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsAddPanelOpen(true)}
-          className="app-button flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
-        >
-          <Plus size={18} strokeWidth={3} />
-          <span>Add Subscription</span>
-        </motion.button>
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
+          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="primary" size="md">
+            <Plus size={18} strokeWidth={3} />
+            <span>Add Subscription</span>
+          </AppButton>
+        </motion.div>
       </div>
 
       {subscriptions.length === 0 && (
-        <div className="space-y-4 py-24 text-center">
-          <div className={cn(UI_PATTERNS.emptyState, "text-sm")}>
-            No subscriptions yet
-          </div>
-          <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Add your first subscription to track recurring costs and value scores.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsAddPanelOpen(true)}
-            className="app-button mx-auto flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
-          >
-            <Plus size={18} strokeWidth={3} />
-            <span>Add Subscription</span>
-          </motion.button>
-        </div>
+        <motion.div>
+          <EmptyState
+            title="No subscriptions yet"
+            description="Add your first subscription to track recurring costs and value scores."
+            action={
+              <AppButton onClick={() => setIsAddPanelOpen(true)} variant="primary" size="md">
+                <Plus size={18} strokeWidth={3} />
+                <span>Add Subscription</span>
+              </AppButton>
+            }
+          />
+        </motion.div>
       )}
 
       <div className="relative perspective-[2000px] py-10">
@@ -701,13 +683,12 @@ export function SubscriptionsPage() {
 
       {visibleCount < subscriptionCards.length && (
         <div className="flex justify-center">
-          <Button
+          <AppButton
             variant="outline"
             onClick={() => setVisibleCount((prev) => Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length))}
-            className="rounded-2xl border-white/10"
           >
             Load More Subscriptions
-          </Button>
+          </AppButton>
         </div>
       )}
 

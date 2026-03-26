@@ -110,8 +110,8 @@ export function DashboardGamification() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricCyan} elevation={2}>
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricCyan} elevation={1} className="h-full">
           <div className="mb-5 flex items-start justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
@@ -147,7 +147,7 @@ export function DashboardGamification() {
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full">
           <div className="mb-2 flex items-center gap-2">
             <IconBadge tone="yellow" size="sm">
               <Trophy size={18} />
@@ -162,7 +162,7 @@ export function DashboardGamification() {
           </div>
         </ElectricCard>
 
-        <Link to="/circles">
+        <Link to="/circles" className="block h-full">
           <ElectricCard semanticColor={COLORS.electricPurple} elevation={1} className="h-full cursor-pointer">
             <div className="mb-2 flex items-center gap-2">
               <IconBadge tone="purple" size="sm">
@@ -189,7 +189,7 @@ export function DashboardGamification() {
             <h3 className="app-card-title">Review Actions</h3>
           </div>
           <p className="app-helper mb-6 leading-relaxed">
-            Lock in weekly and monthly reflection habits to keep momentum compounding.
+            Keep your weekly and monthly reviews current so your progress stays visible.
           </p>
           <div className="space-y-3">
             <AppButton

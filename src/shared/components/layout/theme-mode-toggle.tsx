@@ -1,4 +1,5 @@
 import { Moon, Sun } from "lucide-react";
+import { AppButton } from "@/shared/components/system";
 import { useAppThemeMode } from "@/shared/theme-provider";
 
 export function ThemeModeToggle() {
@@ -6,14 +7,15 @@ export function ThemeModeToggle() {
   const isDark = mode === "dark";
 
   return (
-    <button
+    <AppButton
       type="button"
       onClick={toggleMode}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="app-panel flex h-12 items-center gap-2 rounded-2xl px-4 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-text-secondary)] transition-all hover:text-[var(--app-text-primary)]"
+      variant="floating"
+      size="icon"
+      className="rounded-[var(--app-radius-control)]"
     >
       {isDark ? <Sun size={16} /> : <Moon size={16} />}
-      <span>{isDark ? "Light" : "Dark"}</span>
-    </button>
+    </AppButton>
   );
 }

@@ -193,7 +193,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         data: {
           name: data.name.trim(),
-          tier: "Intentional Tier",
         },
       },
     });

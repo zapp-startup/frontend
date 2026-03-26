@@ -1,8 +1,19 @@
 import * as React from "react";
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useReducedMotion } from "motion/react";
-import { X, Send } from "lucide-react";
-import { COLORS, GLOWS, UI_PATTERNS } from "@/shared/theme";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+} from "motion/react";
+import { Send, X, Zap } from "lucide-react";
+import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
+import {
+  AppButton,
+  AppInput,
+  IconBadge,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
 import { createConversation, sendMessage } from "@/api/ai.api";
 import { useAuth } from "@/features/auth";
 import { usePanelState } from "../context/PanelContext";
@@ -19,7 +30,9 @@ export function ZappBot() {
   const { user } = useAuth();
   const { isRightPanelOpen } = usePanelState();
   const shouldReduceMotion = useReducedMotion();
-  const conversationStorageKey = user?.supabaseUid ? `zapp_conversation_id_${user.supabaseUid}` : null;
+  const conversationStorageKey = user?.supabaseUid
+    ? `zapp_conversation_id_${user.supabaseUid}`
+    : null;
   const devUsername = user?.username?.trim() ?? "";
 
   const [isOpen, setIsOpen] = React.useState(false);
@@ -47,22 +60,9 @@ export function ZappBot() {
   }, [conversationStorageKey]);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const createConversationPromiseRef = React.useRef<Promise<{ conversation_id: number }> | null>(null);
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const eyeX = useSpring(useTransform(mouseX, [0, 1920], [-2, 2]), { damping: 20 });
-  const eyeY = useSpring(useTransform(mouseY, [0, 1080], [-1, 1]), { damping: 20 });
-
-  React.useEffect(() => {
-    if (shouldReduceMotion) return;
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [mouseX, mouseY, shouldReduceMotion]);
+  const createConversationPromiseRef = React.useRef<
+    Promise<{ conversation_id: number }> | null
+  >(null);
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -143,7 +143,6 @@ export function ZappBot() {
       try {
         resp = await sendMessage({ devUsername }, cid, prompt);
       } catch (err) {
-        // Conversation may be stale (deleted/migrated/user-context mismatch). Recreate once and retry.
         if (!isNotFoundError(err)) throw err;
         if (conversationStorageKey) {
           localStorage.removeItem(conversationStorageKey);
@@ -154,10 +153,11 @@ export function ZappBot() {
         resp = await sendMessage({ devUsername }, freshCid, prompt);
       }
 
-      const assistantText =
-        resp.assistant_message.content.includes("LLM not connected yet")
-          ? "Your message has been stored."
-          : resp.assistant_message.content;
+      const assistantText = resp.assistant_message.content.includes(
+        "LLM not connected yet"
+      )
+        ? "Your message has been stored."
+        : resp.assistant_message.content;
 
       const assistantMsg: Message = {
         id: String(resp.assistant_message.id ?? Date.now() + 1),
@@ -173,7 +173,7 @@ export function ZappBot() {
         ...prev,
         {
           id: (Date.now() + 2).toString(),
-          text: "⚠️ I couldn't reach the AI service. Try again in a moment.",
+          text: "I couldn't reach the AI service. Try again in a moment.",
           sender: "assistant",
           timestamp: new Date(),
         },
@@ -185,94 +185,157 @@ export function ZappBot() {
 
   return (
     <motion.div
-      animate={shouldReduceMotion ? undefined : { y: isRightPanelOpen ? 200 : 0, opacity: isRightPanelOpen ? 0 : 1 }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      className="fixed bottom-10 right-10 z-[100] flex flex-col items-end"
+      animate={
+        shouldReduceMotion
+          ? undefined
+          : { y: isRightPanelOpen ? 160 : 0, opacity: isRightPanelOpen ? 0 : 1 }
+      }
+      transition={{ type: "spring", damping: 26, stiffness: 220 }}
+      className="fixed right-6 bottom-6 z-[100] flex flex-col items-end gap-4 sm:right-10 sm:bottom-10"
       style={{
         pointerEvents: isRightPanelOpen ? "none" : "auto",
-        ...(shouldReduceMotion ? { transform: isRightPanelOpen ? "translateY(200px)" : undefined, opacity: isRightPanelOpen ? 0 : 1 } : {}),
+        ...(shouldReduceMotion
+          ? {
+              transform: isRightPanelOpen ? "translateY(160px)" : undefined,
+              opacity: isRightPanelOpen ? 0 : 1,
+            }
+          : {}),
       }}
     >
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: "bottom right" }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="app-panel mb-6 flex h-[500px] w-96 flex-col overflow-hidden shadow-2xl"
-            style={{ boxShadow: `${GLOWS.ambient(0.8)}, ${GLOWS.soft(COLORS.electricPurple)}` }}
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, scale: 0.97, y: 12, transformOrigin: "bottom right" }
+            }
+            animate={shouldReduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
+            exit={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.97, y: 12 }}
+            className="w-full max-w-[min(24rem,calc(100vw-2rem))] sm:w-96"
           >
-            <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] p-6">
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-2 w-2 animate-pulse rounded-full"
-                  style={{ backgroundColor: COLORS.electricPurple, boxShadow: `0 0 10px ${COLORS.electricPurple}` }}
-                />
-                <div>
-                  <h3 className="text-sm font-black uppercase tracking-widest text-white">Zapp CFO</h3>
-                  <span className={cn(UI_PATTERNS.eyebrow, "text-[9px]")}>Active Intelligence</span>
-                </div>
-              </div>
-              <button aria-label="Close assistant" onClick={() => setIsOpen(false)} className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6 scrollbar-none">
-              {messages.map((msg) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  key={msg.id}
-                  className={cn("flex max-w-[80%] flex-col", msg.sender === "user" ? "ml-auto items-end" : "items-start")}
-                >
-                  <div
-                    className={cn(
-                      "rounded-2xl p-4 text-sm font-medium leading-relaxed shadow-lg",
-                      msg.sender === "user"
-                        ? "rounded-br-none text-white"
-                        : "rounded-bl-none border border-white/5 bg-white/5 text-gray-200"
-                    )}
-                    style={msg.sender === "user" ? { backgroundColor: COLORS.electricPurple } : {}}
-                  >
-                    {msg.text}
+            <Surface
+              variant="overlay"
+              className="flex h-[32rem] flex-col overflow-hidden border-purple-400/20"
+              style={{ boxShadow: `${GLOWS.ambient(0.72)}, ${GLOWS.soft(COLORS.electricPurple)}` }}
+            >
+              <div className="flex items-center justify-between border-b border-[var(--app-color-border-subtle)] px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <IconBadge tone="purple" size="sm" className="rounded-full">
+                    <Zap />
+                  </IconBadge>
+                  <div className="space-y-1">
+                    <div className="app-card-title">Zapp CFO</div>
+                    <StatusChip tone="accent" className="px-2.5 py-1 text-[9px] tracking-[0.22em]">
+                      Active intelligence
+                    </StatusChip>
                   </div>
-                  <span className="mt-2 text-[8px] font-black uppercase tracking-widest text-[var(--app-text-faint)]">
-                    {msg.sender === "user" ? "You" : "ZappBot"} • {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </motion.div>
-              ))}
-
-              {isTyping && (
-                <div className="flex w-20 items-center gap-2 rounded-2xl rounded-bl-none border border-white/5 bg-white/5 p-4">
-                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
-                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
-                  <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1.5 w-1.5 rounded-full bg-gray-500" />
                 </div>
-              )}
-            </div>
-
-            <form onSubmit={handleSend} className="border-t border-white/5 bg-white/[0.02] p-6">
-              <div className="group relative">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask your CFO anything..."
-                  disabled={isTyping}
-                  className="app-input w-full py-4 pr-14 pl-6 text-xs font-bold outline-none transition-all placeholder:text-gray-700 focus:border-purple-500/30 disabled:cursor-not-allowed disabled:opacity-70"
-                />
-                <button
-                  aria-label="Send message"
-                  type="submit"
-                  disabled={!input.trim() || isTyping}
-                  className="app-button absolute top-1/2 right-2 -translate-y-1/2 rounded-xl p-2.5 text-white shadow-lg transition-all hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-50"
-                  style={{ backgroundColor: COLORS.electricPurple }}
+                <AppButton
+                  aria-label="Close assistant"
+                  type="button"
+                  variant="quiet"
+                  size="icon"
+                  className="size-10 rounded-[var(--app-radius-md)]"
+                  onClick={() => setIsOpen(false)}
                 >
-                  <Send size={16} />
-                </button>
+                  <X />
+                </AppButton>
               </div>
-            </form>
+
+              <div
+                ref={scrollRef}
+                className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
+              >
+                {messages.map((msg) => (
+                  <motion.div
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    key={msg.id}
+                    className={cn(
+                      "flex max-w-[85%] flex-col gap-2",
+                      msg.sender === "user" ? "ml-auto items-end" : "items-start"
+                    )}
+                  >
+                    <Surface
+                      variant={msg.sender === "user" ? "panel" : "inset"}
+                      padding="sm"
+                      className={cn(
+                        "max-w-full rounded-[1.4rem] text-sm leading-relaxed break-words",
+                        msg.sender === "user"
+                          ? "rounded-br-md border-purple-400/25 text-[var(--app-color-text-primary)]"
+                          : "rounded-bl-md text-[var(--app-color-text-secondary)]"
+                      )}
+                      style={
+                        msg.sender === "user"
+                          ? {
+                              backgroundColor: `${COLORS.electricPurple}1f`,
+                              borderColor: `${COLORS.electricPurple}40`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {msg.text}
+                    </Surface>
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--app-color-text-faint)]">
+                      {msg.sender === "user" ? "You" : "ZappBot"} •{" "}
+                      {msg.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </motion.div>
+                ))}
+
+                {isTyping && (
+                  <Surface
+                    variant="inset"
+                    padding="sm"
+                    className="flex w-24 items-center gap-2 rounded-[1.4rem] rounded-bl-md"
+                  >
+                    {[0, 0.16, 0.32].map((delay) => (
+                      <motion.div
+                        key={delay}
+                        animate={
+                          shouldReduceMotion
+                            ? undefined
+                            : { opacity: [0.45, 1, 0.45], y: [0, -2, 0] }
+                        }
+                        transition={{ repeat: Infinity, duration: 1, delay }}
+                        className="size-2 rounded-full bg-[var(--app-color-text-tertiary)]"
+                      />
+                    ))}
+                  </Surface>
+                )}
+              </div>
+
+              <form
+                onSubmit={handleSend}
+                className="border-t border-[var(--app-color-border-subtle)] px-5 py-5 sm:px-6"
+              >
+                <div className="relative">
+                  <AppInput
+                    type="text"
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    placeholder="Ask your CFO anything..."
+                    disabled={isTyping}
+                    className="h-14 rounded-[var(--app-radius-panel)] pr-16 text-sm font-semibold"
+                  />
+                  <AppButton
+                    aria-label="Send message"
+                    type="submit"
+                    variant="primary"
+                    size="icon"
+                    disabled={!input.trim() || isTyping}
+                    className="absolute top-1/2 right-2 size-10 -translate-y-1/2 rounded-full"
+                    style={{ backgroundColor: COLORS.electricPurple, color: "white" }}
+                  >
+                    <Send />
+                  </AppButton>
+                </div>
+              </form>
+            </Surface>
           </motion.div>
         )}
       </AnimatePresence>
@@ -284,10 +347,16 @@ export function ZappBot() {
               initial={shouldReduceMotion ? false : { opacity: 0, x: 12 }}
               animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
               exit={shouldReduceMotion ? undefined : { opacity: 0, x: 12 }}
-              className="absolute top-1/2 right-full mr-6 -translate-y-1/2 whitespace-nowrap rounded-2xl border border-white/10 bg-[var(--app-surface)]/95 px-4 py-2 backdrop-blur-xl"
+              className="absolute top-1/2 right-full mr-4 -translate-y-1/2"
             >
-              <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Ask a question</span>
-              <div className="absolute top-1/2 right-[-4px] h-2 w-2 -translate-y-1/2 rotate-45 border-t border-r border-white/10 bg-[var(--app-surface)]" />
+              <Surface
+                variant="overlay"
+                padding="sm"
+                className="relative whitespace-nowrap border-purple-400/20 px-4 py-2"
+              >
+                <span className="app-label text-cyan-300">Ask a question</span>
+                <div className="absolute top-1/2 right-[-5px] size-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]" />
+              </Surface>
             </motion.div>
           )}
         </AnimatePresence>
@@ -296,44 +365,43 @@ export function ZappBot() {
           {isHovered && !isOpen && (
             <motion.div
               data-testid="zappbot-hover-highlight"
-              initial={shouldReduceMotion ? false : { scale: 0.92, opacity: 0 }}
+              initial={shouldReduceMotion ? false : { scale: 0.95, opacity: 0 }}
               animate={shouldReduceMotion ? undefined : { scale: 1, opacity: 1 }}
-              exit={shouldReduceMotion ? undefined : { scale: 0.92, opacity: 0 }}
-              className="absolute inset-[-10px] rounded-full"
+              exit={shouldReduceMotion ? undefined : { scale: 0.95, opacity: 0 }}
+              className="absolute inset-[-12px] rounded-full"
               style={{
-                background: `radial-gradient(circle, ${COLORS.electricPurple}26 0%, transparent 70%)`,
-                filter: "blur(12px)",
+                background: `radial-gradient(circle, ${COLORS.electricPurple}1f 0%, transparent 70%)`,
+                filter: "blur(14px)",
               }}
             />
           )}
         </AnimatePresence>
 
-        <motion.button
-          aria-label="Open Zapp assistant"
-          data-hovered={isHovered}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onClick={() => setIsOpen(true)}
-          whileTap={{ scale: 0.95 }}
-          className="app-panel relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full shadow-2xl"
-          style={{
-            boxShadow: isHovered ? `${GLOWS.medium(COLORS.electricPurple)}, ${GLOWS.ambient(0.8)}` : GLOWS.ambient(0.7),
-          }}
-        >
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
-              stroke={COLORS.electricPurple}
-              strokeWidth="1.5"
-              fill={isHovered ? COLORS.electricYellow : "none"}
-            />
-          </svg>
-
-          <div className="absolute top-[28px] left-[26px] flex gap-2">
-            <motion.div style={shouldReduceMotion ? undefined : { x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
-            <motion.div style={shouldReduceMotion ? undefined : { x: eyeX, y: eyeY }} className="h-2 w-2 rounded-full bg-[#0B1220]" />
-          </div>
-        </motion.button>
+        <AppButton asChild variant="floating" size="icon">
+          <motion.button
+            aria-label="Open Zapp assistant"
+            data-hovered={isHovered}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onClick={() => setIsOpen(true)}
+            whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
+            className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-purple-400/20 bg-[var(--app-color-surface-overlay)]"
+            style={{
+              boxShadow: isHovered
+                ? `${GLOWS.medium(COLORS.electricPurple)}, ${GLOWS.ambient(0.72)}`
+                : GLOWS.ambient(0.62),
+            }}
+          >
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
+                stroke={COLORS.electricPurple}
+                strokeWidth="1.5"
+                fill={isHovered ? COLORS.electricYellow : "none"}
+              />
+            </svg>
+          </motion.button>
+        </AppButton>
       </div>
     </motion.div>
   );

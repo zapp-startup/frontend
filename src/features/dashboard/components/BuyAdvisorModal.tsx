@@ -1,134 +1,269 @@
 import * as React from "react";
-import { motion } from "motion/react";
-import { X, Zap, Camera, AlertCircle } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { motion, useReducedMotion } from "motion/react";
+import { AlertCircle, Camera, Sparkles, Zap } from "lucide-react";
+import {
+  AppButton,
+  AppDialog,
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogDescription,
+  AppDialogFooter,
+  AppDialogHeader,
+  AppDialogTitle,
+  AppInput,
+  AppSelect,
+  FormField,
+  IconBadge,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
+import { COLORS } from "@/shared/theme";
 
 type BuyAdvisorModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
+const CATEGORY_OPTIONS = [
+  { value: "lifestyle", label: "Lifestyle" },
+  { value: "utility", label: "Utility" },
+  { value: "experience", label: "Experience" },
+] as const;
+
 export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
+  const shouldReduceMotion = useReducedMotion();
   const [step, setStep] = React.useState<"input" | "loading" | "result">("input");
+  const [predictedPrice, setPredictedPrice] = React.useState("");
+  const [category, setCategory] = React.useState<string>(CATEGORY_OPTIONS[0].value);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setStep("input");
+      return;
+    }
+
+    if (step !== "loading") return;
+
+    const timeoutId = window.setTimeout(() => setStep("result"), 2200);
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen, step]);
 
   const handleAnalyze = () => {
     setStep("loading");
-    setTimeout(() => setStep("result"), 2800);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-[#0B1220]/90 backdrop-blur-2xl"
-      />
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 40 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="relative w-full max-w-2xl bg-[#101A2E] border border-cyan-500/30 rounded-[3.5rem] p-12 shadow-2xl overflow-hidden"
-        style={{ boxShadow: `${GLOWS.ambient()}, ${GLOWS.strong(COLORS.electricCyan)}` }}
-      >
-        <div className="absolute top-0 right-0 p-10">
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-all">
-            <X size={24} />
-          </button>
-        </div>
-
+    <AppDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <AppDialogContent className="max-h-[min(92vh,920px)] max-w-2xl overflow-hidden border-cyan-400/20 p-0 [&>[data-slot=dialog-close]]:top-6 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:rounded-[var(--app-radius-md)] [&>[data-slot=dialog-close]]:border [&>[data-slot=dialog-close]]:border-[var(--app-color-border-strong)] [&>[data-slot=dialog-close]]:bg-[var(--app-color-surface-inset)] [&>[data-slot=dialog-close]]:p-2 [&>[data-slot=dialog-close]]:text-[var(--app-color-text-secondary)] [&>[data-slot=dialog-close]]:opacity-100">
         {step === "input" && (
-          <div className="space-y-10">
-            <div className="flex items-center gap-6">
-              <div className="p-5 rounded-[1.5rem] border border-cyan-500/30" style={{ backgroundColor: `${COLORS.electricCyan}10`, boxShadow: GLOWS.medium(COLORS.electricCyan) }}>
-                <Zap size={40} style={{ color: COLORS.electricCyan }} />
-              </div>
-              <div>
-                <h2 className="text-4xl font-black tracking-tighter">Buy Advisor</h2>
-                <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">Pre-Purchase Intelligence</div>
-              </div>
-            </div>
-            <p className="text-xl text-gray-400 leading-relaxed font-medium">
-              "Tell me what you're thinking of spending. I'll access your past satisfaction data to see if this aligns with your long-term values."
-            </p>
-            <div className="space-y-8">
-              <div className="group p-10 bg-white/[0.02] rounded-[3rem] border border-white/5 flex flex-col items-center justify-center border-dashed cursor-pointer hover:bg-white/[0.05] hover:border-cyan-500/50 transition-all">
-                <Camera size={48} className="text-gray-600 mb-6 group-hover:text-cyan-400 transition-colors" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Scan Product or Receipt</span>
-              </div>
-              <div className="grid grid-cols-2 gap-8">
+          <>
+            <AppDialogHeader className="gap-4 px-8 pt-8 pr-20">
+              <div className="flex items-start gap-4">
+                <IconBadge tone="cyan" size="lg">
+                  <Zap />
+                </IconBadge>
                 <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-cyan-400 font-black">Predicted Price</label>
-                  <input type="text" placeholder="$0.00" className="w-full bg-[#0B1220] border border-white/10 rounded-2xl px-8 py-5 text-xl font-black outline-none focus:border-cyan-500/50 transition-all placeholder:text-gray-800" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-cyan-400 font-black">Target Category</label>
-                  <select className="w-full bg-[#0B1220] border border-white/10 rounded-2xl px-8 py-5 text-xl font-black outline-none focus:border-cyan-500/50 appearance-none cursor-pointer">
-                    <option>Lifestyle</option>
-                    <option>Utility</option>
-                    <option>Experience</option>
-                  </select>
+                  <StatusChip tone="info">Pre-purchase intelligence</StatusChip>
+                  <AppDialogTitle>Buy Advisor</AppDialogTitle>
+                  <AppDialogDescription>
+                    Tell me what you are thinking about buying and I will compare it
+                    against your recent behavior, satisfaction patterns, and likely
+                    regret risk.
+                  </AppDialogDescription>
                 </div>
               </div>
-            </div>
-            <Button onClick={handleAnalyze} className="w-full bg-cyan-400 hover:bg-cyan-500 text-[#0B1220] rounded-3xl py-10 text-2xl font-black tracking-tight shadow-2xl transition-all hover:scale-[1.02]">
-              Consult My CFO
-            </Button>
-          </div>
+            </AppDialogHeader>
+
+            <AppDialogBody className="space-y-6">
+              <Surface
+                variant="inset"
+                padding="lg"
+                className="space-y-4 border-cyan-400/20 bg-cyan-500/6"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="app-label text-cyan-300">Quick capture</div>
+                    <p className="app-helper max-w-xl">
+                      Start with an estimated price and category, or scan a product
+                      when image intake is wired up.
+                    </p>
+                  </div>
+                  <Sparkles className="size-5 text-cyan-300" aria-hidden="true" />
+                </div>
+
+                <button
+                  type="button"
+                  className="flex w-full flex-col items-center justify-center gap-3 rounded-[var(--app-radius-panel)] border border-dashed border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-base)]/55 px-6 py-10 text-center transition-colors hover:border-cyan-400/45 hover:bg-cyan-500/8 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                >
+                  <IconBadge tone="neutral" size="md">
+                    <Camera />
+                  </IconBadge>
+                  <div className="space-y-1">
+                    <div className="app-label">Scan product or receipt</div>
+                    <p className="app-helper">
+                      Placeholder entry point for the upcoming capture flow.
+                    </p>
+                  </div>
+                </button>
+              </Surface>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  label="Predicted price"
+                  htmlFor="buy-advisor-price"
+                  helperText="Rough estimates are enough."
+                >
+                  <AppInput
+                    id="buy-advisor-price"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={predictedPrice}
+                    onChange={(event) => setPredictedPrice(event.target.value)}
+                    startAdornment={
+                      <span className="text-sm font-black text-[var(--app-color-text-secondary)]">
+                        $
+                      </span>
+                    }
+                  />
+                </FormField>
+
+                <FormField
+                  label="Target category"
+                  helperText="Used to compare similar spend patterns."
+                >
+                  <AppSelect
+                    value={category}
+                    onValueChange={setCategory}
+                    options={CATEGORY_OPTIONS.map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                  />
+                </FormField>
+              </div>
+
+              <Surface variant="card" padding="md" className="space-y-3">
+                <div className="app-label">How this works</div>
+                <p className="app-helper">
+                  The advisor weighs recent purchase density, prior satisfaction,
+                  and value-fit patterns before it recommends whether to wait.
+                </p>
+              </Surface>
+            </AppDialogBody>
+
+            <AppDialogFooter className="gap-3 sm:justify-between">
+              <AppButton variant="quiet" onClick={onClose}>
+                Cancel
+              </AppButton>
+              <AppButton variant="hero" size="hero" onClick={handleAnalyze}>
+                Consult my CFO
+              </AppButton>
+            </AppDialogFooter>
+          </>
         )}
 
         {step === "loading" && (
-          <div className="py-32 flex flex-col items-center justify-center text-center space-y-10">
-            <div className="relative">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="w-40 h-40 border-[8px] border-white/5 border-t-cyan-400 rounded-full"
-                style={{ borderTopColor: COLORS.electricCyan }}
-              />
-              <Zap size={48} style={{ color: COLORS.electricCyan }} className="absolute inset-0 m-auto animate-pulse" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-3xl font-black text-white">Analyzing Financial Memory...</h3>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500">Processing satisfaction score</p>
-            </div>
-          </div>
+          <AppDialogBody className="flex min-h-[29rem] flex-col items-center justify-center gap-8 px-8 py-12 text-center">
+            <motion.div
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : {
+                      scale: [1, 1.03, 1],
+                      opacity: [0.9, 1, 0.9],
+                    }
+              }
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className="flex flex-col items-center gap-5"
+            >
+              <IconBadge
+                tone="cyan"
+                size="lg"
+                className="size-24 rounded-full border-cyan-400/35 bg-cyan-500/10"
+              >
+                <motion.div
+                  animate={shouldReduceMotion ? undefined : { rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                  className="flex items-center justify-center"
+                >
+                  <Zap className="size-10" />
+                </motion.div>
+              </IconBadge>
+              <div className="space-y-3">
+                <StatusChip tone="info">Analyzing</StatusChip>
+                <h3 className="app-section-title">Analyzing your financial memory</h3>
+                <p className="app-helper max-w-md">
+                  Checking similar purchases, recent velocity, and the odds that a
+                  24-hour delay improves satisfaction.
+                </p>
+              </div>
+            </motion.div>
+          </AppDialogBody>
         )}
 
         {step === "result" && (
-          <div className="space-y-12 py-6 text-center">
-            <div className="space-y-4">
-              <div className="text-[100px] font-black leading-none" style={{ color: COLORS.electricRed, filter: `drop-shadow(0 0 30px ${COLORS.electricRed}80)` }}>
-                72
+          <>
+            <AppDialogHeader className="gap-4 px-8 pt-8 pr-20 text-center sm:text-center">
+              <StatusChip tone="warning" className="mx-auto">
+                Value fit flagged
+              </StatusChip>
+              <div className="space-y-3">
+                <div
+                  className="text-7xl font-black tracking-tight sm:text-8xl"
+                  style={{ color: COLORS.electricRed }}
+                >
+                  72
+                </div>
+                <AppDialogTitle className="text-center">Personalized Value Fit</AppDialogTitle>
+                <AppDialogDescription className="mx-auto max-w-xl text-center">
+                  This purchase is not a hard no. It is a moderate-risk yes that
+                  looks stronger if you slow the decision down.
+                </AppDialogDescription>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.5em] text-gray-500 font-black">Personalized Value Fit</div>
-            </div>
-            <div className="p-10 rounded-[3rem] border space-y-6 text-left" style={{ backgroundColor: `${COLORS.electricRed}05`, borderColor: `${COLORS.electricRed}20` }}>
-              <div className="flex items-center gap-4">
-                <AlertCircle size={24} style={{ color: COLORS.electricRed }} />
-                <h4 className="font-black text-2xl text-white">Delay Recommended</h4>
+            </AppDialogHeader>
+
+            <AppDialogBody className="space-y-6">
+              <Surface
+                variant="inset"
+                padding="lg"
+                className="space-y-4 border-red-400/25 bg-red-500/8"
+              >
+                <div className="flex items-center gap-3">
+                  <IconBadge tone="red" size="sm">
+                    <AlertCircle />
+                  </IconBadge>
+                  <div>
+                    <div className="app-label text-red-300">Recommendation</div>
+                    <h3 className="app-card-title text-[var(--app-color-text-primary)]">
+                      Delay recommended
+                    </h3>
+                  </div>
+                </div>
+                <p className="app-helper">
+                  Your recent history shows three comparable purchases this month,
+                  and similar decisions trended toward regret after the initial
+                  excitement wore off. Waiting 24 hours is likely to improve the
+                  outcome.
+                </p>
+              </Surface>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <AppButton variant="quiet" size="lg" onClick={onClose}>
+                  Skip
+                </AppButton>
+                <AppButton
+                  variant="outline"
+                  size="lg"
+                  className="border-red-400/35 bg-red-500/8 text-red-300 hover:bg-red-500/12"
+                >
+                  Delay 24h
+                </AppButton>
+                <AppButton size="lg">Buy now</AppButton>
               </div>
-              <p className="text-lg text-gray-400 leading-relaxed font-medium">
-                "Your history shows 3 similar purchases this month, which ultimately led to a 68% regret score. Delaying this for 24 hours will likely increase your satisfaction."
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-6">
-              <Button variant="outline" className="rounded-3xl py-10 border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-600">
-                Skip
-              </Button>
-              <Button className="rounded-3xl py-10 font-black uppercase tracking-widest text-[10px] transition-all" style={{ backgroundColor: `${COLORS.electricRed}15`, border: `1px solid ${COLORS.electricRed}33`, color: COLORS.electricRed }}>
-                Delay 24h
-              </Button>
-              <Button className="rounded-3xl py-10 bg-white text-[#0B1220] font-black uppercase tracking-widest text-[10px] hover:bg-gray-100">
-                Buy Now
-              </Button>
-            </div>
-          </div>
+            </AppDialogBody>
+          </>
         )}
-      </motion.div>
-    </div>
+      </AppDialogContent>
+    </AppDialog>
   );
 }

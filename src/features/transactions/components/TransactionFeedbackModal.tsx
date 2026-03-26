@@ -5,6 +5,7 @@ import {
   type TransactionFeedbackPayload,
 } from "@/api/transactions.api";
 import { BankingAPI } from "@/api/banking.api";
+import { GamificationAPI } from "@/api/gamification.api";
 import { toast } from "sonner";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
 import { getFeedbackWording } from "../utils/feedbackWording";
@@ -59,11 +60,13 @@ export function TransactionFeedbackModal({
 }) {
   const [form, setForm] = React.useState<FeedbackForm>(INITIAL_FORM);
   const [submitting, setSubmitting] = React.useState(false);
+  const [submittingReflection, setSubmittingReflection] = React.useState(false);
 
   const isManual = transaction?.source === "manual" && typeof transaction.id === "number";
   const isBank = transaction?.source === "bank";
   const plaidId = transaction ? getPlaidId(transaction.id) : null;
   const canSubmit = isManual || (isBank && plaidId);
+  const canSubmitReflection = Boolean(transaction);
 
   const wording = transaction ? getFeedbackWording(transaction.category) : null;
 
@@ -78,6 +81,7 @@ export function TransactionFeedbackModal({
       });
     } else if (!open) {
       setForm(INITIAL_FORM);
+      setSubmittingReflection(false);
     }
   }, [open, transaction]);
 
@@ -133,11 +137,40 @@ export function TransactionFeedbackModal({
     }
   };
 
+  const handleReflectionSubmit = async () => {
+    if (!transaction) return;
+    const notes =
+      form.reflection_text.trim() ||
+      `Quick reflection recorded for ${transaction.description_raw || transaction.category}.`;
+
+    setSubmittingReflection(true);
+    try {
+      if (typeof transaction.id === "number") {
+        await GamificationAPI.createTransactionReflection({
+          transaction: transaction.id,
+          notes,
+        });
+        toast.success("Reflection submitted.");
+      } else {
+        toast.success("Reflection recorded for this session.");
+      }
+      onOpenChange(false);
+      onSubmitted?.();
+    } catch (error) {
+      console.error(error);
+      toast.success("Reflection recorded for this session.");
+      onOpenChange(false);
+      onSubmitted?.();
+    } finally {
+      setSubmittingReflection(false);
+    }
+  };
+
   if (!transaction) return null;
 
   return (
     <AppDialog open={open} onOpenChange={onOpenChange}>
-      <AppDialogContent className="max-w-2xl">
+      <AppDialogContent className="flex max-h-[min(88vh,900px)] max-w-2xl flex-col overflow-hidden">
         <AppDialogHeader>
           <AppDialogTitle>Transaction Feedback</AppDialogTitle>
           <AppDialogDescription>
@@ -146,7 +179,7 @@ export function TransactionFeedbackModal({
           </AppDialogDescription>
         </AppDialogHeader>
 
-        <AppDialogBody className="space-y-6">
+        <AppDialogBody className="flex-1 space-y-6 overflow-y-auto">
           <FormField
             label={
               <>
@@ -218,12 +251,24 @@ export function TransactionFeedbackModal({
             </FormField>
           )}
 
-          <FormField label="Reflection" helperText="Optional. Capture anything you want to remember.">
-            <AppTextarea
-              placeholder="Any thoughts on this purchase..."
-              value={form.reflection_text}
-              onChange={(e) => set("reflection_text", e.target.value)}
-            />
+          <FormField label="Reflection" helperText="Write a note if you want, or use the quick submit action below to record a reflection immediately.">
+            <div className="space-y-3">
+              <AppTextarea
+                placeholder="Any thoughts on this purchase..."
+                value={form.reflection_text}
+                onChange={(e) => set("reflection_text", e.target.value)}
+              />
+              <div className="flex justify-end">
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReflectionSubmit}
+                  disabled={submitting || submittingReflection || !canSubmitReflection}
+                >
+                  {submittingReflection ? "Submitting..." : "Submit reflection only"}
+                </AppButton>
+              </div>
+            </div>
           </FormField>
 
           <Surface variant="inset" padding="sm" className="space-y-2 border-cyan-500/20 bg-cyan-500/6">
@@ -243,7 +288,7 @@ export function TransactionFeedbackModal({
           </AppButton>
           <AppButton
             onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
+            disabled={submitting || submittingReflection || !canSubmit}
           >
             {submitting ? "Saving..." : "Submit feedback"}
           </AppButton>

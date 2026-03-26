@@ -3,20 +3,21 @@ import { MessageSquare, Sparkles } from "lucide-react";
 
 import type { Transaction } from "@/api/transactions.api";
 import { GamificationAPI } from "@/api/gamification.api";
-import { Button } from "@/shared/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { Textarea } from "@/shared/components/ui/textarea";
+  AppButton,
+  AppDialog,
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogDescription,
+  AppDialogFooter,
+  AppDialogHeader,
+  AppDialogTitle,
+  AppInput,
+  AppTextarea,
+  FormField,
+  Surface,
+} from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
-import { UI_PATTERNS } from "@/shared/theme";
 import { toast } from "sonner";
 
 type TransactionReflectionDialogProps = {
@@ -76,45 +77,43 @@ export function TransactionReflectionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="app-panel max-w-xl rounded-[2rem] text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl font-black">
+    <AppDialog open={open} onOpenChange={onOpenChange}>
+      <AppDialogContent className="max-w-xl">
+        <AppDialogHeader>
+          <AppDialogTitle className="flex items-center gap-2 text-2xl font-black">
             <MessageSquare size={20} className="text-cyan-400" />
             Reflect On This Purchase
-          </DialogTitle>
-          <DialogDescription className="text-gray-400">
+          </AppDialogTitle>
+          <AppDialogDescription>
             Capture whether this spend felt worth it while the context is still fresh.
-          </DialogDescription>
-        </DialogHeader>
+          </AppDialogDescription>
+        </AppDialogHeader>
 
         {transaction && (
-          <div className="app-panel rounded-[1.5rem] p-5">
-            <div className="text-lg font-black text-white">
+          <Surface variant="panel" padding="md" className="mx-8 rounded-[1.5rem]">
+            <div className="text-lg font-black text-[var(--app-color-text-primary)]">
               {transaction.description_raw || transaction.category}
             </div>
-            <div className={cn(UI_PATTERNS.eyebrow, "mt-2")}>
+            <div className="app-eyebrow mt-2">
               ${Number(transaction.amount).toFixed(2)} • {new Date(transaction.occurred_at).toLocaleString()}
             </div>
-          </div>
+          </Surface>
         )}
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label className={UI_PATTERNS.eyebrow}>Regret Score</Label>
-            <Input
+        <AppDialogBody>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+          <FormField label="Regret Score">
+            <AppInput
               type="number"
               min="0"
               max="100"
               placeholder="0 to 100"
               value={regretScore}
               onChange={(event) => setRegretScore(event.target.value)}
-              className="h-12"
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label className={UI_PATTERNS.eyebrow}>Was It Worth It?</Label>
+          <FormField label="Was It Worth It?">
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Worth It", value: true },
@@ -128,46 +127,44 @@ export function TransactionReflectionDialog({
                     "rounded-2xl border px-4 py-3 text-sm font-black transition-all",
                     wasWorthIt === option.value
                       ? "border-cyan-400 bg-cyan-500/15 text-cyan-200"
-                        : "app-input text-gray-400 hover:border-white/20 hover:text-white",
+                        : "app-input text-[var(--app-color-text-secondary)] hover:border-[var(--app-color-border-focus)] hover:text-[var(--app-color-text-primary)]",
                   )}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label className={UI_PATTERNS.eyebrow}>Notes</Label>
-            <Textarea
+          <FormField label="Notes">
+            <AppTextarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="What drove the purchase, and how do you feel about it now?"
-              className="app-input min-h-28 text-white"
             />
-          </div>
+          </FormField>
 
-          <div className="app-panel rounded-[1.5rem] border-cyan-500/20 bg-cyan-500/8 p-4 text-sm text-gray-300">
+          <Surface variant="inset" padding="sm" className="rounded-[1.5rem] border-cyan-500/20 bg-cyan-500/8 text-sm text-[var(--app-color-text-secondary)]">
             <div className="mb-1 flex items-center gap-2 font-black text-cyan-300">
               <Sparkles size={14} />
               Same-day reflection helps your streak and badges.
             </div>
-            <p className="text-xs leading-relaxed text-gray-400">
+            <p className="text-xs leading-relaxed text-[var(--app-color-text-secondary)]">
               Reflections are meant for purchases. Income entries won’t count toward gamification.
             </p>
-          </div>
+          </Surface>
 
-          <DialogFooter>
-            <Button
+          <AppDialogFooter className="px-0 pb-0">
+            <AppButton
               type="submit"
               disabled={submitting}
-              className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400"
             >
               {submitting ? "Saving..." : "Save Reflection"}
-            </Button>
-          </DialogFooter>
+            </AppButton>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+        </AppDialogBody>
+      </AppDialogContent>
+    </AppDialog>
   );
 }

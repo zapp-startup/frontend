@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
 import { ThemeModeToggle } from "@/shared/components/layout/theme-mode-toggle";
+import { appButtonVariants } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS, PAGE_ACCENTS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
@@ -57,6 +58,20 @@ const NAV_ITEMS: { id: Exclude<PageId, "profile">; path: string; label: string; 
   { id: "circles", path: "/circles", label: "Circles", icon: Users },
 ];
 
+function getInitials(name: string | null | undefined) {
+  const parts = (name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "G";
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
   if (pathname.startsWith("/profile")) return "profile";
@@ -90,9 +105,9 @@ const PageContent = React.memo(function PageContent() {
       animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
     >
-      <React.Suspense
-        fallback={
-          <div className="min-h-[40vh] flex items-center justify-center text-xs font-black uppercase tracking-widest text-gray-500">
+        <React.Suspense
+          fallback={
+          <div className="min-h-[40vh] flex items-center justify-center text-xs font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">
             Loading...
           </div>
         }
@@ -109,6 +124,7 @@ export function DashboardLayout() {
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const userInitials = getInitials(user?.name);
 
   if (!isAuthReady) {
     return null;
@@ -129,10 +145,10 @@ export function DashboardLayout() {
           style={shouldReduceMotion ? { backgroundColor: activeColor } : undefined}
         />
 
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[var(--app-bg-canvas)]/60 backdrop-blur-3xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--app-color-border-subtle)] bg-[var(--app-color-background-canvas)]/72 backdrop-blur-3xl">
         <div className="mx-auto grid h-24 w-full max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6 lg:px-8">
           <div className="justify-self-start">
-            <span className="text-3xl font-black uppercase italic tracking-tighter text-white sm:text-4xl">Zapp</span>
+            <span className="text-3xl font-black uppercase italic tracking-tighter text-[var(--app-color-text-primary)] sm:text-4xl">Zapp</span>
           </div>
 
           <div className="hidden min-w-0 items-center justify-center gap-2 justify-self-center lg:flex xl:gap-3">
@@ -144,7 +160,9 @@ export function DashboardLayout() {
                 className={({ isActive }) =>
                   cn(
                     "relative flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.22em] transition-all 2xl:px-6",
-                    isActive ? "text-white" : "text-gray-600 hover:text-gray-300"
+                    isActive
+                      ? "text-[var(--app-color-text-primary)]"
+                      : "text-[var(--app-color-text-tertiary)] hover:text-[var(--app-color-text-secondary)]"
                   )
                 }
               >
@@ -153,13 +171,15 @@ export function DashboardLayout() {
                     {isActive && (
                       <motion.div
                         layoutId="nav-bg"
-                        className="absolute inset-0 rounded-2xl border border-white/10 bg-white/[0.05]"
+                        className="absolute inset-0 rounded-2xl border border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]"
                       />
                     )}
                     <item.icon
                       className={cn(
                         "relative z-10 h-4 w-4 transition-colors",
-                        isActive ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]" : "text-gray-600"
+                        isActive
+                          ? "text-cyan-400 drop-shadow-[0_0_12px_#22F0FF]"
+                          : "text-[var(--app-color-text-tertiary)]"
                       )}
                     />
                     <span className="relative z-10">{item.label}</span>
@@ -171,22 +191,16 @@ export function DashboardLayout() {
 
           <div className="flex shrink-0 items-center justify-self-end gap-4 sm:gap-6">
             <ThemeModeToggle />
-            <div className="flex items-center gap-3 border-l border-white/5 pl-3 sm:pl-4">
-              <NavLink to="/profile" className="group/avatar flex items-center gap-4">
-                <div className="hidden text-right md:block">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white transition-colors group-hover/avatar:text-cyan-400">
-                    {user?.name ?? "Guest"}
-                  </div>
-                  <div className="text-[9px] font-black uppercase text-cyan-500">
-                    {user?.tier ?? "Intentional Tier"}
-                  </div>
-                </div>
+            <div className="flex items-center gap-3 border-l border-[var(--app-color-border-subtle)] pl-3 sm:pl-4">
+              <NavLink to="/profile" className="group/avatar flex items-center">
                 <div
-                  className="h-12 w-12 rounded-[1.25rem] border border-white/20 shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14"
+                  className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] border border-[var(--app-color-border-strong)] text-sm font-black uppercase tracking-[0.18em] text-white shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14 sm:text-base"
                   style={{
                     backgroundImage: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})`,
                   }}
-                />
+                >
+                  {userInitials}
+                </div>
               </NavLink>
             </div>
           </div>
@@ -204,7 +218,10 @@ export function DashboardLayout() {
           whileHover={{ scale: 1.1, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsBuyAdvisorOpen(true)}
-          className="app-panel flex h-14 w-14 items-center justify-center rounded-full text-gray-400 shadow-2xl transition-all hover:text-white"
+          className={cn(
+            appButtonVariants({ variant: "floating", size: "icon" }),
+            "h-14 w-14 rounded-full shadow-2xl"
+          )}
         >
           <Camera size={24} />
         </motion.button>

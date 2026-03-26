@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
+import { formatDateLabel } from "@/shared/date";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS } from "@/shared/theme";
 import type { BankTransaction } from "@/api/banking.api";
@@ -14,7 +15,7 @@ type RecentBankTransactionsSectionProps = {
 function formatDate(iso?: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
+    return formatDateLabel(iso, {
       month: "short",
       day: "numeric",
       year: "numeric",

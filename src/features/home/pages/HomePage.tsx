@@ -12,8 +12,9 @@ import {
   Cell,
 } from "recharts";
 import { toast } from "sonner";
-import { Button } from "@/shared/components/ui/button";
+import { AppButton, EmptyState, IconBadge, LoadingState, StatusChip } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
+import { formatLocalDateYYYYMMDD, getLocalDateKey, parseDateForDisplay } from "@/shared/date";
 import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
 import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard, ReflectionPulse } from "../components/ElectricCard";
@@ -21,11 +22,11 @@ import { DashboardGamification } from "@/features/gamification";
 import { COLORS, GLOWS } from "@/shared/theme";
 
 export function HomePage() {
-  const [pulseActive, setPulseActive] = React.useState(false);
+  const [activePulseId, setActivePulseId] = React.useState<string | number | null>(null);
 
-  const triggerPulse = () => {
-    setPulseActive(true);
-    setTimeout(() => setPulseActive(false), 1200);
+  const triggerPulse = (transactionId: string | number) => {
+    setActivePulseId(transactionId);
+    setTimeout(() => setActivePulseId((current) => (current === transactionId ? null : current)), 1200);
     toast.success("Reflection complete. Streak maintained!", {
       style: { background: COLORS.bgCard, color: COLORS.electricGreen, border: `1px solid ${COLORS.electricGreen}33` },
     });
@@ -62,22 +63,30 @@ export function HomePage() {
       <DashboardGamification />
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        <ElectricCard className="md:col-span-8 overflow-hidden" semanticColor={COLORS.electricBlue} elevation={2}>
+        <ElectricCard className="md:col-span-8 overflow-hidden" semanticColor={COLORS.electricBlue} elevation={1}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#3B82FF]" style={{ backgroundColor: COLORS.electricBlue }} />
-                <h2 className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-black">Financial Health</h2>
+                <h2 className="app-eyebrow">Financial Health</h2>
               </div>
-              <div className="text-6xl font-black tracking-tight text-white">$2,450.00</div>
-              <div className="flex items-center gap-3 text-sm font-bold text-gray-400">
+              <div className="text-6xl font-black tracking-tight text-[var(--app-color-text-primary)]">$2,450.00</div>
+              <div className="flex items-center gap-3 text-sm font-bold text-[var(--app-color-text-secondary)]">
                 <TrendingUp size={16} className="text-electric-green" style={{ color: COLORS.electricGreen }} />
                 <span>Monthly spending is 12% more intentional</span>
               </div>
             </div>
             <div className="relative group/meter">
               <svg className="w-40 h-40 transform -rotate-90">
-                <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/[0.03]" />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="72"
+                  stroke="currentColor"
+                  strokeWidth="12"
+                  fill="transparent"
+                  className="text-[var(--app-color-border-subtle)]"
+                />
                 <motion.circle
                   cx="80" cy="80" r="72"
                   stroke={recentValueSummary.accentColor}
@@ -92,7 +101,7 @@ export function HomePage() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                <span className="text-4xl font-black text-[var(--app-color-text-primary)]">
                   {recentValueSummary.average ?? "—"}
                 </span>
                 <span
@@ -125,26 +134,32 @@ export function HomePage() {
         <div className="md:col-span-4 flex flex-col gap-8">
           <ElectricCard className="flex-1 flex flex-col justify-center gap-2" semanticColor={COLORS.electricCyan} glowIntensity="soft" elevation={1}>
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-white/5" style={{ backgroundColor: `${COLORS.electricCyan}15`, boxShadow: GLOWS.soft(COLORS.electricCyan) }}>
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border border-[var(--app-color-border-subtle)]"
+                style={{ backgroundColor: `${COLORS.electricCyan}15`, boxShadow: GLOWS.soft(COLORS.electricCyan) }}
+              >
                 <TrendingUp size={28} style={{ color: COLORS.electricCyan }} />
               </div>
               <div>
-                <div className="text-4xl font-black text-white">12 Days</div>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">Intentional Streak</div>
+                <div className="text-4xl font-black text-[var(--app-color-text-primary)]">12 Days</div>
+                <div className="app-eyebrow">Intentional Streak</div>
               </div>
             </div>
-            <div className="mt-4 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
               <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} className="h-full rounded-full" style={{ backgroundColor: COLORS.electricCyan, boxShadow: `0 0 10px ${COLORS.electricCyan}` }} />
             </div>
           </ElectricCard>
           <ElectricCard className="flex-1 flex flex-col justify-center gap-2" semanticColor={COLORS.electricRed} elevation={1}>
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-white/5" style={{ backgroundColor: `${COLORS.electricRed}15`, boxShadow: GLOWS.soft(COLORS.electricRed) }}>
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border border-[var(--app-color-border-subtle)]"
+                style={{ backgroundColor: `${COLORS.electricRed}15`, boxShadow: GLOWS.soft(COLORS.electricRed) }}
+              >
                 <AlertCircle size={28} style={{ color: COLORS.electricRed }} />
               </div>
               <div>
-                <div className="text-4xl font-black text-white">3 Alerts</div>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">Spending Alerts</div>
+                <div className="text-4xl font-black text-[var(--app-color-text-primary)]">3 Alerts</div>
+                <div className="app-eyebrow">Spending Alerts</div>
               </div>
             </div>
           </ElectricCard>
@@ -154,8 +169,10 @@ export function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <ElectricCard className="lg:col-span-4" semanticColor={COLORS.electricTeal} elevation={1}>
           <div className="flex items-center gap-2 mb-10">
-            <Sparkles size={16} style={{ color: COLORS.electricTeal }} />
-            <h3 className="text-lg font-black text-white">Category Breakdown</h3>
+            <IconBadge tone="green" size="sm">
+              <Sparkles size={16} style={{ color: COLORS.electricTeal }} />
+            </IconBadge>
+            <h3 className="app-card-title">Category Breakdown</h3>
           </div>
           <div className="h-64 flex items-center justify-center relative">
             <div className="absolute inset-0 bg-electric-teal/5 blur-3xl rounded-full" style={{ backgroundColor: `${COLORS.electricTeal}10` }} />
@@ -181,8 +198,8 @@ export function HomePage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center">
-              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">Status</div>
-              <div className="text-xl font-black text-white">Optimized</div>
+              <div className="app-eyebrow">Status</div>
+              <div className="text-xl font-black text-[var(--app-color-text-primary)]">Optimized</div>
             </div>
           </div>
           <div className="mt-12 space-y-3">
@@ -191,8 +208,11 @@ export function HomePage() {
               { label: "Regret Risk", val: 12, color: COLORS.electricRed },
               { label: "Utility Focus", val: 74, color: COLORS.electricBlue },
             ].map((stat, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03]">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-500">{stat.label}</span>
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-2xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-4"
+              >
+                <span className="text-xs font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">{stat.label}</span>
                 <span className="text-lg font-black" style={{ color: stat.color }}>{stat.val}%</span>
               </div>
             ))}
@@ -200,23 +220,22 @@ export function HomePage() {
         </ElectricCard>
 
         <ElectricCard className="lg:col-span-8 overflow-hidden" semanticColor={COLORS.electricGreen} elevation={1}>
-          <ReflectionPulse active={pulseActive} />
           <div className="flex items-center justify-between mb-10">
-            <h3 className="text-xl font-black">Recent Spending History</h3>
-            <button className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 border-b border-cyan-400/30 pb-1">View Timeline</button>
+            <h3 className="app-card-title text-xl">Recent Spending History</h3>
+            <AppButton variant="quiet" size="sm" className="px-0 text-cyan-400 hover:text-cyan-300">
+              View Timeline
+            </AppButton>
           </div>
           <div className="space-y-4">
             {txLoading && (
-  <div className="text-center py-12 text-gray-600 text-xs font-black uppercase tracking-widest animate-pulse">
-    Loading transactions...
-  </div>
+  <LoadingState label="Loading transactions..." lines={3} compact />
 )}
 
 {!txLoading && transactions.length === 0 && (
-  <div className="text-center py-12 space-y-3">
-    <div className="text-gray-600 text-xs font-black uppercase tracking-widest">No purchases logged yet</div>
-    <div className="text-gray-700 text-xs">Add your first purchase to start tracking your value score.</div>
-  </div>
+  <EmptyState
+    title="No purchases logged yet"
+    description="Add your first purchase to start tracking your value score."
+  />
 )}
 
 {!txLoading && transactions.map((item) => {
@@ -228,8 +247,18 @@ export function HomePage() {
     : score != null && score < 80;
 
   const timeAgo = (() => {
-    const diff = Date.now() - new Date(item.occurred_at).getTime();
-    const days = Math.floor(diff / 86400000);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const itemDate = parseDateForDisplay(getLocalDateKey(item.occurred_at));
+    itemDate.setHours(0, 0, 0, 0);
+
+    const todayKey = formatLocalDateYYYYMMDD(today);
+    const itemKey = formatLocalDateYYYYMMDD(itemDate);
+    const days = Math.round((today.getTime() - itemDate.getTime()) / 86400000);
+
+    if (itemKey === todayKey) return "Today";
+    if (days < 0) return "Today";
     if (days === 0) return "Today";
     if (days === 1) return "Yesterday";
     return `${days} days ago`;
@@ -238,12 +267,13 @@ export function HomePage() {
   return (
     <div
       key={item.id}
-      onClick={triggerPulse}
-      className="group relative flex items-center justify-between p-6 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all cursor-pointer"
+      onClick={() => triggerPulse(item.id)}
+      className="relative flex cursor-pointer items-center justify-between rounded-[2.5rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-6 transition-all"
     >
+      <ReflectionPulse active={activePulseId === item.id} />
       <div className="flex items-center gap-8">
         <div
-          className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center border transition-all group-hover:scale-110"
+          className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center border transition-all"
           style={{
             color: isRegret ? COLORS.electricRed : COLORS.electricGreen,
             backgroundColor: isRegret ? `${COLORS.electricRed}15` : `${COLORS.electricGreen}15`,
@@ -254,10 +284,10 @@ export function HomePage() {
           {isRegret ? <TrendingDown size={32} /> : <TrendingUp size={32} />}
         </div>
         <div>
-          <div className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors tracking-tight">
+          <div className="text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">
             {item.description_raw || item.category}
           </div>
-          <div className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2">
+          <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--app-color-text-tertiary)]">
             {timeAgo} • ${Number(item.amount).toFixed(2)}
           </div>
         </div>
@@ -273,17 +303,22 @@ export function HomePage() {
                   filter: `drop-shadow(0 0 10px ${value.accentColor}80)`,
                 }}
               >
-                {value.scoreText}
+                {value.displayScoreText}
               </div>
-              <div className="text-[10px] uppercase tracking-widest font-black" style={{ color: value.accentColor }}>
+              <div className="mt-1 text-[10px] uppercase tracking-widest font-black" style={{ color: value.accentColor }}>
                 {value.label}
               </div>
+              {value.overflowText ? (
+                <div className="mt-1 text-[10px] font-bold text-blue-300">
+                  {value.overflowText.replace("+", "")} above target
+                </div>
+              ) : null}
             </>
           ) : (
-            <div className="text-[10px] uppercase tracking-widest text-gray-700 font-black">No score</div>
+            <StatusChip tone="neutral">No score</StatusChip>
           )}
         </div>
-        <ChevronRight size={24} className="text-gray-800 group-hover:text-cyan-400 transition-colors" />
+        <ChevronRight size={24} className="text-[var(--app-color-text-faint)]" />
       </div>
     </div>
   );
