@@ -2,21 +2,15 @@ import * as React from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
 import { X, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { createConversation, sendMessage } from "@/api/ai.api";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
-import { createConversation, sendMessage } from "@/api/ai.api";
-
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
-  quickActions?: {
-    label: string;
-    route: string;
-    reason?: string;
-  }[];
-}
+import {
+  buildFallbackAssistantMessage,
+  mapApiMessageToChatMessage,
+  normalizeQuickActions,
+  type ChatMessage,
+} from "./zappBot.helpers";
 
 export function ZappBot() {
   const navigate = useNavigate();
@@ -24,18 +18,8 @@ export function ZappBot() {
   const [input, setInput] = React.useState("");
   const [isHovered, setIsHovered] = React.useState(false);
   const [isTyping, setIsTyping] = React.useState(false);
-  const [messages, setMessages] = React.useState<Message[]>([
-    {
-      id: "1",
-      text: "Hello! I'm your Zapp CFO. I've been monitoring your subscriptions. How can I help you optimize your value score today?",
-      sender: "assistant",
-      timestamp: new Date(),
-    },
-  ]);
-  const [conversationId, setConversationId] = React.useState<number | null>(() => {
-    const saved = localStorage.getItem("zapp_conversation_id");
-    return saved ? Number(saved) : null;
-  });
+  const [messages, setMessages] = React.useState<ChatMessage[]>(() => [buildFallbackAssistantMessage()]);
+  const [conversationId, setConversationId] = React.useState<number | null>(null);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const createConversationPromiseRef = React.useRef<Promise<{ conversation_id: number }> | null>(null);
@@ -60,31 +44,30 @@ export function ZappBot() {
     }
   }, [messages, isTyping]);
 
-  const isNotFoundError = (err: unknown) =>
-    err instanceof Error &&
-    (err.message.includes("404") ||
-      err.message.includes("sendMessage failed: 404") ||
-      err.message.includes("AI API error: 404"));
+  const handleStartNewChat = React.useCallback(() => {
+    createConversationPromiseRef.current = null;
+    setConversationId(null);
+    setMessages([buildFallbackAssistantMessage()]);
+    setInput("");
+  }, []);
 
   const createFreshConversation = async () => {
     if (!createConversationPromiseRef.current) {
       createConversationPromiseRef.current = createConversation({ context_type: "general" });
     }
-    const created = await createConversationPromiseRef.current;
-    const cid = created.conversation_id;
-    setConversationId(cid);
-    localStorage.setItem("zapp_conversation_id", String(cid));
-    createConversationPromiseRef.current = null;
-    return cid;
+
+    try {
+      const created = await createConversationPromiseRef.current;
+      const cid = created.conversation_id;
+      setConversationId(cid);
+      return cid;
+    } finally {
+      createConversationPromiseRef.current = null;
+    }
   };
 
-  const handleSend = async (event?: React.FormEvent) => {
-    event?.preventDefault();
-    if (!input.trim() || isTyping) return;
-
-    const prompt = input.trim();
-
-    const userMsg: Message = {
+  const submitPrompt = async (prompt: string, actionPayload?: Record<string, unknown>) => {
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
       text: prompt,
       sender: "user",
@@ -102,26 +85,18 @@ export function ZappBot() {
         cid = await createFreshConversation();
       }
 
-      let resp;
-      try {
-        resp = await sendMessage(cid, prompt);
-      } catch (err) {
-        // Conversation may be stale (deleted/migrated/user-context mismatch). Recreate once and retry.
-        if (!isNotFoundError(err)) throw err;
-        localStorage.removeItem("zapp_conversation_id");
-        setConversationId(null);
-        createConversationPromiseRef.current = null;
-        const freshCid = await createFreshConversation();
-        resp = await sendMessage(freshCid, prompt);
-      }
+      const resp = actionPayload
+        ? await sendMessage(cid, prompt, actionPayload)
+        : await sendMessage(cid, prompt);
 
-      const assistantMsg: Message = {
-        id: String(resp.assistant_message.id ?? Date.now() + 1),
-        text: resp.assistant_message.content,
-        sender: "assistant",
-        timestamp: new Date(resp.assistant_message.created_at ?? Date.now()),
-        quickActions: resp.assistant_message.metadata_json?.quick_actions,
-      };
+      const assistantMsg =
+        mapApiMessageToChatMessage({
+          ...resp.assistant_message,
+          metadata_json: {
+            ...resp.assistant_message.metadata_json,
+            quick_actions: normalizeQuickActions(resp.assistant_message.metadata_json?.quick_actions),
+          },
+        }) ?? buildFallbackAssistantMessage();
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
@@ -139,6 +114,15 @@ export function ZappBot() {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleSend = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!input.trim() || isTyping) return;
+
+    const prompt = input.trim();
+    setInput("");
+    await submitPrompt(prompt);
   };
 
   return (
@@ -163,9 +147,24 @@ export function ZappBot() {
                   <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Active Intelligence</span>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleStartNewChat}
+                  disabled={isTyping}
+                  className="rounded-xl border border-white/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300 transition-colors hover:bg-white/5 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  New chat
+                </button>
+                <button
+                  type="button"
+                  aria-label="Close chat"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6 scrollbar-none">
@@ -195,14 +194,21 @@ export function ZappBot() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {msg.quickActions.map((action) => (
                         <button
-                          key={`${msg.id}-${action.route}-${action.label}`}
+                          key={`${msg.id}-${action.route ?? JSON.stringify(action.action_payload)}-${action.label}`}
                           type="button"
                           onClick={() => {
-                            navigate(action.route);
-                            setIsOpen(false);
+                            if (action.route) {
+                              navigate(action.route);
+                              setIsOpen(false);
+                              return;
+                            }
+
+                            if (action.action_payload && !isTyping) {
+                              void submitPrompt(action.label, action.action_payload);
+                            }
                           }}
                           className="rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:text-cyan-200"
-                          title={action.reason ?? `Navigate to ${action.route}`}
+                          title={action.reason ?? (action.route ? `Navigate to ${action.route}` : action.label)}
                         >
                           {action.label}
                         </button>
@@ -233,6 +239,7 @@ export function ZappBot() {
                 />
                 <button
                   type="submit"
+                  aria-label="Send message"
                   disabled={!input.trim() || isTyping}
                   className="absolute top-1/2 right-2 -translate-y-1/2 rounded-xl p-2.5 text-white shadow-lg transition-all hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-50"
                   style={{ backgroundColor: COLORS.electricPurple }}
@@ -249,9 +256,18 @@ export function ZappBot() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setIsOpen((prev) => !prev);
+          }
+        }}
         animate={{ y: [0, -4, 0], rotate: isHovered ? [0, -2, 2, 0] : 0 }}
         transition={{ y: { repeat: Infinity, duration: 4, ease: "easeInOut" }, rotate: { repeat: Infinity, duration: 0.2 } }}
         className="relative cursor-pointer group"
+        role="button"
+        tabIndex={0}
+        aria-label="Open chat"
       >
         <div className="absolute inset-0 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40" style={{ backgroundColor: COLORS.electricPurple }} />
         <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-[#101A2E] flex items-center justify-center shadow-2xl">

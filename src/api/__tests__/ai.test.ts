@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createConversation, sendMessage } from "../ai.api";
+import { createConversation, listMessages, sendMessage } from "../ai.api";
 import { setApiAccessToken } from "../client";
 
 describe("ai.api", () => {
@@ -7,6 +7,14 @@ describe("ai.api", () => {
     vi.stubGlobal("fetch", vi.fn());
     setApiAccessToken("mock-token");
   });
+
+  function encodeBase64Url(value: string) {
+    return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function makeJwt(payload: Record<string, unknown>) {
+    return `header.${encodeBase64Url(JSON.stringify(payload))}.signature`;
+  }
 
   it("createConversation returns conversation_id", async () => {
     const mockFetch = vi.mocked(fetch);
@@ -21,6 +29,33 @@ describe("ai.api", () => {
     const result = await createConversation({ context_type: "general" });
 
     expect(result.conversation_id).toBe(123);
+  });
+
+  it("always sends Authorization and only uses the debug username header when available", async () => {
+    const mockFetch = vi.mocked(fetch);
+    setApiAccessToken(
+      makeJwt({
+        email: "person@example.com",
+        user_metadata: { username: "devuser" },
+      })
+    );
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ conversation_id: 123 }),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    } as Response);
+
+    await createConversation({ context_type: "general" });
+
+    const init = mockFetch.mock.calls[0]?.[1];
+    const headers = new Headers(init?.headers);
+
+    expect(headers.get("Authorization")).toContain("Bearer header.");
+    if (headers.has("X-Dev-User")) {
+      expect(headers.get("X-Dev-User")).toBe("devuser");
+    }
   });
 
   it("sendMessage returns user_message and assistant_message", async () => {
@@ -43,5 +78,66 @@ describe("ai.api", () => {
     expect(result).toHaveProperty("assistant_message");
     expect(result.user_message.content).toBe("Hello");
     expect(result.assistant_message.content).toBe("Hi there!");
+  });
+
+  it("sendMessage includes action_payload when provided", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          user_message: { id: 1, role: "user", content: "Confirm" },
+          assistant_message: { id: 2, role: "assistant", content: "Updated." },
+        }),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    } as Response);
+
+    await sendMessage(1, "Confirm", { kind: "confirm_pending_action" });
+
+    const init = mockFetch.mock.calls[0]?.[1];
+    expect(init?.body).toBe(
+      JSON.stringify({
+        content: "Confirm",
+        action_payload: { kind: "confirm_pending_action" },
+      })
+    );
+  });
+
+  it("listMessages returns the ordered messages for a conversation", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve([
+          { id: 1, role: "user", content: "Hello" },
+          { id: 2, role: "assistant", content: "Hi there!" },
+        ]),
+      text: () => Promise.resolve(""),
+      headers: new Headers(),
+    } as Response);
+
+    const result = await listMessages(123);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].role).toBe("user");
+    expect(result[1].role).toBe("assistant");
+  });
+
+  it("includes backend error detail in failed AI requests", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ detail: "Missing or invalid X-Dev-User header" }),
+      text: () => Promise.resolve(JSON.stringify({ detail: "Missing or invalid X-Dev-User header" })),
+      headers: new Headers(),
+    } as Response);
+
+    await expect(createConversation({ context_type: "general" })).rejects.toThrow(
+      "createConversation failed: 401 Missing or invalid X-Dev-User header"
+    );
   });
 });

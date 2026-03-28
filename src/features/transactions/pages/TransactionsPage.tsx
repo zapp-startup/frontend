@@ -1,5 +1,6 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Plus, X, Calendar, Coffee, ShoppingBag, Car,
   Zap as ZapIcon, ChevronDown, Wallet, ChevronUp, Flame, TrendingDown, Sparkles,
@@ -610,6 +611,8 @@ function FilterBar({ filters, onChange, onClear }: { filters: Filters; onChange:
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const TransactionsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -667,8 +670,23 @@ export const TransactionsPage = () => {
 
   React.useEffect(() => { setExpandedGroups(dates); }, [dates]);
 
+  React.useEffect(() => {
+    if (location.pathname === "/transactions/new") {
+      setEditingTransaction(null);
+      setIsAddPanelOpen(true);
+    }
+  }, [location.pathname]);
+
   const toggleGroup = (date: string) =>
     setExpandedGroups((prev) => prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]);
+
+  const closeAddPanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    setEditingTransaction(null);
+    if (location.pathname === "/transactions/new") {
+      navigate("/transactions", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const handleAdded = (tx: Transaction) => setTransactions((prev) => [tx, ...prev]);
   const handleUpdated = (tx: Transaction) =>
@@ -869,10 +887,7 @@ export const TransactionsPage = () => {
       <AnimatePresence>
         {isAddPanelOpen && (
           <AddPanel
-            onClose={() => {
-              setIsAddPanelOpen(false);
-              setEditingTransaction(null);
-            }}
+            onClose={closeAddPanel}
             onAdded={handleAdded}
             onUpdated={handleUpdated}
             editingTransaction={editingTransaction}

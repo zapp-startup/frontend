@@ -1,6 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, Filter, TrendingUp, X, Calendar, Loader2 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
@@ -379,6 +380,8 @@ function ValuationDetailPanel({
 }
 
 export function SubscriptionsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [merchants, setMerchants] = React.useState<Merchant[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -414,6 +417,19 @@ export function SubscriptionsPage() {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    if (location.pathname === "/subscriptions/new") {
+      setIsAddPanelOpen(true);
+    }
+  }, [location.pathname]);
+
+  const closeAddPanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    if (location.pathname === "/subscriptions/new") {
+      navigate("/subscriptions", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const handleDelete = async (sub: Subscription, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -650,7 +666,7 @@ export function SubscriptionsPage() {
       <AnimatePresence>
         {isAddPanelOpen && (
           <AddPanel
-            onClose={() => setIsAddPanelOpen(false)}
+            onClose={closeAddPanel}
             onAdded={handleAdded}
             merchants={merchants}
           />

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { TrendingUp, ZapOff, ChevronRight, Loader2, Plus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { ElectricCard } from "@/features/home";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
@@ -184,7 +185,13 @@ function ValuationCard({
   );
 }
 
-function ValuationsSection() {
+function ValuationsSection({
+  shouldStartAddingItem,
+  onItemCreateIntentHandled,
+}: {
+  shouldStartAddingItem: boolean;
+  onItemCreateIntentHandled: () => void;
+}) {
   const [subVals, setSubVals] = React.useState<SubscriptionValuation[]>([]);
   const [itemVals, setItemVals] = React.useState<ItemValuation[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -205,6 +212,12 @@ function ValuationsSection() {
     return () => { cancelled = true; };
   }, []);
 
+  React.useEffect(() => {
+    if (!shouldStartAddingItem) return;
+    setAddingItem(true);
+    onItemCreateIntentHandled();
+  }, [onItemCreateIntentHandled, shouldStartAddingItem]);
+
   const handleAddItem = async () => {
     if (!newItem.description.trim()) {
       toast.error("Description is required.");
@@ -218,6 +231,7 @@ function ValuationsSection() {
       setItemVals((prev) => [...prev, created]);
       setNewItem({ description: "", amount: "" });
       setAddingItem(false);
+      onItemCreateIntentHandled();
       toast.success("Item valuation added.");
     } catch {
       toast.error("Failed to add item valuation.");
@@ -240,7 +254,10 @@ function ValuationsSection() {
         <h3 className="text-xl font-black text-white">Valuations</h3>
         {!addingItem && (
           <Button
-            onClick={() => setAddingItem(true)}
+            onClick={() => {
+              setAddingItem(true);
+              onItemCreateIntentHandled();
+            }}
             className="rounded-xl gap-2"
             style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
           >
@@ -277,7 +294,14 @@ function ValuationsSection() {
             <Button onClick={handleAddItem} style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}>
               Add
             </Button>
-            <Button variant="outline" onClick={() => { setAddingItem(false); setNewItem({ description: "", amount: "" }); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddingItem(false);
+                setNewItem({ description: "", amount: "" });
+                onItemCreateIntentHandled();
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -327,9 +351,41 @@ function ValuationsSection() {
 }
 
 export function AnalyticsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab =
+    tabParam === "insights" || tabParam === "valuations" ? tabParam : "overview";
+  const shouldStartAddingItem = activeTab === "valuations" && searchParams.get("create") === "item";
+
+  const handleTabChange = React.useCallback(
+    (nextTab: string) => {
+      const nextParams = new URLSearchParams(searchParams);
+
+      if (nextTab === "overview") {
+        nextParams.delete("tab");
+      } else {
+        nextParams.set("tab", nextTab);
+      }
+
+      if (nextTab !== "valuations") {
+        nextParams.delete("create");
+      }
+
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const clearItemCreateIntent = React.useCallback(() => {
+    if (!searchParams.has("create")) return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("create");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   return (
     <div className="space-y-12 pb-32 relative z-10">
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="bg-[#101A2E] border border-white/10 rounded-2xl p-1.5">
           <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white/10">
             Overview
@@ -451,7 +507,10 @@ export function AnalyticsPage() {
         </TabsContent>
 
         <TabsContent value="valuations" className="mt-8">
-          <ValuationsSection />
+          <ValuationsSection
+            shouldStartAddingItem={shouldStartAddingItem}
+            onItemCreateIntentHandled={clearItemCreateIntent}
+          />
         </TabsContent>
       </Tabs>
     </div>
