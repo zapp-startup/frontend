@@ -5,7 +5,6 @@ import { setApiAccessToken } from "../client";
 describe("ai.api", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    setApiAccessToken("mock-token");
   });
 
   function encodeBase64Url(value: string) {
@@ -26,9 +25,22 @@ describe("ai.api", () => {
       headers: new Headers(),
     } as Response);
 
-    const result = await createConversation({ context_type: "general" });
+    const result = await createConversation(
+      { devUsername: "seed_user_0" },
+      { context_type: "general" }
+    );
 
     expect(result.conversation_id).toBe(123);
+    expect(fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/ai/conversations/",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "X-Dev-User": "seed_user_0",
+        }),
+      })
+    );
   });
 
   it("always sends Authorization and only uses the debug username header when available", async () => {
@@ -72,7 +84,7 @@ describe("ai.api", () => {
       headers: new Headers(),
     } as Response);
 
-    const result = await sendMessage(1, "Hello");
+    const result = await sendMessage({ devUsername: "seed_user_0" }, 1, "Hello");
 
     expect(result).toHaveProperty("user_message");
     expect(result).toHaveProperty("assistant_message");

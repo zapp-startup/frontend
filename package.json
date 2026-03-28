@@ -55,6 +55,7 @@
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",
     "react-hook-form": "7.55.0",
+    "react-plaid-link": "^4.1.1",
     "react-popper": "2.3.0",
     "react-resizable-panels": "2.1.7",
     "react-responsive-masonry": "2.7.1",
@@ -75,7 +76,7 @@
     "jsdom": "^25.0.1",
     "tailwindcss": "4.1.12",
     "vite": "^6.4.1",
-    "vitest": "^2.1.6"
+    "vitest": "^4.1.1"
   },
   "peerDependencies": {
     "react": "18.3.1",

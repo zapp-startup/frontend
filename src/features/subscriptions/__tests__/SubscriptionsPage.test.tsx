@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SubscriptionsPage } from "../pages/SubscriptionsPage";
+import { PanelProvider } from "@/features/dashboard/context/PanelContext";
 import * as api from "@/api";
 
 vi.mock("@/api", () => ({
@@ -17,10 +18,15 @@ describe("SubscriptionsPage", () => {
     vi.mocked(api.MerchantsAPI.list).mockResolvedValue([
       { id: 1, name: "Netflix", category: "streaming" },
     ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockResolvedValue([]);
   });
 
   it("loads and displays empty state when no subscriptions", async () => {
-    render(<SubscriptionsPage />);
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(api.SubscriptionsAPI.list).toHaveBeenCalled();
@@ -43,12 +49,68 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    render(<SubscriptionsPage />);
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();
     });
 
     expect(screen.getByText("$15.99")).toBeInTheDocument();
+  });
+
+  it("uses the 0-150 value scale labels on subscription cards", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 100,
+      },
+    ]);
+
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Decent").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("still shows subscriptions when valuations fail to load", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+      },
+    ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockRejectedValue(new Error("valuations unavailable"));
+
+    render(
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Netflix")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
   });
 });

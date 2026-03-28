@@ -28,6 +28,10 @@ export function SignUpPage() {
     const result = await signUp({ name, email, password, confirmPassword });
     setLoading(false);
     if (result.ok) {
+      if (result.requiresVerification) {
+        toast.success("Check your email to verify your account.");
+        return;
+      }
       toast.success("Account created. Welcome to Zapp!");
       navigate("/", { replace: true });
     } else {

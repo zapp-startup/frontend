@@ -10,9 +10,10 @@ export type Merchant = {
 
 /** Merchant list is public; no auth required. */
 export const MerchantsAPI = {
-  list: async (): Promise<Merchant[]> => {
+  list: async (opts?: { signal?: AbortSignal }): Promise<Merchant[]> => {
     const data = await apiRequest<Merchant[] | { results?: Merchant[]; data?: Merchant[] }>(
-      "/api/merchants/"
+      "/api/merchants/",
+      { signal: opts?.signal }
     );
     return Array.isArray(data) ? data : (data?.results ?? data?.data ?? []);
   },

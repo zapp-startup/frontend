@@ -14,24 +14,26 @@ describe("subscriptions.api", () => {
   it("list calls GET /api/subscriptions/", async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce([]);
 
-    await SubscriptionsAPI.list();
+    const result = await SubscriptionsAPI.list();
 
     expect(apiRequest).toHaveBeenCalledWith("/api/subscriptions/", {
       requireAuth: true,
     });
+    expect(result).toEqual([]);
   });
 
-  it("create sends correct payload", async () => {
+  it("create sends backend-compatible payload and normalizes response", async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce({
       id: 1,
       merchant: 1,
-      amount: 9.99,
+      price: 9.99,
       billing_cycle: "monthly",
       status: "active",
-      started_at: "2025-01-01T00:00:00Z",
+      started_on: "2025-01-01",
+      feedback_value_score: 0.82,
     });
 
-    await SubscriptionsAPI.create({
+    const result = await SubscriptionsAPI.create({
       merchant: 1,
       amount: 9.99,
       billing_cycle: "monthly",
@@ -45,14 +47,24 @@ describe("subscriptions.api", () => {
         method: "POST",
         body: JSON.stringify({
           merchant: 1,
-          amount: 9.99,
+          price: 9.99,
           billing_cycle: "monthly",
           status: "active",
-          started_at: "2025-01-01T00:00:00Z",
+          started_on: "2025-01-01",
         }),
         requireAuth: true,
       })
     );
+    expect(result).toEqual({
+      id: 1,
+      merchant: 1,
+      amount: 9.99,
+      billing_cycle: "monthly",
+      status: "active",
+      started_at: "2025-01-01T00:00:00Z",
+      notes: undefined,
+      value_score: 0.82,
+    });
   });
 
   it("remove calls DELETE /api/subscriptions/{id}/", async () => {

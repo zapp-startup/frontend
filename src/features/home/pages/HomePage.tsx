@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { TrendingUp, AlertCircle, Sparkles, TrendingDown, ChevronRight } from "lucide-react";
-import { TransactionsAPI, type Transaction } from "@/api/transactions.api";
+import { useMergedTransactions } from "@/features/transactions/hooks/useMergedTransactions";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -12,6 +12,10 @@ import {
   Cell,
 } from "recharts";
 import { toast } from "sonner";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/components/ui/utils";
+import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
+import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard, ReflectionPulse } from "../components/ElectricCard";
 import { DashboardGamification } from "@/features/gamification";
 import { COLORS, GLOWS } from "@/shared/theme";
@@ -27,15 +31,31 @@ export function HomePage() {
     });
   };
 
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [txLoading, setTxLoading] = React.useState(true);
+  const { transactions, loading: txLoading } = useMergedTransactions({ limit: 6 });
 
-  React.useEffect(() => {
-    TransactionsAPI.recent()
-      .then(setTransactions)
-      .catch(console.error)
-      .finally(() => setTxLoading(false));
-  }, []);
+  const recentValueSummary = React.useMemo(() => {
+    const scores = transactions
+      .map((tx) => deriveTransactionValueScore(tx))
+      .filter((score): score is number => score != null);
+
+    if (scores.length === 0) {
+      return {
+        average: null as number | null,
+        label: "No score yet",
+        accentColor: COLORS.electricBlue,
+        progress: 0,
+      };
+    }
+
+    const average = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    const value = getValuePresentation(average);
+    return {
+      average,
+      label: value.label,
+      accentColor: value.accentColor,
+      progress: average / 150,
+    };
+  }, [transactions]);
 
   return (
     <div className="space-y-12 pb-32 relative z-10">
@@ -60,20 +80,27 @@ export function HomePage() {
                 <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/[0.03]" />
                 <motion.circle
                   cx="80" cy="80" r="72"
-                  stroke={COLORS.electricGreen}
+                  stroke={recentValueSummary.accentColor}
                   strokeWidth="12"
                   strokeDasharray={452}
                   initial={{ strokeDashoffset: 452 }}
-                  animate={{ strokeDashoffset: 452 * (1 - 0.88) }}
+                  animate={{ strokeDashoffset: 452 * (1 - recentValueSummary.progress) }}
                   transition={{ duration: 2, ease: [0.23, 1, 0.32, 1] }}
                   strokeLinecap="round"
                   fill="transparent"
-                  style={{ filter: `drop-shadow(0 0 12px ${COLORS.electricGreen}80)` }}
+                  style={{ filter: `drop-shadow(0 0 12px ${recentValueSummary.accentColor}80)` }}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">88</span>
-                <span className="text-[10px] uppercase font-black text-gray-500 tracking-[0.2em]">Value Score</span>
+                <span className="text-4xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                  {recentValueSummary.average ?? "—"}
+                </span>
+                <span
+                  className="text-[10px] uppercase font-black tracking-[0.2em]"
+                  style={{ color: recentValueSummary.average == null ? "#6B7280" : recentValueSummary.accentColor }}
+                >
+                  {recentValueSummary.average == null ? "No score" : recentValueSummary.label}
+                </span>
               </div>
               <div className="absolute inset-0 rounded-full bg-electric-green/5 blur-3xl -z-10 group-hover:bg-electric-green/10 transition-colors" />
             </div>
@@ -193,15 +220,12 @@ export function HomePage() {
 )}
 
 {!txLoading && transactions.map((item) => {
-  const score = item.satisfaction_rating != null
-    ? item.satisfaction_rating * 10
-    : item.impulse_score != null
-    ? Math.round((1 - item.impulse_score) * 100)
-    : null;
+  const score = deriveTransactionValueScore(item);
+  const value = getValuePresentation(score);
 
   const isRegret = item.regret_score != null
     ? item.regret_score > 0.5
-    : score != null && score < 50;
+    : score != null && score < 80;
 
   const timeAgo = (() => {
     const diff = Date.now() - new Date(item.occurred_at).getTime();
@@ -245,13 +269,15 @@ export function HomePage() {
               <div
                 className="text-4xl font-black tracking-tighter"
                 style={{
-                  color: score > 70 ? COLORS.electricGreen : COLORS.electricRed,
-                  filter: `drop-shadow(0 0 10px ${score > 70 ? COLORS.electricGreen : COLORS.electricRed}80)`,
+                  color: value.accentColor,
+                  filter: `drop-shadow(0 0 10px ${value.accentColor}80)`,
                 }}
               >
-                {score}
+                {value.scoreText}
               </div>
-              <div className="text-[10px] uppercase tracking-widest text-gray-600 font-black">Score</div>
+              <div className="text-[10px] uppercase tracking-widest font-black" style={{ color: value.accentColor }}>
+                {value.label}
+              </div>
             </>
           ) : (
             <div className="text-[10px] uppercase tracking-widest text-gray-700 font-black">No score</div>

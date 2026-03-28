@@ -173,6 +173,153 @@ function PreferenceAddForm({
   );
 }
 
+const FinancialProfileSection = React.memo(function FinancialProfileSection({
+  financialLoading,
+  rawExplicit,
+  editingFinancial,
+  onStartEdit,
+  onSave,
+  onCancel,
+}: {
+  financialLoading: boolean;
+  rawExplicit: RawExplicit[];
+  editingFinancial: RawExplicit | null;
+  onStartEdit: () => void;
+  onSave: (updated: RawExplicit) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="pt-8 border-t border-white/10">
+      <h3 className="text-lg font-black text-white mb-4 flex items-center justify-between">
+        Financial Profile
+        {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onStartEdit}
+            className="text-cyan-400 hover:text-cyan-300 gap-1"
+          >
+            <Pencil size={14} /> Edit
+          </Button>
+        )}
+      </h3>
+      {financialLoading && (
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Loader2 size={16} className="animate-spin" /> Loading…
+        </div>
+      )}
+      {!financialLoading && rawExplicit.length === 0 && (
+        <p className="text-gray-500 text-sm">Complete onboarding to set your financial profile.</p>
+      )}
+      {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
+        <div className="grid grid-cols-2 gap-4">
+          {FINANCIAL_FIELDS.map(({ key, label }) => {
+            const val = rawExplicit[0][key];
+            return (
+              <div key={key} className="space-y-1">
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">{label}</div>
+                <div className="text-sm font-bold text-white">
+                  {val == null || val === "" ? "—" : String(val)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {editingFinancial && (
+        <FinancialEditForm
+          data={editingFinancial}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      )}
+    </div>
+  );
+});
+
+const PreferencesSection = React.memo(function PreferencesSection({
+  prefsLoading,
+  preferences,
+  addingPref,
+  newPref,
+  onStartAdd,
+  onChangePref,
+  onSubmitPref,
+  onCancelAdd,
+  onRemovePref,
+}: {
+  prefsLoading: boolean;
+  preferences: Preference[];
+  addingPref: boolean;
+  newPref: PreferenceCreate;
+  onStartAdd: () => void;
+  onChangePref: (value: PreferenceCreate) => void;
+  onSubmitPref: () => void;
+  onCancelAdd: () => void;
+  onRemovePref: (id: number) => Promise<void>;
+}) {
+  return (
+    <div className="pt-8 border-t border-white/10">
+      <h3 className="text-lg font-black text-white mb-4 flex items-center justify-between">
+        Preferences
+        {!prefsLoading && !addingPref && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onStartAdd}
+            className="text-cyan-400 hover:text-cyan-300 gap-1"
+          >
+            <Plus size={14} /> Add
+          </Button>
+        )}
+      </h3>
+      {prefsLoading && (
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Loader2 size={16} className="animate-spin" /> Loading…
+        </div>
+      )}
+      {!prefsLoading && preferences.length === 0 && !addingPref && (
+        <p className="text-gray-500 text-sm">No preferences yet.</p>
+      )}
+      {!prefsLoading && preferences.length > 0 && (
+        <div className="space-y-2 mb-4">
+          {preferences.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between py-2 px-4 rounded-xl bg-white/5 border border-white/5"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-black uppercase text-gray-500">{p.key}</span>
+                <span className="text-sm font-bold text-white">
+                  {typeof p.value === "object" ? JSON.stringify(p.value) : String(p.value)}
+                </span>
+                <span className="text-[10px] text-gray-600">({p.value_type})</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void onRemovePref(p.id)}
+                className="p-1.5 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {addingPref && (
+        <PreferenceAddForm
+          form={newPref}
+          onChange={onChangePref}
+          onSubmit={onSubmitPref}
+          onCancel={onCancelAdd}
+        />
+      )}
+    </div>
+  );
+});
+
 export function ProfilePage() {
   const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
@@ -217,19 +364,62 @@ export function ProfilePage() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    updateProfile({ name: name.trim(), tier: tier.trim() || undefined });
-    setSaving(false);
-    toast.success("Profile updated");
+    try {
+      const result = await updateProfile({ name: name.trim(), tier: tier.trim() || undefined });
+      if (result.ok) {
+        toast.success("Profile updated");
+      } else {
+        toast.error(result.error ?? "Failed to update profile.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success("Signed out");
     navigate("/login", { replace: true });
   };
+
+  const handleFinancialSave = React.useCallback((updated: RawExplicit) => {
+    setRawExplicit((prev) => (prev[0]?.id === updated.id ? [updated, ...prev.slice(1)] : [updated]));
+    setEditingFinancial(null);
+  }, []);
+
+  const handleRemovePreference = React.useCallback(async (id: number) => {
+    try {
+      await PreferencesAPI.remove(id);
+      setPreferences((prev) => prev.filter((x) => x.id !== id));
+      toast.success("Preference removed.");
+    } catch {
+      toast.error("Failed to remove preference.");
+    }
+  }, []);
+
+  const handleSubmitPreference = React.useCallback(async () => {
+    if (!newPref.key.trim()) {
+      toast.error("Key is required.");
+      return;
+    }
+    try {
+      const created = await PreferencesAPI.create(newPref);
+      setPreferences((prev) => [...prev, created]);
+      setNewPref({ key: "", value: "", value_type: "string" });
+      setAddingPref(false);
+      toast.success("Preference added.");
+    } catch {
+      toast.error("Failed to add preference.");
+    }
+  }, [newPref]);
+
+  const handleCancelPreference = React.useCallback(() => {
+    setAddingPref(false);
+    setNewPref({ key: "", value: "", value_type: "string" });
+  }, []);
 
   if (!user) return null;
 
@@ -242,8 +432,9 @@ export function ProfilePage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className="max-w-2xl mx-auto space-y-8"
     >
       <div className="flex items-center justify-between">
@@ -320,140 +511,26 @@ export function ProfilePage() {
             </Button>
           </form>
 
-          {/* Financial Profile */}
-          <div className="pt-8 border-t border-white/10">
-            <h3 className="text-lg font-black text-white mb-4 flex items-center justify-between">
-              Financial Profile
-              {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingFinancial(rawExplicit[0])}
-                  className="text-cyan-400 hover:text-cyan-300 gap-1"
-                >
-                  <Pencil size={14} /> Edit
-                </Button>
-              )}
-            </h3>
-            {financialLoading && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <Loader2 size={16} className="animate-spin" /> Loading…
-              </div>
-            )}
-            {!financialLoading && rawExplicit.length === 0 && (
-              <p className="text-gray-500 text-sm">Complete onboarding to set your financial profile.</p>
-            )}
-            {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
-              <div className="grid grid-cols-2 gap-4">
-                {FINANCIAL_FIELDS.map(({ key, label }) => {
-                  const val = rawExplicit[0][key];
-                  return (
-                    <div key={key} className="space-y-1">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">{label}</div>
-                      <div className="text-sm font-bold text-white">
-                        {val == null || val === "" ? "—" : String(val)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {editingFinancial && (
-              <FinancialEditForm
-                data={editingFinancial}
-                onSave={(updated) => {
-                  setRawExplicit((prev) => (prev[0]?.id === updated.id ? [updated, ...prev.slice(1)] : [updated]));
-                  setEditingFinancial(null);
-                }}
-                onCancel={() => setEditingFinancial(null)}
-              />
-            )}
-          </div>
+          <FinancialProfileSection
+            financialLoading={financialLoading}
+            rawExplicit={rawExplicit}
+            editingFinancial={editingFinancial}
+            onStartEdit={() => setEditingFinancial(rawExplicit[0] ?? null)}
+            onSave={handleFinancialSave}
+            onCancel={() => setEditingFinancial(null)}
+          />
 
-          {/* Preferences */}
-          <div className="pt-8 border-t border-white/10">
-            <h3 className="text-lg font-black text-white mb-4 flex items-center justify-between">
-              Preferences
-              {!prefsLoading && !addingPref && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAddingPref(true)}
-                  className="text-cyan-400 hover:text-cyan-300 gap-1"
-                >
-                  <Plus size={14} /> Add
-                </Button>
-              )}
-            </h3>
-            {prefsLoading && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <Loader2 size={16} className="animate-spin" /> Loading…
-              </div>
-            )}
-            {!prefsLoading && preferences.length === 0 && !addingPref && (
-              <p className="text-gray-500 text-sm">No preferences yet.</p>
-            )}
-            {!prefsLoading && preferences.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {preferences.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between py-2 px-4 rounded-xl bg-white/5 border border-white/5"
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-black uppercase text-gray-500">{p.key}</span>
-                      <span className="text-sm font-bold text-white">
-                        {typeof p.value === "object" ? JSON.stringify(p.value) : String(p.value)}
-                      </span>
-                      <span className="text-[10px] text-gray-600">({p.value_type})</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await PreferencesAPI.remove(p.id);
-                          setPreferences((prev) => prev.filter((x) => x.id !== p.id));
-                          toast.success("Preference removed.");
-                        } catch {
-                          toast.error("Failed to remove preference.");
-                        }
-                      }}
-                      className="p-1.5 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {addingPref && (
-              <PreferenceAddForm
-                form={newPref}
-                onChange={setNewPref}
-                onSubmit={async () => {
-                  if (!newPref.key.trim()) {
-                    toast.error("Key is required.");
-                    return;
-                  }
-                  try {
-                    const created = await PreferencesAPI.create(newPref);
-                    setPreferences((prev) => [...prev, created]);
-                    setNewPref({ key: "", value: "", value_type: "string" });
-                    setAddingPref(false);
-                    toast.success("Preference added.");
-                  } catch {
-                    toast.error("Failed to add preference.");
-                  }
-                }}
-                onCancel={() => {
-                  setAddingPref(false);
-                  setNewPref({ key: "", value: "", value_type: "string" });
-                }}
-              />
-            )}
-          </div>
+          <PreferencesSection
+            prefsLoading={prefsLoading}
+            preferences={preferences}
+            addingPref={addingPref}
+            newPref={newPref}
+            onStartAdd={() => setAddingPref(true)}
+            onChangePref={setNewPref}
+            onSubmitPref={handleSubmitPreference}
+            onCancelAdd={handleCancelPreference}
+            onRemovePref={handleRemovePreference}
+          />
 
           <div className="pt-6 border-t border-white/10">
             <Button
