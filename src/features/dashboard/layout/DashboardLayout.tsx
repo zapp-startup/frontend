@@ -205,12 +205,14 @@ export function DashboardLayout() {
                 <IconBadge
                   tone="cyan"
                   size="md"
-                  className="h-12 w-12 border-[var(--app-color-border-strong)] text-sm font-black uppercase tracking-[0.18em] text-[var(--app-color-text-inverse)] shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14 sm:text-base"
+                  className="h-12 w-12 border-[var(--app-color-border-strong)] text-sm font-black uppercase tracking-[0.12em] leading-none text-[var(--app-color-text-inverse)] shadow-2xl transition-all group-hover/avatar:scale-105 sm:h-14 sm:w-14 sm:text-base"
                   style={{
                     backgroundImage: `linear-gradient(to bottom right, ${COLORS.electricCyan}, ${COLORS.electricBlue})`,
                   }}
                 >
-                  {userInitials}
+                  <span className="inline-flex h-full w-full items-center justify-center leading-none">
+                    {userInitials}
+                  </span>
                 </IconBadge>
               </NavLink>
             </div>

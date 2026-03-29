@@ -327,7 +327,14 @@ export function CirclesPage() {
             >
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-black text-[var(--app-color-text-primary)]">{group.name}</h3>
-                {selectedGroupId === group.id && <div className="h-2 w-2 rounded-full bg-[var(--app-accent-cyan-soft)] shadow-[0_0_8px_color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)]" />}
+                {selectedGroupId === group.id && (
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex size-3 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_32%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)]"
+                  >
+                    <span className="size-1.5 rounded-full bg-[var(--app-accent-cyan-soft)] shadow-[0_0_10px_color-mix(in_srgb,var(--app-accent-cyan-soft)_30%,transparent)]" />
+                  </span>
+                )}
               </div>
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-color-text-tertiary)]">
                 {group.member_count} members • {group.is_private ? "private" : "public"}

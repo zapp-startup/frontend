@@ -59,8 +59,7 @@ export function TransactionFeedbackModal({
   onSubmitted?: () => void;
 }) {
   const [form, setForm] = React.useState<FeedbackForm>(INITIAL_FORM);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [submittingReflection, setSubmittingReflection] = React.useState(false);
+  const [submittingAction, setSubmittingAction] = React.useState<"feedback" | "reflection" | null>(null);
 
   const isManual = transaction?.source === "manual" && typeof transaction.id === "number";
   const isBank = transaction?.source === "bank";
@@ -81,17 +80,35 @@ export function TransactionFeedbackModal({
       });
     } else if (!open) {
       setForm(INITIAL_FORM);
-      setSubmittingReflection(false);
+      setSubmittingAction(null);
     }
   }, [open, transaction]);
 
   const set = <K extends keyof FeedbackForm>(key: K, val: FeedbackForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
+  const hasSatisfactionRating =
+    form.satisfaction_rating != null &&
+    form.satisfaction_rating >= 1 &&
+    form.satisfaction_rating <= 10;
+  const hasReflectionText = form.reflection_text.trim().length > 0;
+  const primaryAction =
+    canSubmit && hasSatisfactionRating
+      ? "feedback"
+      : canSubmitReflection && hasReflectionText
+        ? "reflection"
+        : null;
+  const footerNote =
+    primaryAction === "feedback"
+      ? "Your rating, sliders, and reflection note will be saved together."
+      : hasReflectionText
+        ? "Only the reflection note will be recorded for this purchase."
+        : "Choose a satisfaction score or add a reflection note to enable submit.";
+
   const handleSubmit = async () => {
     if (!canSubmit || !transaction) return;
 
-    if (form.satisfaction_rating == null || form.satisfaction_rating < 1 || form.satisfaction_rating > 10) {
+    if (!hasSatisfactionRating) {
       toast.error("Please rate satisfaction from 1 to 10.");
       return;
     }
@@ -118,7 +135,7 @@ export function TransactionFeedbackModal({
     if (usageNum !== undefined) payload.usage_frequency = usageNum;
     if (form.reflection_text.trim()) payload.reflection_text = form.reflection_text.trim();
 
-    setSubmitting(true);
+    setSubmittingAction("feedback");
     try {
       if (isManual && typeof transaction.id === "number") {
         await TransactionsAPI.submitFeedback(transaction.id, payload);
@@ -128,22 +145,24 @@ export function TransactionFeedbackModal({
         throw new Error("Invalid transaction for feedback");
       }
       toast.success("Feedback saved!");
-      onOpenChange(false);
       onSubmitted?.();
+      onOpenChange(false);
     } catch {
       toast.error("Failed to save feedback.");
     } finally {
-      setSubmitting(false);
+      setSubmittingAction(null);
     }
   };
 
   const handleReflectionSubmit = async () => {
     if (!transaction) return;
-    const notes =
-      form.reflection_text.trim() ||
-      `Quick reflection recorded for ${transaction.description_raw || transaction.category}.`;
+    const notes = form.reflection_text.trim();
+    if (!notes) {
+      toast.error("Add a short reflection before saving it on its own.");
+      return;
+    }
 
-    setSubmittingReflection(true);
+    setSubmittingAction("reflection");
     try {
       if (typeof transaction.id === "number") {
         await GamificationAPI.createTransactionReflection({
@@ -154,15 +173,25 @@ export function TransactionFeedbackModal({
       } else {
         toast.success("Reflection recorded for this session.");
       }
-      onOpenChange(false);
       onSubmitted?.();
+      onOpenChange(false);
     } catch (error) {
       console.error(error);
       toast.success("Reflection recorded for this session.");
-      onOpenChange(false);
       onSubmitted?.();
+      onOpenChange(false);
     } finally {
-      setSubmittingReflection(false);
+      setSubmittingAction(null);
+    }
+  };
+
+  const handlePrimarySubmit = async () => {
+    if (primaryAction === "feedback") {
+      await handleSubmit();
+      return;
+    }
+    if (primaryAction === "reflection") {
+      await handleReflectionSubmit();
     }
   };
 
@@ -171,15 +200,38 @@ export function TransactionFeedbackModal({
   return (
     <AppDialog open={open} onOpenChange={onOpenChange}>
       <AppDialogContent className="flex max-h-[min(88vh,900px)] max-w-2xl flex-col overflow-hidden">
-        <AppDialogHeader>
-          <AppDialogTitle>Transaction Feedback</AppDialogTitle>
-          <AppDialogDescription>
-            {transaction.description_raw || "This purchase"} — $
-            {Math.abs(Number(transaction.amount)).toFixed(2)}
-          </AppDialogDescription>
+        <AppDialogHeader className="gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusChip tone="info">Reflection Prompt</StatusChip>
+            <StatusChip tone="neutral">
+              {new Date(transaction.occurred_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </StatusChip>
+          </div>
+          <div className="space-y-2">
+            <AppDialogTitle>Reflect on this purchase</AppDialogTitle>
+            <AppDialogDescription>
+              {(transaction.description_raw || "This purchase").trim()} · $
+              {Math.abs(Number(transaction.amount)).toFixed(2)}
+            </AppDialogDescription>
+          </div>
         </AppDialogHeader>
 
-        <AppDialogBody className="flex-1 space-y-6 overflow-y-auto">
+        <AppDialogBody className="flex-1 space-y-5 overflow-y-auto">
+          <Surface
+            variant="inset"
+            padding="sm"
+            className="space-y-2 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
+          >
+            <div className="app-label text-[var(--app-accent-cyan-soft)]">Best after some real use</div>
+            <p className="app-helper">
+              Add a satisfaction score for the full feedback pass, or leave just a note to save a quick reflection.
+            </p>
+          </Surface>
+
           <FormField
             label={
               <>
@@ -188,7 +240,7 @@ export function TransactionFeedbackModal({
             }
             helperText="Rate the outcome from 1 to 10."
           >
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <AppButton
                   key={n}
@@ -196,7 +248,7 @@ export function TransactionFeedbackModal({
                   variant={form.satisfaction_rating === n ? "primary" : "secondary"}
                   size="sm"
                   onClick={() => set("satisfaction_rating", form.satisfaction_rating === n ? null : n)}
-                  className="min-w-[2.75rem] px-0"
+                  className="min-w-0 px-0 text-[11px] tracking-normal sm:text-xs"
                 >
                   {n}
                 </AppButton>
@@ -204,36 +256,38 @@ export function TransactionFeedbackModal({
             </div>
           </FormField>
 
-          <FormField label="Regret" helperText="0 means none. 100 means high regret.">
-            <div className="flex items-center gap-4">
-              <Slider
-                value={[form.regret_rating]}
-                onValueChange={([v]) => set("regret_rating", v ?? 50)}
-                min={0}
-                max={100}
-                step={1}
-                className="flex-1"
-              />
-              <StatusChip tone="info">{Math.round(form.regret_rating)}</StatusChip>
-            </div>
-          </FormField>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <FormField label="Regret" helperText="0 means none. 100 means high regret.">
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[form.regret_rating]}
+                  onValueChange={([v]) => set("regret_rating", v ?? 50)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                />
+                <StatusChip tone="info">{Math.round(form.regret_rating)}</StatusChip>
+              </div>
+            </FormField>
 
-          <FormField
-            label={wording?.repurchaseLabel ?? "Would you buy or use this again?"}
-            helperText="0 means never. 100 means definitely."
-          >
-            <div className="flex items-center gap-4">
-              <Slider
-                value={[form.repurchase_likelihood]}
-                onValueChange={([v]) => set("repurchase_likelihood", v ?? 50)}
-                min={0}
-                max={100}
-                step={1}
-                className="flex-1"
-              />
-              <StatusChip tone="accent">{Math.round(form.repurchase_likelihood)}</StatusChip>
-            </div>
-          </FormField>
+            <FormField
+              label={wording?.repurchaseLabel ?? "Would you buy or use this again?"}
+              helperText="0 means never. 100 means definitely."
+            >
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[form.repurchase_likelihood]}
+                  onValueChange={([v]) => set("repurchase_likelihood", v ?? 50)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                />
+                <StatusChip tone="accent">{Math.round(form.repurchase_likelihood)}</StatusChip>
+              </div>
+            </FormField>
+          </div>
 
           {wording?.showUsageFrequency && (
             <FormField
@@ -251,47 +305,57 @@ export function TransactionFeedbackModal({
             </FormField>
           )}
 
-          <FormField label="Reflection" helperText="Write a note if you want, or use the quick submit action below to record a reflection immediately.">
-            <div className="space-y-3">
+          <FormField label="Reflection" helperText="Capture what felt worth it, disappointing, or surprising.">
+            <Surface
+              variant="inset"
+              padding="md"
+              className="space-y-4 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_4%,transparent)]"
+            >
+              <div className="space-y-1">
+                <div className="app-label text-[var(--app-color-text-primary)]">Add context</div>
+                <p className="app-helper">
+                  If you skip the rating, this note becomes the only thing that gets submitted.
+                </p>
+              </div>
               <AppTextarea
                 placeholder="Any thoughts on this purchase..."
                 value={form.reflection_text}
                 onChange={(e) => set("reflection_text", e.target.value)}
+                className="min-h-28"
               />
-              <div className="flex justify-end">
-                <AppButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleReflectionSubmit}
-                  disabled={submitting || submittingReflection || !canSubmitReflection}
-                >
-                  {submittingReflection ? "Submitting..." : "Submit reflection only"}
-                </AppButton>
-              </div>
-            </div>
+            </Surface>
           </FormField>
-
-          <Surface variant="inset" padding="sm" className="space-y-2 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]">
-            <div className="app-label text-[var(--app-accent-cyan-soft)]">Category guidance</div>
-            <p className="app-helper">
-              Feedback is most useful when it captures how this spend felt after real use, not just the purchase moment.
-            </p>
-          </Surface>
         </AppDialogBody>
 
-        <AppDialogFooter className="gap-3 sm:gap-3">
-          <AppButton
-            variant="quiet"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </AppButton>
-          <AppButton
-            onClick={handleSubmit}
-            disabled={submitting || submittingReflection || !canSubmit}
-          >
-            {submitting ? "Saving..." : "Submit feedback"}
-          </AppButton>
+        <AppDialogFooter className="gap-4 sm:justify-between">
+          <p className="app-helper max-w-md text-left">{footerNote}</p>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <AppButton
+              type="button"
+              variant="quiet"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              type="button"
+              variant="hero"
+              size="lg"
+              onClick={handlePrimarySubmit}
+              disabled={submittingAction != null || primaryAction == null}
+              className="sm:min-w-[12rem]"
+            >
+              {submittingAction === "feedback"
+                ? "Submitting..."
+                : submittingAction === "reflection"
+                  ? "Saving..."
+                  : primaryAction === "feedback"
+                    ? "Submit feedback"
+                    : primaryAction === "reflection"
+                      ? "Save reflection"
+                      : "Add rating or note"}
+            </AppButton>
+          </div>
         </AppDialogFooter>
       </AppDialogContent>
     </AppDialog>

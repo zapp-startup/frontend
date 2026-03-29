@@ -1,10 +1,10 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
+import { CreditCard, Calendar, Loader2, Plus, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, UI_PATTERNS } from "@/shared/theme";
-import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
+import { getValuePresentation } from "@/shared/valuation";
 import {
   SubscriptionsAPI,
   MerchantsAPI,
@@ -33,6 +33,7 @@ import {
   LoadingState,
   StatusChip,
   Surface,
+  ValueScoreMeter,
 } from "@/shared/components/system";
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
@@ -85,6 +86,31 @@ function createEmptySubscriptionForm(): AddSubscriptionForm {
     started_at: `${y}-${m}-${day}`,
     notes: "",
   };
+}
+
+function clampSubscriptionValueScore(score: number) {
+  return Math.max(0, Math.min(150, Math.round(score)));
+}
+
+function deriveSubscriptionDisplayValueScore(
+  sub: Subscription,
+  valuations: SubscriptionValuation[]
+) {
+  const valuationScore = valuations.find(
+    (valuation) =>
+      typeof valuation.personal_value_score === "number" &&
+      Number.isFinite(valuation.personal_value_score)
+  )?.personal_value_score;
+
+  if (typeof valuationScore === "number" && Number.isFinite(valuationScore)) {
+    return clampSubscriptionValueScore(valuationScore);
+  }
+
+  if (typeof sub.value_score !== "number" || !Number.isFinite(sub.value_score)) {
+    return null;
+  }
+
+  return clampSubscriptionValueScore(sub.value_score <= 1 ? sub.value_score * 100 : sub.value_score);
 }
 
 function AddPanel({
@@ -158,24 +184,19 @@ function AddPanel({
   return (
     <AppSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
       <AppSheetContent className="flex w-full max-w-lg flex-col rounded-none border-l shadow-2xl">
-        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)] pb-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <AppSheetTitle>Add Subscription</AppSheetTitle>
-              <AppSheetDescription>
-                Create a manual subscription entry from the merchant catalog and recurring billing details.
-              </AppSheetDescription>
-              <div className="app-eyebrow mt-3 text-[var(--app-accent-cyan)]">
-                Manual Entry
-              </div>
+        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)]">
+          <div>
+            <AppSheetTitle>Add Subscription</AppSheetTitle>
+            <AppSheetDescription>
+              Create a manual subscription entry from the merchant catalog and recurring billing details.
+            </AppSheetDescription>
+            <div className="app-eyebrow mt-3 text-[var(--app-accent-cyan)]">
+              Manual Entry
             </div>
-            <AppButton aria-label="Close add subscription panel" onClick={onClose} variant="quiet" size="icon">
-              <X size={20} />
-            </AppButton>
           </div>
         </AppSheetHeader>
 
-        <AppSheetBody className="space-y-8 pt-8">
+        <AppSheetBody className="space-y-7 pt-6">
           <FormField label="Merchant" helperText="Pick an existing merchant from the catalog.">
             <AppInput
               type="text"
@@ -191,7 +212,7 @@ function AddPanel({
             </datalist>
           </FormField>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
             <FormField label="Amount ($)">
               <AppInput
                 type="number"
@@ -275,9 +296,14 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 }) {
   const cost = Number(sub.amount) || 0;
   const statusColor = getStatusColor(sub.status);
-  const value = getValuePresentation(sub.value_score);
-  const meterWidth = getValueMeterWidth(sub.value_score);
-  const primaryValuation = valuations[0];
+  const valuationWithScore = valuations.find(
+    (valuation) =>
+      typeof valuation.personal_value_score === "number" &&
+      Number.isFinite(valuation.personal_value_score)
+  );
+  const valueScore = deriveSubscriptionDisplayValueScore(sub, valuations);
+  const value = getValuePresentation(valueScore);
+  const primaryValuation = valuationWithScore ?? valuations[0];
   const recommendation = primaryValuation?.recommendation?.trim() || value.tone;
 
   return (
@@ -340,33 +366,21 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             </div>
           </div>
 
-          <div className="min-w-[170px]">
-            <div className="mb-2 flex items-center justify-between gap-4">
-              <div className={cn(UI_PATTERNS.eyebrow, "text-xs")}>Value</div>
-              <div
-                className="text-3xl font-black"
-                style={{
-                  color: value.accentColor,
-                  filter: `drop-shadow(0 0 8px ${value.accentColor}60)`,
-                }}
-              >
-                {value.scoreText}
+          <div className="min-w-[240px] shrink-0 text-right">
+            {valueScore != null ? (
+              <div className="space-y-2.5">
+                <div className="flex items-baseline justify-end text-right">
+                  <div className="text-lg font-black tracking-tight text-[var(--app-color-text-primary)]">
+                    Value: {value.displayScoreText}
+                  </div>
+                </div>
+                <ValueScoreMeter score={valueScore} />
               </div>
-            </div>
-
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
-              />
-            </div>
-
-            <div
-              className="mt-2 text-right text-[10px] font-black uppercase tracking-widest"
-              style={{ color: value.accentColor }}
-            >
-              {value.label}
-            </div>
+            ) : (
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
+                No score yet
+              </div>
+            )}
           </div>
 
           <AppButton
@@ -414,20 +428,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <div className={UI_PATTERNS.eyebrow}>Value score</div>
-                      <div className="mt-2 flex items-end gap-3">
-                        <div
-                          className="text-4xl font-black"
-                          style={{
-                            color: value.accentColor,
-                            filter: `drop-shadow(0 0 12px ${value.accentColor}50)`,
-                          }}
-                        >
-                          {value.scoreText}
+                      {valueScore != null ? (
+                        <div className="mt-2 text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">
+                          Value: {value.displayScoreText}
                         </div>
-                        <div className="pb-1 text-sm font-bold text-[var(--app-color-text-secondary)]">
-                          out of 150
+                      ) : (
+                        <div className="mt-2 text-sm font-bold text-[var(--app-color-text-secondary)]">
+                          No score yet
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <StatusChip
@@ -442,12 +451,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                     </StatusChip>
                   </div>
 
-                  <div className="h-3 overflow-hidden rounded-full bg-[var(--app-color-surface-base)]">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
-                    />
-                  </div>
+                  {valueScore != null ? <ValueScoreMeter score={valueScore} /> : null}
 
                   <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">
                     {value.tone}

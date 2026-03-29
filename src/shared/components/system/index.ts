@@ -14,3 +14,4 @@ export { MetricCard } from "./metric-card";
 export { SectionHeader } from "./section-header";
 export { StatusChip } from "./status-chip";
 export { Surface, getSurfaceAccentStyle, surfaceVariants } from "./surface";
+export { ValueScoreMeter } from "./value-score-meter";

@@ -28,7 +28,7 @@ import {
   parseDateForDisplay,
 } from "@/shared/date";
 import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
-import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
+import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { cn } from "@/shared/components/ui/utils";
@@ -53,6 +53,7 @@ import {
   MetricCard,
   StatusChip,
   Surface,
+  ValueScoreMeter,
   appButtonVariants,
 } from "@/shared/components/system";
 import { toast } from "sonner";
@@ -114,10 +115,7 @@ type TransactionRowViewModel = {
   amountText: string;
   isIncome: boolean;
   valueScore: number | null;
-  valueBaseScore: number | null;
   valueDisplayScoreText: string;
-  valueOverflowText: string | null;
-  valueMeterWidth: number;
   valueLabel: string;
   valueTone: string;
   valueColor: string;
@@ -594,24 +592,19 @@ function AddPanel({
   return (
     <AppSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
       <AppSheetContent className="flex w-full max-w-lg flex-col rounded-none border-l shadow-2xl">
-        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)] pb-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <AppSheetTitle>{isEdit ? "Edit Transaction" : "Add Transaction"}</AppSheetTitle>
-              <AppSheetDescription>
-                {isEdit ? "Update a manual transaction and keep the feed consistent." : "Log a manual transaction with type, category, date, and satisfaction context."}
-              </AppSheetDescription>
-              <div className="mt-3 text-[10px] font-black uppercase tracking-[0.32em] text-[var(--app-accent-cyan-soft)]">
-                {isEdit ? "Update" : "Manual Entry"}
-              </div>
+        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)]">
+          <div>
+            <AppSheetTitle>{isEdit ? "Edit Transaction" : "Add Transaction"}</AppSheetTitle>
+            <AppSheetDescription>
+              {isEdit ? "Update a manual transaction and keep the feed consistent." : "Log a manual transaction with type, category, date, and satisfaction context."}
+            </AppSheetDescription>
+            <div className="mt-3 text-[10px] font-black uppercase tracking-[0.32em] text-[var(--app-accent-cyan-soft)]">
+              {isEdit ? "Update" : "Manual Entry"}
             </div>
-            <AppButton onClick={onClose} variant="quiet" size="icon" aria-label="Close transaction panel">
-              <X size={20} />
-            </AppButton>
           </div>
         </AppSheetHeader>
 
-        <AppSheetBody className="space-y-8 pt-8">
+        <AppSheetBody className="space-y-7 pt-6">
           <FormField label="Description">
             <AppInput
               type="text"
@@ -621,7 +614,7 @@ function AddPanel({
             />
           </FormField>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
             <FormField label="Amount ($)">
               <AppInput
                 type="number"
@@ -704,14 +697,14 @@ function AddPanel({
           </FormField>
 
           <FormField label={<>Satisfaction <span className="text-[var(--app-color-text-tertiary)]">(optional)</span></>}>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <AppButton
                   key={n}
                   onClick={() => set("satisfaction_rating", form.satisfaction_rating === n ? null : n)}
                   variant={form.satisfaction_rating === n ? "primary" : "secondary"}
                   size="sm"
-                  className="flex-1 px-0"
+                  className="min-w-0 px-0 text-[11px] tracking-normal sm:text-xs"
                 >
                   {n}
                 </AppButton>
@@ -1119,61 +1112,11 @@ const TransactionGroups = React.memo(function TransactionGroups({
                                       Value: {row.valueDisplayScoreText}
                                     </div>
                                   </div>
-                                  <div className="relative pt-3">
-                                    <div className="relative h-2 overflow-hidden rounded-full bg-[var(--app-color-surface-overlay)]">
-                                      <div
-                                        className="absolute left-0 top-0 h-full"
-                                        style={{
-                                          width: "33.3333%",
-                                          backgroundColor: "rgba(255,255,255,0.04)",
-                                        }}
-                                      />
-                                      <div
-                                        className="absolute right-0 top-0 h-full"
-                                        style={{
-                                          width: "66.6667%",
-                                          backgroundColor: "rgba(255,255,255,0.04)",
-                                        }}
-                                      />
-                                      {row.valueScore > 100 ? (
-                                        <div
-                                          className="absolute top-0 h-full rounded-l-full transition-all"
-                                          style={{
-                                            left: `${33.3333 - Math.min(100, ((row.valueScore - 100) / 50) * 100) * 0.333333}%`,
-                                            width: `${Math.min(100, ((row.valueScore - 100) / 50) * 100) * 0.333333}%`,
-                                            backgroundColor: COLORS.electricBlue,
-                                            boxShadow: `0 0 16px ${COLORS.electricBlue}66`,
-                                          }}
-                                        />
-                                      ) : null}
-                                      <div
-                                        className="absolute right-0 top-0 h-full rounded-r-full transition-all"
-                                        style={{
-                                          width: `${Math.min(66.6667, (Math.min(row.valueScore, 100) / 100) * 66.6667)}%`,
-                                          backgroundColor:
-                                            row.valueScore >= 80
-                                              ? COLORS.electricGreen
-                                              : row.valueScore >= 60
-                                                ? "#fb923c"
-                                                : COLORS.electricRed,
-                                        }}
-                                      />
-                                    </div>
-                                    <div
-                                      className="absolute top-0 h-5 w-px bg-[var(--app-color-text-faint)]"
-                                      style={{ left: "33.3333%" }}
-                                    />
-                                    <div
-                                      className="absolute top-5 -translate-x-1/2 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--app-color-text-faint)]"
-                                      style={{ left: "33.3333%" }}
-                                    >
-                                      100
-                                    </div>
-                                 </div>
-                               </div>
-                             ) : (
-                               <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
-                                 No score yet
+                                  <ValueScoreMeter score={row.valueScore} />
+                                </div>
+                              ) : (
+                                <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
+                                  No score yet
                                </div>
                              )}
                            </div>
@@ -1343,10 +1286,7 @@ export const TransactionsPage = () => {
               amountText: `${isIncome ? "+" : "-"}$${amount.toFixed(2)}`,
               isIncome,
               valueScore,
-              valueBaseScore: value.score,
               valueDisplayScoreText: value.displayScoreText,
-              valueOverflowText: value.overflowText,
-              valueMeterWidth: getValueMeterWidth(valueScore),
               valueLabel: value.label,
               valueTone:
                 valueScore == null ? "Waiting for satisfaction or regret data." : value.tone,
