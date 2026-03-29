@@ -159,32 +159,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMfaError(null);
     let snap: MfaSnapshot | null = null;
     try {
-      snap = await getMfaSnapshot();
-      setMfaSnapshot(snap);
-    } catch (e) {
-      setMfaSnapshot(null);
-      setAuthAssurance(null);
-      setMfaError(e instanceof Error ? e.message : "MFA status unavailable");
-      return {
-        gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
-        mfaSnapshot: null,
-      };
-    }
-    try {
-      const assurance = await fetchAuthAssurance();
-      setAuthAssurance(assurance);
-      setMfaError(null);
-      return {
-        gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), assurance, { loading: false, fetchFailed: false }),
-        mfaSnapshot: snap,
-      };
-    } catch (e) {
-      setAuthAssurance(null);
-      setMfaError(e instanceof Error ? e.message : "Security check failed");
-      return {
-        gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
-        mfaSnapshot: snap,
-      };
+      try {
+        snap = await getMfaSnapshot();
+        setMfaSnapshot(snap);
+      } catch (e) {
+        setMfaSnapshot(null);
+        setAuthAssurance(null);
+        setMfaError(e instanceof Error ? e.message : "MFA status unavailable");
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
+          mfaSnapshot: null,
+        };
+      }
+      try {
+        const assurance = await fetchAuthAssurance();
+        setAuthAssurance(assurance);
+        setMfaError(null);
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), assurance, { loading: false, fetchFailed: false }),
+          mfaSnapshot: snap,
+        };
+      } catch (e) {
+        setAuthAssurance(null);
+        setMfaError(e instanceof Error ? e.message : "Security check failed");
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
+          mfaSnapshot: snap,
+        };
+      }
     } finally {
       setMfaLoading(false);
     }

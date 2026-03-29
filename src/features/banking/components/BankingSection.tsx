@@ -18,7 +18,7 @@ type BankingSectionProps = {
 };
 
 export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
-  const { canLinkBank } = useAuth();
+  const { canLinkBank, bankLinkGateReason } = useAuth();
   const {
     connections,
     accounts,
@@ -72,6 +72,7 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
 
   const isConnecting = isPreparingLink || isExchanging;
   const hasConnections = connections.length > 0;
+  const canTriggerConnect = canLinkBank || bankLinkGateReason === "mfa_verification_needed";
 
   return (
     <section className="space-y-6">
@@ -86,7 +87,7 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
         <BankingEmptyState
           onConnect={requestConnect}
           isConnecting={isConnecting}
-          disabled={!canLinkBank}
+          disabled={!canTriggerConnect}
         />
       )}
 
@@ -107,7 +108,7 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
             <ConnectBankButton
               onConnect={requestConnect}
               loading={isConnecting}
-              disabled={!canLinkBank}
+              disabled={!canTriggerConnect}
               error={linkError}
             />
           </div>
