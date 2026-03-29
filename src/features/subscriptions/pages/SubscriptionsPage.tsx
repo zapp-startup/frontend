@@ -1,6 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
@@ -37,7 +38,6 @@ function extractApiErrorMessage(err: unknown): string {
         if (Array.isArray(first) && typeof first[0] === "string") return first[0];
         if (typeof first === "string") return first;
       } catch {
-        // use normalized message below
       }
     }
     return err.message || "Failed to save subscription.";
@@ -91,27 +91,36 @@ function AddPanel({
       toast.error("Please enter a merchant name.");
       return;
     }
+
     const normalized = merchantName.toLowerCase();
     const match =
       merchants.find((m) => m.name.toLowerCase() === normalized) ??
-      merchants.find((m) => m.name.toLowerCase().includes(normalized) || normalized.includes(m.name.toLowerCase()));
+      merchants.find(
+        (m) =>
+          m.name.toLowerCase().includes(normalized) ||
+          normalized.includes(m.name.toLowerCase())
+      );
+
     if (!match) {
       toast.error("Merchant not found in catalog. Pick an existing merchant name.");
       return;
     }
+
     const amt = Number(form.amount);
     if (isNaN(amt) || amt <= 0) {
       toast.error("Please enter a valid amount.");
       return;
     }
+
     if (!form.started_at) {
       toast.error("Please enter a start date.");
       return;
     }
+
     setSubmitting(true);
     try {
       const sub = await SubscriptionsAPI.create({
-        ...(match ? { merchant: match.id } : {}),
+        merchant: match.id,
         merchant_name: merchantName,
         amount: amt,
         billing_cycle: form.billing_cycle,
@@ -148,7 +157,9 @@ function AddPanel({
       >
         <div className="flex items-center justify-between mb-10">
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter">Add Subscription</h2>
+            <h2 className="text-4xl font-black text-white tracking-tighter">
+              Add Subscription
+            </h2>
             <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">
               Manual Entry
             </div>
@@ -216,7 +227,10 @@ function AddPanel({
               Start Date
             </label>
             <div className="relative">
-              <Calendar size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" />
+              <Calendar
+                size={18}
+                className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500"
+              />
               <input
                 type="date"
                 value={form.started_at}
@@ -315,7 +329,10 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 {value.label}
               </span>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: statusColor }}>
+            <span
+              className="text-[10px] font-black uppercase tracking-widest"
+              style={{ color: statusColor }}
+            >
               {sub.status || "Active"}
             </span>
             <p className="mt-3 max-w-xl truncate text-sm font-medium text-gray-400">
@@ -326,13 +343,17 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
         <div className="flex items-center gap-10">
           <div className="text-center">
-            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Cost</div>
+            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
+              Cost
+            </div>
             <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
           </div>
 
           <div className="min-w-[170px]">
             <div className="mb-2 flex items-center justify-between gap-4">
-              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">Value</div>
+              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                Value
+              </div>
               <div
                 className="text-3xl font-black"
                 style={{
@@ -349,7 +370,10 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
               />
             </div>
-            <div className="mt-2 text-right text-[10px] font-black uppercase tracking-widest" style={{ color: value.accentColor }}>
+            <div
+              className="mt-2 text-right text-[10px] font-black uppercase tracking-widest"
+              style={{ color: value.accentColor }}
+            >
               {value.label}
             </div>
           </div>
@@ -375,7 +399,9 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Billing</div>
+                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
+                    Billing
+                  </div>
                   <p className="text-sm text-gray-400 leading-relaxed font-medium">
                     {sub.billing_cycle} · Started{" "}
                     {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
@@ -383,14 +409,20 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">Notes</div>
-                  <p className="text-sm text-gray-400 leading-relaxed font-medium">{sub.notes || "—"}</p>
+                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
+                    Notes
+                  </div>
+                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                    {sub.notes || "—"}
+                  </p>
                 </div>
 
                 <div className="md:col-span-2 rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">Value score</div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        Value score
+                      </div>
                       <div className="mt-2 flex items-end gap-3">
                         <div
                           className="text-4xl font-black"
@@ -455,9 +487,12 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
                           Recommendation
                         </div>
-                        <p className="text-sm font-bold text-white">{valuation.recommendation}</p>
+                        <p className="text-sm font-bold text-white">
+                          {valuation.recommendation}
+                        </p>
                       </div>
                     )}
+
                     {valuation.confidence != null && (
                       <div className="mb-4">
                         <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
@@ -479,12 +514,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         </div>
                       </div>
                     )}
+
                     {valuation.evidence && (
                       <div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
                           Evidence
                         </div>
-                        <p className="text-sm text-gray-300 leading-relaxed">{valuation.evidence}</p>
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          {valuation.evidence}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -499,10 +537,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 });
 
 export function SubscriptionsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { setRightPanelOpen } = usePanelActions();
+
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [merchants, setMerchants] = React.useState<Merchant[]>([]);
-  const [subscriptionValuations, setSubscriptionValuations] = React.useState<SubscriptionValuation[]>([]);
+  const [subscriptionValuations, setSubscriptionValuations] = React.useState<
+    SubscriptionValuation[]
+  >([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
@@ -517,8 +560,10 @@ export function SubscriptionsPage() {
   React.useEffect(() => {
     const ac = new AbortController();
     let cancelled = false;
+
     setLoading(true);
     setError(null);
+
     Promise.all([
       SubscriptionsAPI.list({ signal: ac.signal }),
       MerchantsAPI.list({ signal: ac.signal }),
@@ -543,31 +588,50 @@ export function SubscriptionsPage() {
       })
       .catch((err) => {
         if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+
         const msg =
           err instanceof ApiError
             ? err.message
             : err instanceof Error
               ? err.message
               : "Failed to load subscriptions.";
+
         setError(msg);
         toast.error("Failed to load subscriptions.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
       ac.abort();
     };
   }, []);
 
+  React.useEffect(() => {
+    if (location.pathname === "/subscriptions/new") {
+      setIsAddPanelOpen(true);
+    }
+  }, [location.pathname]);
+
+  const closeAddPanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    if (location.pathname === "/subscriptions/new") {
+      navigate("/subscriptions", { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const handleDelete = async (sub: Subscription, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`Cancel "${sub.merchant_name || "this subscription"}"?`)) return;
+
     try {
       await SubscriptionsAPI.remove(sub.id);
       setSubscriptions((prev) => prev.filter((s) => s.id !== sub.id));
-      setSubscriptionValuations((prev) => prev.filter((valuation) => valuation.subscription !== sub.id));
+      setSubscriptionValuations((prev) =>
+        prev.filter((valuation) => valuation.subscription !== sub.id)
+      );
       setExpandedId((id) => (id === sub.id ? null : id));
       toast.success("Subscription removed.");
     } catch {
@@ -607,7 +671,10 @@ export function SubscriptionsPage() {
 
   React.useEffect(() => {
     setVisibleCount((prev) =>
-      Math.min(Math.max(prev, INITIAL_VISIBLE_SUBSCRIPTIONS), subscriptionCards.length || INITIAL_VISIBLE_SUBSCRIPTIONS)
+      Math.min(
+        Math.max(prev, INITIAL_VISIBLE_SUBSCRIPTIONS),
+        subscriptionCards.length || INITIAL_VISIBLE_SUBSCRIPTIONS
+      )
     );
   }, [subscriptionCards.length]);
 
@@ -646,6 +713,7 @@ export function SubscriptionsPage() {
             Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
+
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
           whileTap={{ scale: 0.95 }}
@@ -703,7 +771,11 @@ export function SubscriptionsPage() {
         <div className="flex justify-center">
           <Button
             variant="outline"
-            onClick={() => setVisibleCount((prev) => Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length))}
+            onClick={() =>
+              setVisibleCount((prev) =>
+                Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length)
+              )
+            }
             className="rounded-2xl border-white/10"
           >
             Load More Subscriptions
@@ -713,11 +785,7 @@ export function SubscriptionsPage() {
 
       <AnimatePresence>
         {isAddPanelOpen && (
-          <AddPanel
-            onClose={() => setIsAddPanelOpen(false)}
-            onAdded={handleAdded}
-            merchants={merchants}
-          />
+          <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
         )}
       </AnimatePresence>
     </div>

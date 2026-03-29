@@ -1,5 +1,6 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -1258,6 +1259,8 @@ const TransactionGroups = React.memo(function TransactionGroups({
 });
 
 export const TransactionsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { setRightPanelOpen } = usePanelActions();
 
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -1286,6 +1289,32 @@ export const TransactionsPage = () => {
   React.useEffect(() => {
     if (error) toast.error("Failed to load transactions.");
   }, [error]);
+
+  React.useEffect(() => {
+    if (location.pathname === "/transactions/new") {
+      setEditingTransaction(null);
+      setIsAddPanelOpen(true);
+    }
+  }, [location.pathname]);
+
+  const closePanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    setEditingTransaction(null);
+    if (location.pathname === "/transactions/new") {
+      navigate("/transactions", { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
+  const openAddPanel = React.useCallback(() => {
+    setEditingTransaction(null);
+    setIsAddPanelOpen(true);
+  }, []);
+
+  const handleEdit = React.useCallback((tx: DisplayTransaction) => {
+    if (tx.source === "bank") return;
+    setEditingTransaction(tx);
+    setIsAddPanelOpen(true);
+  }, []);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -1379,22 +1408,6 @@ export const TransactionsPage = () => {
     },
     [refetchTransactions]
   );
-
-  const openAddPanel = React.useCallback(() => {
-    setEditingTransaction(null);
-    setIsAddPanelOpen(true);
-  }, []);
-
-  const handleEdit = React.useCallback((tx: DisplayTransaction) => {
-    if (tx.source === "bank") return;
-    setEditingTransaction(tx);
-    setIsAddPanelOpen(true);
-  }, []);
-
-  const closePanel = React.useCallback(() => {
-    setIsAddPanelOpen(false);
-    setEditingTransaction(null);
-  }, []);
 
   const { totalSpend, totalIncome, net } = React.useMemo(() => {
     const totalSpendMemo = transactions
