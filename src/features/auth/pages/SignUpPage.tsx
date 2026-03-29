@@ -8,6 +8,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { toast } from "sonner";
+import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 
 export function SignUpPage() {
   const { signUp, isAuthenticated, isAuthReady } = useAuth();
@@ -139,6 +140,9 @@ export function SignUpPage() {
             >
               Sign in
             </NavLink>
+          </p>
+          <p className="mt-4 text-center text-xs text-gray-600">
+            <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
           </p>
         </div>
       </motion.div>

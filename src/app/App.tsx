@@ -4,6 +4,7 @@ import { Routes, Route } from "react-router-dom";
 import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/auth";
 import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
 import { OnboardingPage } from "@/features/onboarding";
+import { PrivacyPolicyPage } from "@/features/legal/PrivacyPolicyPage";
 
 /**
  * App root: providers, global shell, and top-level routes.
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="*" element={<DashboardLayout />} />
         </Routes>
       </div>

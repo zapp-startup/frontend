@@ -30,6 +30,28 @@ vi.mock("@/api/client", () => ({
   apiRequest: mockApiRequest,
   getApiAccessToken: mockGetApiAccessToken,
   setApiAccessToken: mockSetApiAccessToken,
+  getApiConfigurationError: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock("@/api/compliance.api", () => ({
+  fetchAuthAssurance: vi.fn().mockResolvedValue({
+    mfa_required_by_policy: false,
+    assurance: { aal: null, amr: [], mfa_factors_count: 0 },
+    banking_allowed: true,
+    blocking_code: null,
+  }),
+}));
+
+vi.mock("@/features/auth/mfa/mfaOperations", () => ({
+  getMfaSnapshot: vi.fn().mockResolvedValue({
+    currentLevel: "aal1",
+    nextLevel: "aal2",
+    factors: [],
+  }),
+  enrollTotpFactor: vi.fn(),
+  verifyTotpEnrollment: vi.fn(),
+  verifyMfaChallenge: vi.fn(),
+  unenrollFactor: vi.fn(),
 }));
 
 vi.mock("@/api/supabaseClient", () => ({
