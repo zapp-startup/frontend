@@ -1,8 +1,9 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, X, Calendar, Plus } from "lucide-react";
+import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/shared/components/ui/utils";
-import { COLORS, GLOWS, UI_PATTERNS } from "@/shared/theme";
+import { COLORS, UI_PATTERNS } from "@/shared/theme";
 import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
 import {
   SubscriptionsAPI,
@@ -54,7 +55,6 @@ function extractApiErrorMessage(err: unknown): string {
         if (Array.isArray(first) && typeof first[0] === "string") return first[0];
         if (typeof first === "string") return first;
       } catch {
-        // use normalized message below
       }
     }
     return err.message || "Failed to save subscription.";
@@ -108,27 +108,36 @@ function AddPanel({
       toast.error("Please enter a merchant name.");
       return;
     }
+
     const normalized = merchantName.toLowerCase();
     const match =
       merchants.find((m) => m.name.toLowerCase() === normalized) ??
-      merchants.find((m) => m.name.toLowerCase().includes(normalized) || normalized.includes(m.name.toLowerCase()));
+      merchants.find(
+        (m) =>
+          m.name.toLowerCase().includes(normalized) ||
+          normalized.includes(m.name.toLowerCase())
+      );
+
     if (!match) {
       toast.error("Merchant not found in catalog. Pick an existing merchant name.");
       return;
     }
+
     const amt = Number(form.amount);
     if (isNaN(amt) || amt <= 0) {
       toast.error("Please enter a valid amount.");
       return;
     }
+
     if (!form.started_at) {
       toast.error("Please enter a start date.");
       return;
     }
+
     setSubmitting(true);
     try {
       const sub = await SubscriptionsAPI.create({
-        ...(match ? { merchant: match.id } : {}),
+        merchant: match.id,
         merchant_name: merchantName,
         amount: amt,
         billing_cycle: form.billing_cycle,
@@ -153,7 +162,7 @@ function AddPanel({
           <div className="flex items-start justify-between gap-4">
             <div>
               <AppSheetTitle>Add Subscription</AppSheetTitle>
-                        <AppSheetDescription>
+              <AppSheetDescription>
                 Create a manual subscription entry from the merchant catalog and recurring billing details.
               </AppSheetDescription>
               <div className="app-eyebrow mt-3 text-[var(--app-accent-cyan)]">
@@ -193,6 +202,7 @@ function AddPanel({
                 onChange={(e) => set("amount", e.target.value)}
               />
             </FormField>
+
             <FormField label="Billing Cycle">
               <AppSelect
                 value={form.billing_cycle}
@@ -207,14 +217,20 @@ function AddPanel({
 
           <FormField label="Start Date">
             <AppInput
-                type="date"
-                value={form.started_at}
-                onChange={(e) => set("started_at", e.target.value)}
-                startAdornment={<Calendar size={18} />}
-              />
+              type="date"
+              value={form.started_at}
+              onChange={(e) => set("started_at", e.target.value)}
+              startAdornment={<Calendar size={18} />}
+            />
           </FormField>
 
-          <FormField label={<>Notes <span className="text-[var(--app-color-text-tertiary)]">(optional)</span></>}>
+          <FormField
+            label={
+              <>
+                Notes <span className="text-[var(--app-color-text-tertiary)]">(optional)</span>
+              </>
+            }
+          >
             <AppTextarea
               placeholder="e.g. Premium plan, shared with family"
               value={form.notes || ""}
@@ -287,6 +303,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)]">
             <CreditCard size={32} style={{ color: statusColor }} />
           </div>
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
               <h4 className="text-2xl font-black text-[var(--app-color-text-primary)]">{name}</h4>
@@ -301,9 +318,14 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 {value.label}
               </StatusChip>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: statusColor }}>
+
+            <span
+              className="text-[10px] font-black uppercase tracking-widest"
+              style={{ color: statusColor }}
+            >
               {sub.status || "Active"}
             </span>
+
             <p className="mt-3 max-w-xl truncate text-sm font-medium text-[var(--app-color-text-secondary)]">
               {recommendation}
             </p>
@@ -311,31 +333,38 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
         </div>
 
         <div className="flex items-center gap-10">
-            <div className="text-center">
-              <div className={cn(UI_PATTERNS.eyebrow, "mb-1 text-xs")}>Cost</div>
-              <div className="text-2xl font-black text-[var(--app-color-text-primary)]">${cost.toFixed(2)}</div>
+          <div className="text-center">
+            <div className={cn(UI_PATTERNS.eyebrow, "mb-1 text-xs")}>Cost</div>
+            <div className="text-2xl font-black text-[var(--app-color-text-primary)]">
+              ${cost.toFixed(2)}
             </div>
+          </div>
 
-            <div className="min-w-[170px]">
-              <div className="mb-2 flex items-center justify-between gap-4">
-                <div className={cn(UI_PATTERNS.eyebrow, "text-xs")}>Value</div>
+          <div className="min-w-[170px]">
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <div className={cn(UI_PATTERNS.eyebrow, "text-xs")}>Value</div>
               <div
                 className="text-3xl font-black"
                 style={{
                   color: value.accentColor,
                   filter: `drop-shadow(0 0 8px ${value.accentColor}60)`,
                 }}
-                >
-                  {value.scoreText}
-                </div>
+              >
+                {value.scoreText}
               </div>
+            </div>
+
             <div className="h-2 overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
               />
             </div>
-            <div className="mt-2 text-right text-[10px] font-black uppercase tracking-widest" style={{ color: value.accentColor }}>
+
+            <div
+              className="mt-2 text-right text-[10px] font-black uppercase tracking-widest"
+              style={{ color: value.accentColor }}
+            >
               {value.label}
             </div>
           </div>
@@ -361,9 +390,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             className="mt-4 overflow-hidden rounded-[2rem]"
           >
             <Surface variant="panel" padding="lg" className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                 <div>
-                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>Billing</div>
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>
+                    Billing
+                  </div>
                   <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">
                     {sub.billing_cycle} · Started{" "}
                     {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
@@ -371,11 +402,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 </div>
 
                 <div>
-                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>Notes</div>
-                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">{sub.notes || "—"}</p>
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>
+                    Notes
+                  </div>
+                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">
+                    {sub.notes || "—"}
+                  </p>
                 </div>
 
-                <Surface variant="inset" padding="md" className="md:col-span-2 rounded-[1.5rem]">
+                <Surface variant="inset" padding="md" className="rounded-[1.5rem] md:col-span-2">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <div className={UI_PATTERNS.eyebrow}>Value score</div>
@@ -389,9 +424,12 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         >
                           {value.scoreText}
                         </div>
-                        <div className="pb-1 text-sm font-bold text-[var(--app-color-text-secondary)]">out of 150</div>
+                        <div className="pb-1 text-sm font-bold text-[var(--app-color-text-secondary)]">
+                          out of 150
+                        </div>
                       </div>
                     </div>
+
                     <StatusChip
                       tone="neutral"
                       style={{
@@ -410,7 +448,10 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
                     />
                   </div>
-                  <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">{value.tone}</p>
+
+                  <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">
+                    {value.tone}
+                  </p>
                 </Surface>
               </div>
 
@@ -429,7 +470,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 </div>
 
                 {valuations.length === 0 && (
-                  <Surface variant="inset" padding="md" className="rounded-[1.5rem] text-sm text-[var(--app-color-text-tertiary)]">
+                  <Surface
+                    variant="inset"
+                    padding="md"
+                    className="rounded-[1.5rem] text-sm text-[var(--app-color-text-tertiary)]"
+                  >
                     No valuation evidence yet for this subscription.
                   </Surface>
                 )}
@@ -446,23 +491,26 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Recommendation
                         </div>
-                        <p className="text-sm font-bold text-[var(--app-color-text-primary)]">{valuation.recommendation}</p>
+                        <p className="text-sm font-bold text-[var(--app-color-text-primary)]">
+                          {valuation.recommendation}
+                        </p>
                       </div>
                     )}
+
                     {valuation.confidence != null && (
                       <div className="mb-4">
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)] h-2.5">
-                             <div
-                               className="h-full rounded-full transition-all"
-                               style={{
-                                 width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
-                                 backgroundColor: "var(--app-accent-cyan)",
-                               }}
-                             />
+                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)]">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
+                                backgroundColor: "var(--app-accent-cyan)",
+                              }}
+                            />
                           </div>
                           <span className="text-sm font-black text-[var(--app-color-text-primary)]">
                             {Math.round(valuation.confidence)}%
@@ -470,12 +518,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         </div>
                       </div>
                     )}
+
                     {valuation.evidence && (
                       <div>
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
-                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">{valuation.evidence}</p>
+                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
+                          {valuation.evidence}
+                        </p>
                       </div>
                     )}
                   </Surface>
@@ -490,10 +541,15 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 });
 
 export function SubscriptionsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { setRightPanelOpen } = usePanelActions();
+
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [merchants, setMerchants] = React.useState<Merchant[]>([]);
-  const [subscriptionValuations, setSubscriptionValuations] = React.useState<SubscriptionValuation[]>([]);
+  const [subscriptionValuations, setSubscriptionValuations] = React.useState<
+    SubscriptionValuation[]
+  >([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
@@ -508,8 +564,10 @@ export function SubscriptionsPage() {
   React.useEffect(() => {
     const ac = new AbortController();
     let cancelled = false;
+
     setLoading(true);
     setError(null);
+
     Promise.all([
       SubscriptionsAPI.list({ signal: ac.signal }),
       MerchantsAPI.list({ signal: ac.signal }),
@@ -534,31 +592,50 @@ export function SubscriptionsPage() {
       })
       .catch((err) => {
         if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+
         const msg =
           err instanceof ApiError
             ? err.message
             : err instanceof Error
               ? err.message
               : "Failed to load subscriptions.";
+
         setError(msg);
         toast.error("Failed to load subscriptions.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
       ac.abort();
     };
   }, []);
 
+  React.useEffect(() => {
+    if (location.pathname === "/subscriptions/new") {
+      setIsAddPanelOpen(true);
+    }
+  }, [location.pathname]);
+
+  const closeAddPanel = React.useCallback(() => {
+    setIsAddPanelOpen(false);
+    if (location.pathname === "/subscriptions/new") {
+      navigate("/subscriptions", { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const handleDelete = async (sub: Subscription, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`Cancel "${sub.merchant_name || "this subscription"}"?`)) return;
+
     try {
       await SubscriptionsAPI.remove(sub.id);
       setSubscriptions((prev) => prev.filter((s) => s.id !== sub.id));
-      setSubscriptionValuations((prev) => prev.filter((valuation) => valuation.subscription !== sub.id));
+      setSubscriptionValuations((prev) =>
+        prev.filter((valuation) => valuation.subscription !== sub.id)
+      );
       setExpandedId((id) => (id === sub.id ? null : id));
       toast.success("Subscription removed.");
     } catch {
@@ -598,14 +675,15 @@ export function SubscriptionsPage() {
 
   React.useEffect(() => {
     setVisibleCount((prev) =>
-      Math.min(Math.max(prev, INITIAL_VISIBLE_SUBSCRIPTIONS), subscriptionCards.length || INITIAL_VISIBLE_SUBSCRIPTIONS)
+      Math.min(
+        Math.max(prev, INITIAL_VISIBLE_SUBSCRIPTIONS),
+        subscriptionCards.length || INITIAL_VISIBLE_SUBSCRIPTIONS
+      )
     );
   }, [subscriptionCards.length]);
 
   if (loading) {
-    return (
-      <LoadingState label="Loading subscriptions..." lines={4} />
-    );
+    return <LoadingState label="Loading subscriptions..." lines={4} />;
   }
 
   if (error) {
@@ -623,13 +701,15 @@ export function SubscriptionsPage() {
   }
 
   return (
-    <div className="space-y-12 pb-32 relative z-10">
+    <div className="relative z-10 space-y-12 pb-32">
       <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">Active Subscriptions</h2>
-            <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
-              <div
-                className="w-2 h-2 rounded-full"
+        <div className="space-y-1">
+          <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">
+            Active Subscriptions
+          </h2>
+          <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
+            <div
+              className="h-2 w-2 rounded-full"
               style={{
                 backgroundColor: COLORS.electricGreen,
                 boxShadow: `0 0 8px ${COLORS.electricGreen}`,
@@ -638,6 +718,7 @@ export function SubscriptionsPage() {
             Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
+
         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
           <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
             <Plus size={18} strokeWidth={3} />
@@ -666,7 +747,7 @@ export function SubscriptionsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24, ease: "easeOut" }}
-          className="relative max-w-5xl mx-auto space-y-[-40px]"
+          className="relative mx-auto max-w-5xl space-y-[-40px]"
         >
           {subscriptionCards.slice(0, visibleCount).map(({ sub, name, valuations }, index) => (
             <SubscriptionCard
@@ -687,7 +768,11 @@ export function SubscriptionsPage() {
         <div className="flex justify-center">
           <AppButton
             variant="outline"
-            onClick={() => setVisibleCount((prev) => Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length))}
+            onClick={() =>
+              setVisibleCount((prev) =>
+                Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length)
+              )
+            }
           >
             Load More Subscriptions
           </AppButton>
@@ -696,11 +781,7 @@ export function SubscriptionsPage() {
 
       <AnimatePresence>
         {isAddPanelOpen && (
-          <AddPanel
-            onClose={() => setIsAddPanelOpen(false)}
-            onAdded={handleAdded}
-            merchants={merchants}
-          />
+          <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
         )}
       </AnimatePresence>
     </div>

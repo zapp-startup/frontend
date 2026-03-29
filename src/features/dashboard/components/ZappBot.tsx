@@ -5,6 +5,8 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { Send, X, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { createConversation, sendMessage } from "@/api/ai.api";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import {
@@ -14,22 +16,31 @@ import {
   StatusChip,
   Surface,
 } from "@/shared/components/system";
-import { createConversation, sendMessage } from "@/api/ai.api";
+import {
+  buildFallbackAssistantMessage,
+  mapApiMessageToChatMessage,
+  normalizeQuickActions,
+  type ChatMessage,
+} from "./zappBot.helpers";
 import { useAuth } from "@/features/auth";
 import { usePanelState } from "../context/PanelContext";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
+function isNotFoundError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.includes("404") ||
+    error.message.includes("sendMessage failed: 404") ||
+    error.message.includes("AI API error: 404")
+  );
 }
 
 export function ZappBot() {
   const promptDisplayMs = 3200;
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isRightPanelOpen } = usePanelState();
   const shouldReduceMotion = useReducedMotion();
+
   const conversationStorageKey = user?.supabaseUid
     ? `zapp_conversation_id_${user.supabaseUid}`
     : null;
@@ -40,29 +51,24 @@ export function ZappBot() {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isTyping, setIsTyping] = React.useState(false);
   const [showPrompt, setShowPrompt] = React.useState(true);
-  const [messages, setMessages] = React.useState<Message[]>([
-    {
-      id: "1",
-      text: "Hello! I'm your Zapp CFO. I've been monitoring your subscriptions. How can I help you optimize your value score today?",
-      sender: "assistant",
-      timestamp: new Date(),
-    },
+  const [messages, setMessages] = React.useState<ChatMessage[]>(() => [
+    buildFallbackAssistantMessage(),
   ]);
   const [conversationId, setConversationId] = React.useState<number | null>(null);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const createConversationPromiseRef =
+    React.useRef<Promise<{ conversation_id: number }> | null>(null);
 
   React.useEffect(() => {
     if (!conversationStorageKey) {
       setConversationId(null);
       return;
     }
+
     const saved = localStorage.getItem(conversationStorageKey);
     setConversationId(saved ? Number(saved) : null);
   }, [conversationStorageKey]);
-
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const createConversationPromiseRef = React.useRef<
-    Promise<{ conversation_id: number }> | null
-  >(null);
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -78,13 +84,19 @@ export function ZappBot() {
 
     const timeout = window.setTimeout(() => setShowPrompt(false), promptDisplayMs);
     return () => window.clearTimeout(timeout);
-  }, [isOpen]);
+  }, [isOpen, promptDisplayMs]);
 
-  const isNotFoundError = (err: unknown) =>
-    err instanceof Error &&
-    (err.message.includes("404") ||
-      err.message.includes("sendMessage failed: 404") ||
-      err.message.includes("AI API error: 404"));
+  const handleStartNewChat = React.useCallback(() => {
+    createConversationPromiseRef.current = null;
+    setConversationId(null);
+
+    if (conversationStorageKey) {
+      localStorage.removeItem(conversationStorageKey);
+    }
+
+    setMessages([buildFallbackAssistantMessage()]);
+    setInput("");
+  }, [conversationStorageKey]);
 
   const createFreshConversation = async () => {
     if (!createConversationPromiseRef.current) {
@@ -93,35 +105,27 @@ export function ZappBot() {
         { context_type: "general" }
       );
     }
-    const created = await createConversationPromiseRef.current;
-    const cid = created.conversation_id;
-    setConversationId(cid);
-    if (conversationStorageKey) {
-      localStorage.setItem(conversationStorageKey, String(cid));
+
+    try {
+      const created = await createConversationPromiseRef.current;
+      const cid = created.conversation_id;
+      setConversationId(cid);
+
+      if (conversationStorageKey) {
+        localStorage.setItem(conversationStorageKey, String(cid));
+      }
+
+      return cid;
+    } finally {
+      createConversationPromiseRef.current = null;
     }
-    createConversationPromiseRef.current = null;
-    return cid;
   };
 
-  const handleSend = async (event?: React.FormEvent) => {
-    event?.preventDefault();
-    if (!input.trim() || isTyping) return;
-
-    const prompt = input.trim();
-    if (!devUsername) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 3).toString(),
-          text: "AI chat is unavailable because no backend username is loaded for this session.",
-          sender: "assistant",
-          timestamp: new Date(),
-        },
-      ]);
-      return;
-    }
-
-    const userMsg: Message = {
+  const submitPrompt = async (
+    prompt: string,
+    actionPayload?: Record<string, unknown>
+  ) => {
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
       text: prompt,
       sender: "user",
@@ -133,6 +137,19 @@ export function ZappBot() {
     setIsTyping(true);
 
     try {
+      if (!devUsername) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 3).toString(),
+            text: "AI chat is unavailable because no backend username is loaded for this session.",
+            sender: "assistant",
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
+
       let cid = conversationId;
 
       if (!cid) {
@@ -141,30 +158,34 @@ export function ZappBot() {
 
       let resp;
       try {
-        resp = await sendMessage({ devUsername }, cid, prompt);
+        resp = await sendMessage({ devUsername }, cid, prompt, actionPayload);
       } catch (err) {
         if (!isNotFoundError(err)) throw err;
+
         if (conversationStorageKey) {
           localStorage.removeItem(conversationStorageKey);
         }
+
         setConversationId(null);
         createConversationPromiseRef.current = null;
+
         const freshCid = await createFreshConversation();
-        resp = await sendMessage({ devUsername }, freshCid, prompt);
+        resp = await sendMessage({ devUsername }, freshCid, prompt, actionPayload);
       }
 
-      const assistantText = resp.assistant_message.content.includes(
-        "LLM not connected yet"
-      )
-        ? "Your message has been stored."
-        : resp.assistant_message.content;
-
-      const assistantMsg: Message = {
-        id: String(resp.assistant_message.id ?? Date.now() + 1),
-        text: assistantText,
-        sender: "assistant",
-        timestamp: new Date(resp.assistant_message.created_at ?? Date.now()),
-      };
+      const assistantMsg =
+        mapApiMessageToChatMessage({
+          ...resp.assistant_message,
+          content: resp.assistant_message.content.includes("LLM not connected yet")
+            ? "Your message has been stored."
+            : resp.assistant_message.content,
+          metadata_json: {
+            ...resp.assistant_message.metadata_json,
+            quick_actions: normalizeQuickActions(
+              resp.assistant_message.metadata_json?.quick_actions
+            ),
+          },
+        }) ?? buildFallbackAssistantMessage();
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
@@ -181,6 +202,15 @@ export function ZappBot() {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleSend = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!input.trim() || isTyping) return;
+
+    const prompt = input.trim();
+    setInput("");
+    await submitPrompt(prompt);
   };
 
   return (
@@ -217,7 +247,9 @@ export function ZappBot() {
             <Surface
               variant="overlay"
               className="flex h-[32rem] flex-col overflow-hidden border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)]"
-              style={{ boxShadow: `${GLOWS.ambient(0.72)}, ${GLOWS.soft(COLORS.electricPurple)}` }}
+              style={{
+                boxShadow: `${GLOWS.ambient(0.72)}, ${GLOWS.soft(COLORS.electricPurple)}`,
+              }}
             >
               <div className="flex items-center justify-between border-b border-[var(--app-color-border-subtle)] px-6 py-5">
                 <div className="flex items-center gap-3">
@@ -226,21 +258,38 @@ export function ZappBot() {
                   </IconBadge>
                   <div className="space-y-1">
                     <div className="app-card-title">Zapp CFO</div>
-                    <StatusChip tone="accent" className="px-2.5 py-1 text-[9px] tracking-[0.22em]">
+                    <StatusChip
+                      tone="accent"
+                      className="px-2.5 py-1 text-[9px] tracking-[0.22em]"
+                    >
                       Active intelligence
                     </StatusChip>
                   </div>
                 </div>
-                <AppButton
-                  aria-label="Close assistant"
-                  type="button"
-                  variant="quiet"
-                  size="icon"
-                  className="size-10 rounded-[var(--app-radius-md)]"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <X />
-                </AppButton>
+
+                <div className="flex items-center gap-2">
+                  <AppButton
+                    type="button"
+                    variant="quiet"
+                    size="sm"
+                    disabled={isTyping}
+                    onClick={handleStartNewChat}
+                    className="px-3 text-[10px] font-black uppercase tracking-[0.18em]"
+                  >
+                    New chat
+                  </AppButton>
+
+                  <AppButton
+                    aria-label="Close assistant"
+                    type="button"
+                    variant="quiet"
+                    size="icon"
+                    className="size-10 rounded-[var(--app-radius-md)]"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <X />
+                  </AppButton>
+                </div>
               </div>
 
               <div
@@ -253,15 +302,15 @@ export function ZappBot() {
                     animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
                     key={msg.id}
                     className={cn(
-                      "flex max-w-[85%] flex-col gap-2",
-                      msg.sender === "user" ? "ml-auto items-end" : "items-start"
+                      "flex flex-col gap-2",
+                      msg.sender === "user" ? "items-end" : "items-start"
                     )}
                   >
                     <Surface
                       variant={msg.sender === "user" ? "panel" : "inset"}
                       padding="sm"
                       className={cn(
-                        "max-w-full rounded-[1.4rem] text-sm leading-relaxed break-words",
+                        "max-w-[85%] rounded-[1.4rem] text-sm leading-relaxed break-words",
                         msg.sender === "user"
                           ? "rounded-br-md border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_25%,transparent)] text-[var(--app-color-text-primary)]"
                           : "rounded-bl-md text-[var(--app-color-text-secondary)]"
@@ -269,14 +318,17 @@ export function ZappBot() {
                       style={
                         msg.sender === "user"
                           ? {
-                              backgroundColor: "color-mix(in srgb, var(--app-accent-purple-soft) 10%, transparent)",
-                              borderColor: "color-mix(in srgb, var(--app-accent-purple-soft) 22%, transparent)",
+                              backgroundColor:
+                                "color-mix(in srgb, var(--app-accent-purple-soft) 10%, transparent)",
+                              borderColor:
+                                "color-mix(in srgb, var(--app-accent-purple-soft) 22%, transparent)",
                             }
                           : undefined
                       }
                     >
                       {msg.text}
                     </Surface>
+
                     <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--app-color-text-faint)]">
                       {msg.sender === "user" ? "You" : "ZappBot"} •{" "}
                       {msg.timestamp.toLocaleTimeString([], {
@@ -284,6 +336,39 @@ export function ZappBot() {
                         minute: "2-digit",
                       })}
                     </span>
+
+                    {msg.sender === "assistant" && !!msg.quickActions?.length && (
+                      <div className="mt-1 flex max-w-[85%] flex-wrap gap-2">
+                        {msg.quickActions.map((action) => (
+                          <button
+                            key={`${msg.id}-${action.route ?? JSON.stringify(
+                              action.action_payload
+                            )}-${action.label}`}
+                            type="button"
+                            onClick={() => {
+                              if (action.route) {
+                                navigate(action.route);
+                                setIsOpen(false);
+                                return;
+                              }
+
+                              if (action.action_payload && !isTyping) {
+                                void submitPrompt(action.label, action.action_payload);
+                              }
+                            }}
+                            className="rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:text-cyan-200"
+                            title={
+                              action.reason ??
+                              (action.route
+                                ? `Navigate to ${action.route}`
+                                : action.label)
+                            }
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </motion.div>
                 ))}
 
@@ -329,7 +414,10 @@ export function ZappBot() {
                     size="icon"
                     disabled={!input.trim() || isTyping}
                     className="absolute top-1/2 right-2 size-10 -translate-y-1/2 rounded-full"
-                    style={{ backgroundColor: "var(--app-accent-purple-soft)", color: "white" }}
+                    style={{
+                      backgroundColor: "var(--app-accent-purple-soft)",
+                      color: "white",
+                    }}
                   >
                     <Send />
                   </AppButton>
@@ -349,14 +437,16 @@ export function ZappBot() {
               exit={shouldReduceMotion ? undefined : { opacity: 0, x: 12 }}
               className="absolute top-1/2 right-full mr-4 -translate-y-1/2"
             >
-                <Surface
-                  variant="overlay"
-                  padding="sm"
-                  className="relative whitespace-nowrap border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)] px-4 py-2"
-                >
-                  <span className="app-label text-[var(--app-accent-cyan-soft)]">Ask a question</span>
-                  <div className="absolute top-1/2 right-[-5px] size-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]" />
-                </Surface>
+              <Surface
+                variant="overlay"
+                padding="sm"
+                className="relative whitespace-nowrap border-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_20%,transparent)] px-4 py-2"
+              >
+                <span className="app-label text-[var(--app-accent-cyan-soft)]">
+                  Ask a question
+                </span>
+                <div className="absolute top-1/2 right-[-5px] size-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)]" />
+              </Surface>
             </motion.div>
           )}
         </AnimatePresence>

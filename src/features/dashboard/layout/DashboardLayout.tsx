@@ -75,6 +75,7 @@ function getInitials(name: string | null | undefined) {
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
   if (pathname.startsWith("/profile")) return "profile";
+  if (pathname.startsWith("/valuations")) return "analytics";
 
   const segment = pathname.replace(/^\//, "").split("/")[0] || "home";
   if (segment === "badges" || segment === "targets") return "circles";
@@ -83,12 +84,20 @@ function pathToPage(pathname: string): PageId {
 }
 
 const ROUTES: { path: string; match?: (pathname: string) => boolean; element: React.ReactNode }[] = [
-  { path: "/", element: <HomePage /> },
-  { path: "/transactions", element: <TransactionsPage /> },
+  { path: "/", match: (pathname) => pathname === "/", element: <HomePage /> },
+  {
+    path: "/transactions",
+    match: (pathname) => pathname === "/transactions" || pathname === "/transactions/new",
+    element: <TransactionsPage />,
+  },
   { path: "/circles", element: <CirclesPage /> },
   { path: "/badges", element: <BadgesPage /> },
   { path: "/targets", element: <TargetsPage /> },
-  { path: "/subscriptions", element: <SubscriptionsPage /> },
+  {
+    path: "/subscriptions",
+    match: (pathname) => pathname === "/subscriptions" || pathname === "/subscriptions/new",
+    element: <SubscriptionsPage />,
+  },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
   { path: "/profile", match: (pathname) => pathname.startsWith("/profile"), element: <ProfilePage /> },
