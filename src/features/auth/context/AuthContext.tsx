@@ -1,7 +1,16 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiRequest, getApiAccessToken, setApiAccessToken } from "@/api/client";
+import { apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
 import { supabase } from "@/api/supabaseClient";
+import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
+import {
+  enrollTotpFactor as mfaEnrollTotp,
+  getMfaSnapshot,
+  unenrollFactor as mfaUnenroll,
+  verifyMfaChallenge as mfaVerifyChallenge,
+  verifyTotpEnrollment as mfaVerifyTotpEnrollment,
+  type MfaSnapshot,
+} from "@/features/auth/mfa/mfaOperations";
 
 export type User = {
   id: number | string;
@@ -20,6 +29,21 @@ export type BackendUserProfile = {
   supabase_uid: string;
 };
 
+/** Why bank linking may be blocked (aligned with auth-assurance blocking_code + client checks). */
+export type BankLinkGateReason =
+  | "api_misconfigured"
+  | "mfa_loading"
+  | "auth_assurance_unavailable"
+  | "mfa_not_enrolled"
+  | "mfa_verification_needed"
+  | "mfa_required"
+  | null;
+
+export type RefreshMfaResult = {
+  gate: { can: boolean; reason: BankLinkGateReason };
+  mfaSnapshot: MfaSnapshot | null;
+};
+
 type AuthContextValue = {
   user: User | null;
   backendUser: BackendUserProfile | null;
@@ -30,6 +54,19 @@ type AuthContextValue = {
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
+  /** MFA / strong-auth state for Plaid and bank linking. */
+  mfaSnapshot: MfaSnapshot | null;
+  mfaLoading: boolean;
+  mfaError: string | null;
+  authAssurance: AuthAssuranceResponse | null;
+  refreshMfa: () => Promise<RefreshMfaResult>;
+  /** True when auth-assurance reports banking_allowed (and checks pass). */
+  canLinkBank: boolean;
+  bankLinkGateReason: BankLinkGateReason;
+  enrollTotpFactor: () => ReturnType<typeof mfaEnrollTotp>;
+  verifyTotpEnrollment: (factorId: string, code: string) => ReturnType<typeof mfaVerifyTotpEnrollment>;
+  verifyMfaChallenge: (factorId: string, code: string) => ReturnType<typeof mfaVerifyChallenge>;
+  unenrollMfaFactor: (factorId: string) => Promise<void>;
 };
 
 export type SignUpData = {
@@ -70,10 +107,34 @@ function mergeBackendProfile(user: User, backendUser: BackendUserProfile | null)
   };
 }
 
+type GateOpts = { loading: boolean; fetchFailed: boolean };
+
+export function computeBankLinkGateFromAssurance(
+  apiErr: string | null,
+  assurance: AuthAssuranceResponse | null,
+  opts: GateOpts
+): { can: boolean; reason: BankLinkGateReason } {
+  if (apiErr) return { can: false, reason: "api_misconfigured" };
+  if (opts.loading) return { can: false, reason: "mfa_loading" };
+  if (opts.fetchFailed || assurance === null) return { can: false, reason: "auth_assurance_unavailable" };
+  if (!assurance.banking_allowed) {
+    const code = assurance.blocking_code;
+    if (code === "mfa_not_enrolled") return { can: false, reason: "mfa_not_enrolled" };
+    if (code === "mfa_verification_needed") return { can: false, reason: "mfa_verification_needed" };
+    if (code === "mfa_required") return { can: false, reason: "mfa_required" };
+    return { can: false, reason: "mfa_required" };
+  }
+  return { can: true, reason: null };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
+  const [mfaSnapshot, setMfaSnapshot] = React.useState<MfaSnapshot | null>(null);
+  const [mfaLoading, setMfaLoading] = React.useState(false);
+  const [mfaError, setMfaError] = React.useState<string | null>(null);
+  const [authAssurance, setAuthAssurance] = React.useState<AuthAssuranceResponse | null>(null);
   const backendUserRef = React.useRef<BackendUserProfile | null>(null);
   const syncBackendUserPromiseRef = React.useRef<Promise<BackendUserProfile | null> | null>(null);
   const lastSyncedAccessTokenRef = React.useRef<string | null>(null);
@@ -81,6 +142,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
     backendUserRef.current = profile;
     setBackendUser(profile);
+  }, []);
+
+  const refreshMfa = React.useCallback(async () => {
+    const token = getApiAccessToken();
+    if (!token) {
+      setMfaSnapshot(null);
+      setAuthAssurance(null);
+      setMfaError(null);
+      return {
+        gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: false }),
+        mfaSnapshot: null as MfaSnapshot | null,
+      };
+    }
+    setMfaLoading(true);
+    setMfaError(null);
+    let snap: MfaSnapshot | null = null;
+    try {
+      try {
+        snap = await getMfaSnapshot();
+        setMfaSnapshot(snap);
+      } catch (e) {
+        setMfaSnapshot(null);
+        setAuthAssurance(null);
+        setMfaError(e instanceof Error ? e.message : "MFA status unavailable");
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
+          mfaSnapshot: null,
+        };
+      }
+      try {
+        const assurance = await fetchAuthAssurance();
+        setAuthAssurance(assurance);
+        setMfaError(null);
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), assurance, { loading: false, fetchFailed: false }),
+          mfaSnapshot: snap,
+        };
+      } catch (e) {
+        setAuthAssurance(null);
+        setMfaError(e instanceof Error ? e.message : "Security check failed");
+        return {
+          gate: computeBankLinkGateFromAssurance(getApiConfigurationError(), null, { loading: false, fetchFailed: true }),
+          mfaSnapshot: snap,
+        };
+      }
+    } finally {
+      setMfaLoading(false);
+    }
   }, []);
 
   const syncBackendUser = React.useCallback(async () => {
@@ -165,6 +274,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applySession]);
 
+  React.useEffect(() => {
+    if (user) {
+      void refreshMfa();
+    } else {
+      setMfaSnapshot(null);
+      setAuthAssurance(null);
+      setMfaError(null);
+    }
+  }, [user, refreshMfa]);
+
   const login = React.useCallback(async (email: string, password: string) => {
     const { error, data } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -176,10 +295,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiAccessToken(data.session?.access_token ?? null);
     if (data.session) {
       await syncBackendUser();
+      await refreshMfa();
     }
 
     return { ok: true, session: data.session };
-  }, [syncBackendUser]);
+  }, [syncBackendUser, refreshMfa]);
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
@@ -215,6 +335,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastSyncedAccessTokenRef.current = null;
   }, [updateBackendUser]);
 
+  const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
+
+  const verifyTotpEnrollment = React.useCallback(
+    (factorId: string, code: string) =>
+      mfaVerifyTotpEnrollment(factorId, code).then(async (r) => {
+        await refreshMfa();
+        return r;
+      }),
+    [refreshMfa]
+  );
+
+  const verifyMfaChallenge = React.useCallback(
+    (factorId: string, code: string) =>
+      mfaVerifyChallenge(factorId, code).then(async (r) => {
+        await refreshMfa();
+        return r;
+      }),
+    [refreshMfa]
+  );
+
+  const unenrollMfaFactor = React.useCallback(
+    async (factorId: string) => {
+      await mfaUnenroll(factorId);
+      await refreshMfa();
+    },
+    [refreshMfa]
+  );
+
+  const { can: canLinkBank, reason: bankLinkGateReason } = React.useMemo(() => {
+    const fetchFailed = !mfaLoading && !!mfaError && authAssurance === null;
+    return computeBankLinkGateFromAssurance(getApiConfigurationError(), authAssurance, {
+      loading: mfaLoading,
+      fetchFailed,
+    });
+  }, [mfaLoading, mfaError, authAssurance]);
+
   const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
     const { error, data: resp } = await supabase.auth.updateUser({
       data: {
@@ -242,8 +398,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       logout,
       updateProfile,
+      mfaSnapshot,
+      mfaLoading,
+      mfaError,
+      authAssurance,
+      refreshMfa,
+      canLinkBank,
+      bankLinkGateReason,
+      enrollTotpFactor,
+      verifyTotpEnrollment,
+      verifyMfaChallenge,
+      unenrollMfaFactor,
     }),
-    [user, backendUser, authLoading, login, signUp, logout, updateProfile]
+    [
+      user,
+      backendUser,
+      authLoading,
+      login,
+      signUp,
+      logout,
+      updateProfile,
+      mfaSnapshot,
+      mfaLoading,
+      mfaError,
+      authAssurance,
+      refreshMfa,
+      canLinkBank,
+      bankLinkGateReason,
+      enrollTotpFactor,
+      verifyTotpEnrollment,
+      verifyMfaChallenge,
+      unenrollMfaFactor,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
