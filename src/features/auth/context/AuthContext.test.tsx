@@ -6,7 +6,9 @@ import { AuthProvider, useAuth } from "./AuthContext";
 
 const {
   mockApiRequest,
+  mockFetchAuthAssurance,
   mockGetApiAccessToken,
+  mockGetMfaSnapshot,
   mockSetApiAccessToken,
   mockGetSession,
   mockOnAuthStateChange,
@@ -16,7 +18,9 @@ const {
   mockUpdateUser,
 } = vi.hoisted(() => ({
   mockApiRequest: vi.fn(),
+  mockFetchAuthAssurance: vi.fn(),
   mockGetApiAccessToken: vi.fn(),
+  mockGetMfaSnapshot: vi.fn(),
   mockSetApiAccessToken: vi.fn(),
   mockGetSession: vi.fn(),
   mockOnAuthStateChange: vi.fn(),
@@ -30,6 +34,19 @@ vi.mock("@/api/client", () => ({
   apiRequest: mockApiRequest,
   getApiAccessToken: mockGetApiAccessToken,
   setApiAccessToken: mockSetApiAccessToken,
+  getApiConfigurationError: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock("@/api/compliance.api", () => ({
+  fetchAuthAssurance: mockFetchAuthAssurance,
+}));
+
+vi.mock("@/features/auth/mfa/mfaOperations", () => ({
+  getMfaSnapshot: mockGetMfaSnapshot,
+  enrollTotpFactor: vi.fn(),
+  verifyTotpEnrollment: vi.fn(),
+  verifyMfaChallenge: vi.fn(),
+  unenrollFactor: vi.fn(),
 }));
 
 vi.mock("@/api/supabaseClient", () => ({
@@ -85,6 +102,28 @@ function SignUpHarness() {
   );
 }
 
+function RefreshMfaHarness() {
+  const { refreshMfa, mfaError, mfaLoading } = useAuth();
+  const [result, setResult] = React.useState("");
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          const response = await refreshMfa();
+          setResult(JSON.stringify(response));
+        }}
+      >
+        Refresh MFA
+      </button>
+      <output data-testid="mfa-loading">{String(mfaLoading)}</output>
+      <output data-testid="mfa-error">{mfaError ?? ""}</output>
+      <output data-testid="mfa-result">{result}</output>
+    </>
+  );
+}
+
 describe("AuthProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,8 +133,26 @@ describe("AuthProvider", () => {
       username: "tester",
       supabase_uid: "uid-123",
     });
+    mockFetchAuthAssurance.mockResolvedValue({
+      mfa_required_by_policy: false,
+      assurance: { aal: null, amr: [], mfa_factors_count: 0 },
+      banking_allowed: true,
+      blocking_code: null,
+    });
     mockGetApiAccessToken.mockReturnValue("token-123");
+    mockGetMfaSnapshot.mockResolvedValue({
+      currentLevel: "aal1",
+      nextLevel: "aal2",
+      factors: [],
+    });
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+    mockOnAuthStateChange.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    });
     mockSignUp.mockResolvedValue({ error: null, data: { session: null } });
     mockSignOut.mockResolvedValue({ error: null });
     mockUpdateUser.mockResolvedValue({ error: null, data: { user: null } });
@@ -170,5 +227,26 @@ describe("AuthProvider", () => {
     await waitFor(() => {
       expect(screen.getByText('{"ok":true,"requiresVerification":true}')).toBeInTheDocument();
     });
+  });
+
+  it("clears MFA loading when the snapshot refresh fails", async () => {
+    const user = userEvent.setup();
+    mockGetMfaSnapshot.mockRejectedValueOnce(new Error("MFA status unavailable"));
+
+    render(
+      <AuthProvider>
+        <RefreshMfaHarness />
+      </AuthProvider>
+    );
+
+    await user.click(screen.getByRole("button", { name: /refresh mfa/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mfa-loading")).toHaveTextContent("false");
+      expect(screen.getByTestId("mfa-error")).toHaveTextContent("MFA status unavailable");
+      expect(screen.getByTestId("mfa-result")).toHaveTextContent('"reason":"auth_assurance_unavailable"');
+    });
+
+    expect(mockFetchAuthAssurance).not.toHaveBeenCalled();
   });
 });

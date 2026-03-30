@@ -34,6 +34,7 @@ export type BankTransaction = {
 };
 
 export const BankingAPI = {
+  /** Prefer calling only via `usePlaidConnect` → `useSecureBankConnect` so MFA + consent run first. */
   createLinkToken: () =>
     apiRequest<{ link_token: string }>("/api/banking/link-token/", {
       requireAuth: true,

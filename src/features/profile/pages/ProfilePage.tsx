@@ -1,6 +1,9 @@
 import * as React from "react";
 import { motion } from "motion/react";
-import { LogOut, Mail, Pencil, Plus, Sparkles, User, X } from "lucide-react";
+import { User, Mail, Sparkles, LogOut, Pencil, Plus, X, Loader2 } from "lucide-react";
+import { useAuth } from "@/features/auth";
+import { MfaEnrollmentCard } from "@/features/auth/components/MfaEnrollmentCard";
+import { PrivacyPolicyLink, PrivacyPolicyMetaLine } from "@/shared/components/PrivacyPolicyLink";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -494,6 +497,14 @@ export function ProfilePage() {
               {saving ? "Saving..." : "Save changes"}
             </AppButton>
           </form>
+
+          <MfaEnrollmentCard />
+
+          <div className="pt-6 border-t border-white/10">
+            <p className="text-xs text-gray-500 mb-1">Legal</p>
+            <PrivacyPolicyMetaLine className="mb-2" />
+            <PrivacyPolicyLink className="text-cyan-400 text-sm font-bold" />
+          </div>
 
           <FinancialProfileSection
             financialLoading={financialLoading}

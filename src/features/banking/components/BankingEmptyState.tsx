@@ -8,9 +8,10 @@ import { ConnectBankButton } from "./ConnectBankButton";
 type BankingEmptyStateProps = {
   onConnect: () => void;
   isConnecting?: boolean;
+  disabled?: boolean;
 };
 
-export function BankingEmptyState({ onConnect, isConnecting = false }: BankingEmptyStateProps) {
+export function BankingEmptyState({ onConnect, isConnecting = false, disabled = false }: BankingEmptyStateProps) {
   return (
     <ElectricCard className="p-8" semanticColor={COLORS.electricCyan} elevation={1}>
       <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
@@ -26,7 +27,7 @@ export function BankingEmptyState({ onConnect, isConnecting = false }: BankingEm
             Sandbox mode available for testing
           </p>
         </div>
-        <ConnectBankButton onConnect={onConnect} loading={isConnecting} />
+        <ConnectBankButton onConnect={onConnect} loading={isConnecting} disabled={disabled} />
       </div>
     </ElectricCard>
   );

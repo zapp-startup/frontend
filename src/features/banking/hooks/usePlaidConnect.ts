@@ -1,6 +1,7 @@
 import * as React from "react";
 import { usePlaidLink as usePlaidLinkHook } from "react-plaid-link";
 import { BankingAPI } from "@/api/banking.api";
+import { messageForSecurityFlowError } from "../security/securityFlowErrors";
 
 type UsePlaidConnectParams = {
   onConnected?: () => void | Promise<void>;
@@ -13,6 +14,18 @@ type UsePlaidConnectReturn = {
   linkError: string | null;
 };
 
+/**
+ * Low-level Plaid link-token + exchange.
+ *
+ * **SECURITY — internal hook only:** Do not import this from screens, routes, or feature components.
+ * All user-facing bank connections must go through {@link useSecureBankConnect}, which enforces
+ * `refreshMfa()` (auth assurance), consent, and a fresh MFA re-check before link-token.
+ *
+ * This module is **not** re-exported from `@/features/banking` (public API). If you add a new call site
+ * here, keep it inside `useSecureBankConnect.ts` only.
+ *
+ * @internal
+ */
 export function usePlaidConnect(params: UsePlaidConnectParams = {}): UsePlaidConnectReturn {
   const { onConnected } = params;
   const [linkToken, setLinkToken] = React.useState<string | null>(null);
@@ -28,8 +41,8 @@ export function usePlaidConnect(params: UsePlaidConnectParams = {}): UsePlaidCon
         await BankingAPI.exchangePublicToken(publicToken);
         setLinkToken(null);
         await onConnected?.();
-      } catch (e) {
-        setLinkError(e instanceof Error ? e.message : "Failed to connect bank");
+    } catch (e) {
+      setLinkError(messageForSecurityFlowError(e, "Failed to connect bank"));
       } finally {
         setIsExchanging(false);
       }
@@ -57,7 +70,7 @@ export function usePlaidConnect(params: UsePlaidConnectParams = {}): UsePlaidCon
       setLinkToken(link_token);
       setIsPreparingLink(false);
     } catch (e) {
-      setLinkError(e instanceof Error ? e.message : "Failed to prepare bank connection");
+      setLinkError(messageForSecurityFlowError(e, "Failed to prepare bank connection"));
       setIsPreparingLink(false);
     }
   }, []);

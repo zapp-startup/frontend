@@ -5,6 +5,7 @@ import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
+import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 
 export function SignUpPage() {
   const { signUp, isAuthenticated, isAuthReady } = useAuth();
@@ -114,6 +115,9 @@ export function SignUpPage() {
             >
               Sign in
             </NavLink>
+          </p>
+          <p className="mt-4 text-center text-xs text-gray-600">
+            <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
           </p>
         </Surface>
       </motion.div>

@@ -1,4 +1,5 @@
 export * from "./client";
+export * from "./compliance.api";
 export * from "./users.api";
 export * from "./merchants.api";
 export * from "./subscriptions.api";

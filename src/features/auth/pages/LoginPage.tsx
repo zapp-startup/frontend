@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/api/supabaseClient";
 import { OnboardingAPI } from "@/api/onboarding.api";
 import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
+import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 
 export function LoginPage() {
   const { login, isAuthenticated, isAuthReady } = useAuth();
@@ -131,6 +132,10 @@ export function LoginPage() {
             >
               Sign up
             </NavLink>
+          </p>
+        
+          <p className="mt-4 text-center text-xs text-gray-600">
+            <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
           </p>
         </Surface>
       </motion.div>

@@ -1,6 +1,19 @@
 import { supabase } from "./supabaseClient";
+import { resolveApiBaseUrl } from "@/config/apiEnv";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const apiEnvResult = resolveApiBaseUrl();
+
+/** Non-null when production (or misconfigured) API URL is invalid. Surfaces in UI; requests throw. */
+export function getApiConfigurationError(): string | null {
+  return apiEnvResult.ok ? null : apiEnvResult.message;
+}
+
+function getBaseUrlForRequests(): string {
+  if (!apiEnvResult.ok) {
+    throw new Error(apiEnvResult.message);
+  }
+  return apiEnvResult.url;
+}
 
 let authToken: string | null = null;
 
@@ -134,7 +147,7 @@ export async function apiRequest<T = any>(
     throw new Error(`Authentication required for ${path}, but no Supabase access token is available.`);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${getBaseUrlForRequests()}${path}`, {
     ...requestOptions,
     headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body),
   });

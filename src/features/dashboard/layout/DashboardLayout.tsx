@@ -13,6 +13,9 @@ import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
 import { PanelProvider } from "../context/PanelContext";
 import { FeedbackPromptFlow } from "@/features/transactions/components/FeedbackPromptFlow";
+import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
+import { ApiConfigBanner } from "@/shared/components/ApiConfigBanner";
+import { getPrivacyPolicyMeta } from "@/config/privacy";
 
 const HomePage = React.lazy(() =>
   import("@/features/home").then((module) => ({ default: module.HomePage }))
@@ -224,7 +227,16 @@ export function DashboardLayout() {
         <Routes>
           <Route path="*" element={<PageContent />} />
         </Routes>
+        <footer className="mt-16 border-t border-white/[0.06] py-8 text-center text-[10px] text-gray-600">
+          <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
+          <span className="mx-2 text-gray-700">·</span>
+          <span className="text-gray-600">
+            Policy v{getPrivacyPolicyMeta().version} · {getPrivacyPolicyMeta().effectiveDate}
+          </span>
+        </footer>
       </main>
+
+      <ApiConfigBanner />
 
       <div className="fixed bottom-10 left-10 z-[100]">
         <AppButton

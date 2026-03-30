@@ -3,18 +3,23 @@ import { Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 import { useBankingData } from "../hooks/useBankingData";
-import { usePlaidConnect } from "../hooks/usePlaidConnect";
+import { useSecureBankConnect } from "../hooks/useSecureBankConnect";
 import { useBankConnectionSync } from "../hooks/useBankConnectionSync";
 import { BankingEmptyState } from "./BankingEmptyState";
 import { BankConnectionsList } from "./BankConnectionsList";
 import { ConnectBankButton } from "./ConnectBankButton";
 import { LinkedAccountsSection } from "./LinkedAccountsSection";
+import { BankConnectionConsentModal } from "./BankConnectionConsentModal";
+import { MfaChallengeModal } from "./MfaChallengeModal";
+import { BankLinkComplianceBanner } from "./BankLinkComplianceBanner";
+import { useAuth } from "@/features/auth";
 
 type BankingSectionProps = {
   onTransactionsRefetch?: () => void | Promise<void>;
 };
 
 export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
+  const { canLinkBank, bankLinkGateReason } = useAuth();
   const {
     connections,
     accounts,
@@ -34,9 +39,25 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
     toast.success("Bank connected successfully. Your transactions are syncing.");
   }, [refetchAll, onTransactionsRefetch]);
 
-  const { startConnect, isPreparingLink, isExchanging, linkError } = usePlaidConnect({
+  const secure = useSecureBankConnect({
     onConnected: handleConnected,
   });
+  const {
+    requestConnect,
+    isPreparingLink,
+    isExchanging,
+    linkError,
+    consentOpen,
+    setConsentOpen,
+    consentSubmitting,
+    onConsentConfirm,
+    challengeOpen,
+    setChallengeOpen,
+    challengeCode,
+    setChallengeCode,
+    challengeSubmitting,
+    submitChallenge,
+  } = secure;
 
   const handleSynced = React.useCallback(async () => {
     await refetchConnections();
@@ -52,6 +73,7 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
 
   const isConnecting = isPreparingLink || isExchanging;
   const hasConnections = connections.length > 0;
+  const canTriggerConnect = canLinkBank || bankLinkGateReason === "mfa_verification_needed";
 
   return (
     <section className="space-y-6">
@@ -68,8 +90,14 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
         />
       </div>
 
+      <BankLinkComplianceBanner />
+
       {!hasConnections && !connectionsLoading && (
-        <BankingEmptyState onConnect={startConnect} isConnecting={isConnecting} />
+        <BankingEmptyState
+          onConnect={requestConnect}
+          isConnecting={isConnecting}
+          disabled={!canTriggerConnect}
+        />
       )}
 
       {linkError && hasConnections && (
@@ -95,8 +123,9 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
               syncingConnectionId={syncingConnectionId}
             />
             <ConnectBankButton
-              onConnect={startConnect}
+              onConnect={requestConnect}
               loading={isConnecting}
+              disabled={!canTriggerConnect}
               error={linkError}
             />
           </div>
@@ -107,6 +136,21 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
           />
         </div>
       )}
+
+      <BankConnectionConsentModal
+        open={consentOpen}
+        onOpenChange={setConsentOpen}
+        onConfirm={onConsentConfirm}
+        submitting={consentSubmitting}
+      />
+      <MfaChallengeModal
+        open={challengeOpen}
+        onOpenChange={setChallengeOpen}
+        code={challengeCode}
+        onCodeChange={setChallengeCode}
+        onSubmit={submitChallenge}
+        submitting={challengeSubmitting}
+      />
     </section>
   );
 }
