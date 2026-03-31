@@ -31,6 +31,10 @@ vi.mock("../context/AuthContext", () => ({
   }),
 }));
 
+vi.mock("@/shared/components/brand/AppLogo", () => ({
+  AppLogo: () => <div data-testid="app-logo" />,
+}));
+
 describe("SignUpPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();

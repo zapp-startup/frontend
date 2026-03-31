@@ -115,8 +115,7 @@ function shouldSetJsonContentType(body: BodyInit | null | undefined) {
 function buildRequestHeaders(
   headersInit: HeadersInit | undefined,
   token: string | null,
-  body: BodyInit | null | undefined,
-  requestId: string
+  body: BodyInit | null | undefined
 ) {
   const headers = new Headers(headersInit);
 
@@ -127,8 +126,6 @@ function buildRequestHeaders(
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-
-  headers.set("X-Request-ID", requestId);
 
   return headers;
 }
@@ -181,7 +178,7 @@ export async function apiRequest<T = any>(
   try {
     res = await fetch(`${getBaseUrlForRequests()}${path}`, {
       ...requestOptions,
-      headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body, requestId),
+      headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body),
     });
   } catch (error) {
     if (audit) {

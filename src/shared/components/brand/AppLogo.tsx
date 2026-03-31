@@ -30,7 +30,7 @@ export function AppLogo({
         draggable={false}
         role={showWordmark ? undefined : "img"}
         src={logoSrc}
-        style={{ width: size, height: size, objectPosition: "36% 50%" }}
+        style={{ width: size, height: size, objectPosition: "36% 56%" }}
       />
 
       {showWordmark ? (

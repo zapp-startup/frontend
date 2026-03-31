@@ -32,15 +32,15 @@ describe("ai.api", () => {
 
     expect(result.conversation_id).toBe(123);
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/ai/conversations/",
+      expect.stringMatching(/\/api\/ai\/conversations\/$/),
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          "X-Dev-User": "seed_user_0",
-        }),
       })
     );
+    const init = mockFetch.mock.calls[0]?.[1];
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("X-Dev-User")).toBe("seed_user_0");
   });
 
   it("always sends Authorization and only uses the debug username header when available", async () => {

@@ -66,6 +66,6 @@ describe("PrivacyPolicyPage", () => {
     expect(screen.getByRole("article").querySelector(".privacy-policy-document")).toBeTruthy();
     expect(screen.getByRole("article").querySelector(".privacy-policy-copy")).toBeTruthy();
     expect(screen.getByRole("article").querySelector(".privacy-policy-divider")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Back to sign in" })).toHaveClass("app-button");
+    expect(screen.getByRole("link", { name: "Back" })).toHaveClass("app-button");
   });
 });

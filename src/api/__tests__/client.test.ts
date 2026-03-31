@@ -44,7 +44,6 @@ describe("client", () => {
     const call = mockFetch.mock.calls[0];
     const headers = call[1]?.headers as Headers;
     expect(headers.get("Authorization")).toBe("Bearer test-token");
-    expect(headers.get("X-Request-ID")).toBeTruthy();
   });
 
   it("does not add Content-Type for bodyless requests", async () => {

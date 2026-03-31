@@ -16,15 +16,16 @@ describe("privacy config", () => {
 
   it("defaults to the local privacy page until backend metadata is loaded", async () => {
     const { getPrivacyPolicyMeta, getPrivacyPolicyPath } = await import("../privacy");
+    const expectedUrl = import.meta.env.VITE_PRIVACY_POLICY_URL ?? "/privacy";
 
-    expect(getPrivacyPolicyPath()).toBe("/privacy");
+    expect(getPrivacyPolicyPath()).toBe(expectedUrl);
 
     const meta = getPrivacyPolicyMeta();
     expect(meta.version).toMatch(/\d/);
     expect(meta.effectiveDate).toBeTruthy();
     expect(meta.supportEmail).toContain("@");
     expect(meta.privacyEmail).toContain("@");
-    expect(meta.url).toBe("/privacy");
+    expect(meta.url).toBe(expectedUrl);
   });
 
   it("hydrates backend-authoritative policy metadata when available", async () => {

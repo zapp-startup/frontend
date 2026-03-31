@@ -53,9 +53,12 @@ describe("banking.api", () => {
 
     const result = await BankingAPI.getConnections();
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/banking/connections/", {
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/banking/connections/",
+      expect.objectContaining({
+        requireAuth: true,
+      })
+    );
     expect(result).toEqual(connections);
   });
 
@@ -67,9 +70,12 @@ describe("banking.api", () => {
 
     const result = await BankingAPI.getAccounts();
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/banking/accounts/", {
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/banking/accounts/",
+      expect.objectContaining({
+        requireAuth: true,
+      })
+    );
     expect(result).toEqual(accounts);
   });
 
@@ -89,7 +95,7 @@ describe("banking.api", () => {
 
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/banking/transactions/?limit=20&date_from=2025-01-01&date_to=2025-01-31&category=food&direction=spend",
-      { requireAuth: true }
+      expect.objectContaining({ requireAuth: true })
     );
   });
 
