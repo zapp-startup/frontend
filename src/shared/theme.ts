@@ -62,10 +62,10 @@ export type ThemeOverrides = {
 
 export const LIGHT_THEME_OVERRIDES: ThemeOverrides = {
   colors: {
-    canvas: "#EEF4FB",
-    surface: "#FFFFFF",
-    surfaceMuted: "#E4ECF6",
-    surfaceStrong: "#DCE6F2",
+    canvas: "#EDF5FF",
+    surface: "#F8FBFF",
+    surfaceMuted: "#E7F0FB",
+    surfaceStrong: "#DDE8F6",
     borderSubtle: "rgba(11,18,32,0.08)",
     borderStrong: "rgba(11,18,32,0.14)",
     textPrimary: "#08111F",

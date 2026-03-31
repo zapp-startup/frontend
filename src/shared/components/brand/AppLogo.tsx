@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/shared/components/ui/utils";
+import { useAppThemeMode } from "@/shared/theme-provider";
 
 type AppLogoProps = {
   className?: string;
@@ -17,6 +18,9 @@ export function AppLogo({
   showWordmark = false,
   wordmarkClassName,
 }: AppLogoProps) {
+  const { mode } = useAppThemeMode();
+  const logoSrc = mode === "dark" ? "/zap-logo-white-Photoroom.png" : "/zap-logo-black-Photoroom.png";
+
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>
       <img
@@ -25,7 +29,7 @@ export function AppLogo({
         className={cn("block shrink-0 object-contain object-center", markClassName)}
         draggable={false}
         role={showWordmark ? undefined : "img"}
-        src="/logo-mark.png"
+        src={logoSrc}
         style={{ width: size, height: size, objectPosition: "36% 50%" }}
       />
 
