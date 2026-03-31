@@ -1,6 +1,11 @@
+import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
 import { getApiAccessToken } from "./client";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const apiEnvResult = resolveApiBaseUrl();
+
+function getAiBaseUrl(): string {
+  return getValidatedUrlOrThrow(apiEnvResult);
+}
 
 export type ApiMessage = {
   id: string | number;
@@ -154,7 +159,7 @@ async function aiRequest<T>(
   options: RequestInit = {},
   auth?: DevAuthParams
 ) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${getAiBaseUrl()}${path}`, {
     ...options,
     headers: mergeHeaders(buildAiHeaders(auth, options.body), options.headers),
   });

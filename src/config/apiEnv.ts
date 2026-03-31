@@ -1,9 +1,9 @@
 /**
- * Production API URL validation. Local development may use http://127.0.0.1.
+ * Production URL validation. Local development may use http://127.0.0.1 for the API.
  * Does not replace TLS on the wire; only blocks obviously unsafe production config.
  */
 
-export type ApiBaseUrlValidation = {
+export type ConfiguredUrlValidation = {
   ok: true;
   url: string;
 } | {
@@ -20,38 +20,77 @@ function isLocalhost(url: string): boolean {
   }
 }
 
-/**
- * Validates API base URL for production builds. Returns error message if invalid.
- */
-export function validateProductionApiBaseUrl(raw: string | undefined): string | null {
+function validateProductionHttpsUrl(raw: string | undefined, envName: string): string | null {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) {
-    return "VITE_API_URL is required in production. Set it to your HTTPS API origin.";
+    return `${envName} is required in production. Set it to your HTTPS origin.`;
   }
   if (isLocalhost(trimmed)) {
-    return "VITE_API_URL must not point to localhost in production.";
+    return `${envName} must not point to localhost in production.`;
   }
   if (trimmed.startsWith("http://")) {
-    return "VITE_API_URL must use https:// in production.";
+    return `${envName} must use https:// in production.`;
   }
   if (!trimmed.startsWith("https://")) {
-    return "VITE_API_URL must be a valid https:// URL in production.";
+    return `${envName} must be a valid https:// URL in production.`;
   }
   return null;
 }
 
 /**
- * Resolves the API base URL for the current environment.
+ * Validates API base URL for production builds. Returns error message if invalid.
  */
-export function resolveApiBaseUrl(): ApiBaseUrlValidation {
-  const fallback = "http://127.0.0.1:8000";
-  const raw = import.meta.env.VITE_API_URL?.trim() || fallback;
+export function validateProductionApiBaseUrl(raw: string | undefined): string | null {
+  return validateProductionHttpsUrl(raw, "VITE_API_URL");
+}
+
+/**
+ * Validates Supabase URL for production builds. Returns error message if invalid.
+ */
+export function validateProductionSupabaseUrl(raw: string | undefined): string | null {
+  return validateProductionHttpsUrl(raw, "VITE_SUPABASE_URL");
+}
+
+function resolveConfiguredUrl(
+  raw: string | undefined,
+  fallback: string,
+  validator: (raw: string | undefined) => string | null
+): ConfiguredUrlValidation {
+  const value = raw?.trim() || fallback;
 
   if (import.meta.env.PROD) {
-    const err = validateProductionApiBaseUrl(raw);
+    const err = validator(value);
     if (err) return { ok: false, message: err };
-    return { ok: true, url: raw };
   }
 
-  return { ok: true, url: raw };
+  return { ok: true, url: value };
+}
+
+export function getValidatedUrlOrThrow(result: ConfiguredUrlValidation): string {
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+  return result.url;
+}
+
+/**
+ * Resolves the API base URL for the current environment.
+ */
+export function resolveApiBaseUrl(): ConfiguredUrlValidation {
+  return resolveConfiguredUrl(
+    import.meta.env.VITE_API_URL,
+    "http://127.0.0.1:8000",
+    validateProductionApiBaseUrl
+  );
+}
+
+/**
+ * Resolves the Supabase URL for the current environment.
+ */
+export function resolveSupabaseUrl(): ConfiguredUrlValidation {
+  return resolveConfiguredUrl(
+    import.meta.env.VITE_SUPABASE_URL,
+    "",
+    validateProductionSupabaseUrl
+  );
 }

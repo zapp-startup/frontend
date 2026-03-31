@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { resolveApiBaseUrl } from "@/config/apiEnv";
+import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
 
 const apiEnvResult = resolveApiBaseUrl();
 
@@ -9,10 +9,7 @@ export function getApiConfigurationError(): string | null {
 }
 
 function getBaseUrlForRequests(): string {
-  if (!apiEnvResult.ok) {
-    throw new Error(apiEnvResult.message);
-  }
-  return apiEnvResult.url;
+  return getValidatedUrlOrThrow(apiEnvResult);
 }
 
 let authToken: string | null = null;
