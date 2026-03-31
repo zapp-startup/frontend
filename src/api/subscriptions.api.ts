@@ -92,6 +92,7 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "POST",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.create", action: "create", resourceType: "subscription" },
     });
     return normalizeSubscription(created);
   },
@@ -100,6 +101,7 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "PUT",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.update", action: "update", resourceType: "subscription", resourceId: id },
     });
     return normalizeSubscription(updated);
   },
@@ -108,9 +110,14 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "PATCH",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.update", action: "update", resourceType: "subscription", resourceId: id },
     });
     return normalizeSubscription(updated);
   },
   remove: (id: number) =>
-    apiRequest<null>(`/api/subscriptions/${id}/`, { ...auth, method: "DELETE" }),
+    apiRequest<null>(`/api/subscriptions/${id}/`, {
+      ...auth,
+      method: "DELETE",
+      audit: { eventName: "subscription.delete", action: "delete", resourceType: "subscription", resourceId: id },
+    }),
 };

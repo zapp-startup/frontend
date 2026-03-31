@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "./AuthContext";
+import { addAuditSink, resetAuditSinks, type AuditEvent } from "@/shared/audit/audit";
 
 const {
   mockApiRequest,
@@ -125,8 +126,15 @@ function RefreshMfaHarness() {
 }
 
 describe("AuthProvider", () => {
+  let events: AuditEvent[] = [];
+
   beforeEach(() => {
     vi.clearAllMocks();
+    events = [];
+    resetAuditSinks();
+    addAuditSink((event) => {
+      events.push(event);
+    });
     mockApiRequest.mockResolvedValue({
       id: 7,
       email: "user@example.com",
@@ -230,6 +238,13 @@ describe("AuthProvider", () => {
     await waitFor(() => {
       expect(screen.getByText('{"ok":true,"requiresVerification":true}')).toBeInTheDocument();
     });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event_name: "auth.signup",
+        outcome: "success",
+      })
+    );
   });
 
   it("clears MFA loading when the snapshot refresh fails", async () => {
@@ -251,5 +266,32 @@ describe("AuthProvider", () => {
     });
 
     expect(mockFetchAuthAssurance).not.toHaveBeenCalled();
+  });
+
+  it("records failed login attempts without logging secrets", async () => {
+    mockSignInWithPassword.mockResolvedValueOnce({
+      error: { message: "Invalid login credentials" },
+      data: { session: null, user: null },
+    });
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <LoginHarness />
+      </AuthProvider>
+    );
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          event_name: "auth.login",
+          outcome: "failure",
+          error_message: "Invalid login credentials",
+        })
+      );
+    });
+    expect(JSON.stringify(events)).not.toMatch(/secret12/);
   });
 });

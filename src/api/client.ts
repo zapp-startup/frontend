@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
+import { createRequestId, emitAuditEvent, getActorIdFromToken } from "@/shared/audit/audit";
 
 const apiEnvResult = resolveApiBaseUrl();
 
@@ -114,7 +115,8 @@ function shouldSetJsonContentType(body: BodyInit | null | undefined) {
 function buildRequestHeaders(
   headersInit: HeadersInit | undefined,
   token: string | null,
-  body: BodyInit | null | undefined
+  body: BodyInit | null | undefined,
+  requestId: string
 ) {
   const headers = new Headers(headersInit);
 
@@ -126,32 +128,120 @@ function buildRequestHeaders(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  headers.set("X-Request-ID", requestId);
+
   return headers;
 }
 
 type ApiRequestOptions = RequestInit & {
   requireAuth?: boolean;
+  audit?:
+    | {
+        eventName: string;
+        action?: string;
+        resourceType?: string;
+        resourceId?: string | number;
+        metadata?: Record<string, unknown>;
+        actorId?: string | number | null;
+      }
+    | undefined;
 };
 
 export async function apiRequest<T = any>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const { requireAuth = false, ...requestOptions } = options;
+  const { requireAuth = false, audit, ...requestOptions } = options;
   const token = await resolveRequestToken(requireAuth);
+  const requestId = createRequestId();
+  const actorId = audit?.actorId ?? getActorIdFromToken(token);
 
   if (requireAuth && !token) {
+    if (audit) {
+      emitAuditEvent({
+        event_name: audit.eventName,
+        outcome: "failure",
+        actor_id: actorId,
+        source_system: "frontend-web",
+        request_id: requestId,
+        action: audit.action,
+        resource_type: audit.resourceType,
+        resource_id: audit.resourceId,
+        route: path,
+        method: requestOptions.method ?? "GET",
+        error_code: "missing_auth_token",
+        error_message: "Authentication required but no access token is available.",
+        metadata: audit.metadata,
+      });
+    }
     throw new Error(`Authentication required for ${path}, but no Supabase access token is available.`);
   }
 
-  const res = await fetch(`${getBaseUrlForRequests()}${path}`, {
-    ...requestOptions,
-    headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getBaseUrlForRequests()}${path}`, {
+      ...requestOptions,
+      headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body, requestId),
+    });
+  } catch (error) {
+    if (audit) {
+      emitAuditEvent({
+        event_name: audit.eventName,
+        outcome: "failure",
+        actor_id: actorId,
+        source_system: "frontend-web",
+        request_id: requestId,
+        action: audit.action,
+        resource_type: audit.resourceType,
+        resource_id: audit.resourceId,
+        route: path,
+        method: requestOptions.method ?? "GET",
+        error_code: "network_error",
+        error_message: error instanceof Error ? error.message : "Network request failed.",
+        metadata: audit.metadata,
+      });
+    }
+    throw error;
+  }
 
   if (!res.ok) {
     const text = await res.text();
+    if (audit) {
+      const apiError = buildApiError(res.status, text);
+      emitAuditEvent({
+        event_name: audit.eventName,
+        outcome: "failure",
+        actor_id: actorId,
+        source_system: "frontend-web",
+        request_id: requestId,
+        action: audit.action,
+        resource_type: audit.resourceType,
+        resource_id: audit.resourceId,
+        route: path,
+        method: requestOptions.method ?? "GET",
+        status_code: res.status,
+        error_message: apiError.message,
+        metadata: audit.metadata,
+      });
+    }
     throw buildApiError(res.status, text);
+  }
+
+  if (audit) {
+    emitAuditEvent({
+      event_name: audit.eventName,
+      outcome: "success",
+      actor_id: actorId,
+      source_system: "frontend-web",
+      request_id: requestId,
+      action: audit.action,
+      resource_type: audit.resourceType,
+      resource_id: audit.resourceId,
+      route: path,
+      method: requestOptions.method ?? "GET",
+      status_code: res.status,
+      metadata: audit.metadata,
+    });
   }
 
   if (res.status === 204 || res.status === 205) return null as T;

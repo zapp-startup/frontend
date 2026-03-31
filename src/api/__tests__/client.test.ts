@@ -6,13 +6,21 @@ import {
   PaginatedResponse,
   ApiError,
 } from "../client";
+import { addAuditSink, resetAuditSinks, type AuditEvent } from "@/shared/audit/audit";
 
 const originalFetch = globalThis.fetch;
 
 describe("client", () => {
+  let events: AuditEvent[] = [];
+
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     setApiAccessToken("test-token");
+    events = [];
+    resetAuditSinks();
+    addAuditSink((event) => {
+      events.push(event);
+    });
   });
 
   it("injects Authorization header when token is set", async () => {
@@ -36,6 +44,7 @@ describe("client", () => {
     const call = mockFetch.mock.calls[0];
     const headers = call[1]?.headers as Headers;
     expect(headers.get("Authorization")).toBe("Bearer test-token");
+    expect(headers.get("X-Request-ID")).toBeTruthy();
   });
 
   it("does not add Content-Type for bodyless requests", async () => {
@@ -104,6 +113,74 @@ describe("client", () => {
       expect(err.message).toBe("Invalid token.");
       expect(err.rawBody).toBe(raw);
     }
+  });
+
+  it("emits audit success events for audited requests", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      headers: new Headers({ "Content-Type": "application/json" }),
+    } as Response);
+
+    await apiRequest("/api/transactions/1/", {
+      requireAuth: true,
+      method: "PATCH",
+      body: JSON.stringify({ amount: "12.00" }),
+      audit: {
+        eventName: "transaction.update",
+        action: "update",
+        resourceType: "transaction",
+        resourceId: 1,
+      },
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event_name: "transaction.update",
+      outcome: "success",
+      resource_type: "transaction",
+      resource_id: 1,
+      route: "/api/transactions/1/",
+      method: "PATCH",
+      status_code: 200,
+    });
+    expect(events[0].request_id).toBeTruthy();
+  });
+
+  it("emits audit failure events for failed audited requests", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      text: () => Promise.resolve(JSON.stringify({ detail: "Forbidden" })),
+      headers: new Headers({ "Content-Type": "application/json" }),
+    } as Response);
+
+    await expect(
+      apiRequest("/api/gamification/groups/9/update_member_role/", {
+        requireAuth: true,
+        method: "POST",
+        body: JSON.stringify({ membership_id: 2, role: "admin" }),
+        audit: {
+          eventName: "rbac.group_member_role_change",
+          action: "update_role",
+          resourceType: "group_membership",
+          resourceId: 2,
+        },
+      })
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event_name: "rbac.group_member_role_change",
+      outcome: "failure",
+      resource_type: "group_membership",
+      resource_id: 2,
+      status_code: 403,
+      error_message: "Forbidden",
+    });
   });
 
   it("throws ApiError with generic message for HTML error bodies", async () => {

@@ -49,6 +49,11 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.link_token.create",
+        action: "create_link_token",
+        resourceType: "bank_connection",
+      },
     }),
 
   exchangePublicToken: (publicToken: string) =>
@@ -56,13 +61,24 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ public_token: publicToken }),
+      audit: {
+        eventName: "bank.connection.link",
+        action: "exchange_public_token",
+        resourceType: "bank_connection",
+      },
     }),
 
   getConnections: () =>
-    apiRequest<BankConnection[]>("/api/banking/connections/", { requireAuth: true }),
+    apiRequest<BankConnection[]>("/api/banking/connections/", {
+      requireAuth: true,
+      audit: { eventName: "bank.connections.read", action: "read", resourceType: "bank_connection" },
+    }),
 
   getAccounts: () =>
-    apiRequest<BankAccount[]>("/api/banking/accounts/", { requireAuth: true }),
+    apiRequest<BankAccount[]>("/api/banking/accounts/", {
+      requireAuth: true,
+      audit: { eventName: "bank.accounts.read", action: "read", resourceType: "bank_account" },
+    }),
 
   getTransactions: (params?: {
     limit?: number;
@@ -80,7 +96,10 @@ export const BankingAPI = {
     const qs = query.toString();
     return apiRequest<BankTransaction[]>(
       `/api/banking/transactions/${qs ? `?${qs}` : ""}`,
-      { requireAuth: true }
+      {
+        requireAuth: true,
+        audit: { eventName: "bank.transactions.read", action: "read", resourceType: "bank_transaction" },
+      }
     );
   },
 
@@ -89,6 +108,12 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.connection.sync",
+        action: "sync",
+        resourceType: "bank_connection",
+        resourceId: connectionId,
+      },
     }),
 
   /** Submit feedback for a bank-synced transaction. Uses same payload shape as manual transactions. */
@@ -97,5 +122,11 @@ export const BankingAPI = {
       requireAuth: true,
       method: "PATCH",
       body: JSON.stringify(payload),
+      audit: {
+        eventName: "bank.transaction.feedback",
+        action: "update_feedback",
+        resourceType: "bank_transaction",
+        resourceId: plaidTransactionId,
+      },
     }),
 };

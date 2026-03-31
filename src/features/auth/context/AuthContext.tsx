@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
 import { supabase } from "@/api/supabaseClient";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
+import { emitAuditEvent } from "@/shared/audit/audit";
 import {
   enrollTotpFactor as mfaEnrollTotp,
   getMfaSnapshot,
@@ -290,13 +291,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      emitAuditEvent({
+        event_name: "auth.login",
+        outcome: "failure",
+        actor_id: null,
+        source_system: "frontend-web",
+        action: "login",
+        resource_type: "session",
+        error_message: error.message,
+        metadata: { auth_provider: "supabase", email_domain: email.trim().toLowerCase().split("@")[1] ?? null },
+      });
+      return { ok: false, error: error.message };
+    }
 
     setApiAccessToken(data.session?.access_token ?? null);
     if (data.session) {
       await syncBackendUser();
       await refreshMfa();
     }
+
+    emitAuditEvent({
+      event_name: "auth.login",
+      outcome: "success",
+      actor_id: data.user?.id ?? data.session?.user?.id ?? null,
+      source_system: "frontend-web",
+      action: "login",
+      resource_type: "session",
+      metadata: { auth_provider: "supabase" },
+    });
 
     return { ok: true, session: data.session };
   }, [syncBackendUser, refreshMfa]);
@@ -317,22 +340,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      emitAuditEvent({
+        event_name: "auth.signup",
+        outcome: "failure",
+        actor_id: null,
+        source_system: "frontend-web",
+        action: "signup",
+        resource_type: "account",
+        error_message: error.message,
+        metadata: { auth_provider: "supabase", email_domain: data.email.trim().toLowerCase().split("@")[1] ?? null },
+      });
+      return { ok: false, error: error.message };
+    }
 
     if (resp.session) {
       await applySession(resp.session, true);
     }
 
+    emitAuditEvent({
+      event_name: "auth.signup",
+      outcome: "success",
+      actor_id: resp.user?.id ?? resp.session?.user?.id ?? null,
+      source_system: "frontend-web",
+      action: "signup",
+      resource_type: "account",
+      metadata: { auth_provider: "supabase", verification_required: !resp.session },
+    });
+
     return { ok: true, requiresVerification: !resp.session };
   }, [applySession]);
 
   const logout = React.useCallback(async () => {
+    const actorId = user?.supabaseUid ?? backendUserRef.current?.supabase_uid ?? null;
     await supabase.auth.signOut();
     setApiAccessToken(null);
     setUser(null);
     updateBackendUser(null);
     lastSyncedAccessTokenRef.current = null;
-  }, [updateBackendUser]);
+    emitAuditEvent({
+      event_name: "auth.logout",
+      outcome: "success",
+      actor_id: actorId,
+      source_system: "frontend-web",
+      action: "logout",
+      resource_type: "session",
+    });
+  }, [updateBackendUser, user]);
 
   const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
 
@@ -379,13 +433,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) {
+      emitAuditEvent({
+        event_name: "account.profile_update",
+        outcome: "failure",
+        actor_id: user?.supabaseUid ?? null,
+        source_system: "frontend-web",
+        action: "update_profile",
+        resource_type: "account",
+        error_message: error.message,
+        metadata: { updated_fields: Object.keys(data) },
+      });
       return { ok: false as const, error: error.message };
     }
 
     const sbUser = resp.user ?? null;
     setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
+    emitAuditEvent({
+      event_name: "account.profile_update",
+      outcome: "success",
+      actor_id: sbUser?.id ?? user?.supabaseUid ?? null,
+      source_system: "frontend-web",
+      action: "update_profile",
+      resource_type: "account",
+      metadata: { updated_fields: Object.keys(data) },
+    });
     return { ok: true as const };
-  }, []);
+  }, [user]);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({
