@@ -28,7 +28,10 @@ describe("banking.api", () => {
   });
 
   it("exchangePublicToken calls POST /api/banking/exchange-token/ with public_token", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce({ ok: true });
+    vi.mocked(apiRequest).mockResolvedValueOnce({
+      success: true,
+      connection: { id: "conn-1", institution_name: "Chase", status: "active" },
+    });
 
     await BankingAPI.exchangePublicToken("public-sandbox-xyz789");
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { ZappBot } from "../components/ZappBot";
 import { PanelProvider } from "../context/PanelContext";
 
@@ -36,6 +37,16 @@ vi.mock("motion/react", () => {
   };
 });
 
+function renderZappBot() {
+  return render(
+    <MemoryRouter>
+      <PanelProvider>
+        <ZappBot />
+      </PanelProvider>
+    </MemoryRouter>
+  );
+}
+
 describe("ZappBot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,11 +71,7 @@ describe("ZappBot", () => {
 
     localStorage.setItem("zapp_conversation_id_uid-abc", "42");
 
-    render(
-      <PanelProvider>
-        <ZappBot />
-      </PanelProvider>
-    );
+    renderZappBot();
 
     await waitFor(() => {
       expect(localStorage.getItem("zapp_conversation_id_uid-abc")).toBe("42");
@@ -77,11 +84,7 @@ describe("ZappBot", () => {
       user: { supabaseUid: "uid-me", username: "seed_user_0", name: "T", email: "t@e.com", id: "x", createdAt: "" },
     });
 
-    render(
-      <PanelProvider>
-        <ZappBot />
-      </PanelProvider>
-    );
+    renderZappBot();
 
     await waitFor(() => {
       expect(localStorage.getItem("zapp_conversation_id_uid-me")).toBeNull();
@@ -90,11 +93,7 @@ describe("ZappBot", () => {
   });
 
   it("shows hover highlight only while the trigger is hovered", () => {
-    render(
-      <PanelProvider>
-        <ZappBot />
-      </PanelProvider>
-    );
+    renderZappBot();
 
     const trigger = screen.getByRole("button", { name: /open zapp assistant/i });
     expect(screen.queryByTestId("zappbot-hover-highlight")).toBeNull();
@@ -111,11 +110,7 @@ describe("ZappBot", () => {
   it("shows the ask a question prompt once on initial load and then stops repeating", () => {
     vi.useFakeTimers();
 
-    render(
-      <PanelProvider>
-        <ZappBot />
-      </PanelProvider>
-    );
+    renderZappBot();
 
     expect(screen.getByText(/ask a question/i)).toBeInTheDocument();
 

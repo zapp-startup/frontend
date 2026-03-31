@@ -53,7 +53,7 @@ describe("ZappBot", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /open chat/i }));
 
-    const input = screen.getByPlaceholderText("Ask your CFO anything...");
+    const input = screen.getByPlaceholderText("Ask ZappBot anything...");
     await user.type(input, "How much did I spend?");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
@@ -66,11 +66,11 @@ describe("ZappBot", () => {
 
     await user.click(screen.getByRole("button", { name: /new chat/i }));
 
-    expect(screen.getByText(/Hello! I'm your Zapp CFO\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Hello! I'm ZappBot\./i)).toBeInTheDocument();
     expect(screen.queryByText("How much did I spend?")).not.toBeInTheDocument();
     expect(screen.queryByText("You spent $13.99 in the last 30 days.")).not.toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText("Ask your CFO anything..."), "What subscriptions are active?");
+    await user.type(screen.getByPlaceholderText("Ask ZappBot anything..."), "What subscriptions are active?");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => {
@@ -107,7 +107,7 @@ describe("ZappBot", () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /open chat/i }));
-    await user.type(screen.getByPlaceholderText("Ask your CFO anything..."), "Log a purchase");
+    await user.type(screen.getByPlaceholderText("Ask ZappBot anything..."), "Log a purchase");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     const routeButton = await screen.findByRole("button", { name: "Add Transaction" });
@@ -159,7 +159,7 @@ describe("ZappBot", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /open chat/i }));
     await user.type(
-      screen.getByPlaceholderText("Ask your CFO anything..."),
+      screen.getByPlaceholderText("Ask ZappBot anything..."),
       "Set satisfaction for Starbucks to 8"
     );
     await user.click(screen.getByRole("button", { name: /send message/i }));

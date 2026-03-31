@@ -468,4 +468,119 @@
     font-weight: 700;
     line-height: 1.4;
   }
+
+  .privacy-policy-shell {
+    position: relative;
+    overflow: clip;
+  }
+
+  .privacy-policy-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--app-accent-cyan-soft) 45%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  .privacy-policy-nav {
+    align-self: start;
+  }
+
+  .privacy-policy-anchor-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--app-color-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    text-decoration: none;
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
+    border-radius: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-inline: -0.5rem;
+  }
+
+  .privacy-policy-anchor-link:hover {
+    color: var(--app-color-text-primary);
+    background: color-mix(in srgb, var(--app-color-surface-inset) 88%, transparent);
+  }
+
+  .privacy-policy-anchor-link:focus-visible,
+  .privacy-policy-contact-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-border-focus) 70%, transparent);
+  }
+
+  .privacy-policy-meta {
+    border-color: color-mix(in srgb, var(--app-color-border-strong) 88%, transparent);
+  }
+
+  .privacy-policy-contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    color: var(--app-accent-cyan-soft);
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1.4;
+    text-decoration: none;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: color-mix(in srgb, var(--app-accent-cyan-soft) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent-cyan-soft) 18%, transparent);
+  }
+
+  .privacy-policy-document {
+    max-width: 72ch;
+  }
+
+  .privacy-policy-section {
+    scroll-margin-top: 6rem;
+  }
+
+  .privacy-policy-copy {
+    color: var(--app-color-text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+
+  .privacy-policy-copy p {
+    margin: 0;
+  }
+
+  .privacy-policy-divider {
+    margin-block: 1.5rem;
+  }
+
+  @media (max-width: 1023px) {
+    .privacy-policy-nav {
+      position: static;
+    }
+  }
+
+  @media print {
+    .privacy-policy-shell::before {
+      display: none;
+    }
+
+    .privacy-policy-copy,
+    .privacy-policy-anchor-link,
+    .privacy-policy-contact-link {
+      color: #111827;
+    }
+
+    .privacy-policy-divider {
+      background: rgba(17, 24, 39, 0.15);
+    }
+  }
 }

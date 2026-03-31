@@ -59,10 +59,10 @@ export function HomePage() {
   }, [transactions]);
 
   return (
-    <div className="space-y-12 pb-32 relative z-10">
+    <div className="relative z-10 space-y-8 pb-32">
       <DashboardGamification />
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
         <ElectricCard className="md:col-span-8 overflow-hidden" semanticColor={COLORS.electricBlue} elevation={1}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
@@ -130,7 +130,7 @@ export function HomePage() {
             </ResponsiveContainer>
           </div>
         </ElectricCard>
-        <div className="md:col-span-4 flex flex-col gap-8">
+        <div className="flex flex-col gap-8 md:col-span-4">
           <ElectricCard className="flex-1 flex flex-col justify-center gap-2" semanticColor={COLORS.electricCyan} glowIntensity="soft" elevation={1}>
             <div className="flex items-center gap-4">
               <div
@@ -165,7 +165,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <ElectricCard className="lg:col-span-4" semanticColor={COLORS.electricTeal} elevation={1}>
           <div className="flex items-center gap-2 mb-10">
             <IconBadge tone="green" size="sm">

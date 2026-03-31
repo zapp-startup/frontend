@@ -110,7 +110,7 @@ export function DashboardGamification() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-3">
         <ElectricCard semanticColor={COLORS.electricCyan} elevation={1} className="h-full">
           <div className="mb-5 flex items-start justify-between">
             <div>
@@ -180,38 +180,35 @@ export function DashboardGamification() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="xl:col-span-1">
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-6 flex items-center gap-2">
             <IconBadge tone="green" size="sm">
               <Calendar size={18} />
             </IconBadge>
             <h3 className="app-card-title">Review Actions</h3>
           </div>
-          <p className="app-helper mb-6 leading-relaxed">
-            Keep your weekly and monthly reviews current so your progress stays visible.
-          </p>
-          <div className="space-y-3">
-              <AppButton
-                onClick={() => handleReview("weekly")}
-                disabled={submittingReview !== null}
-                variant="success"
-                className="w-full"
-              >
-              {submittingReview === "weekly" ? "Completing..." : "Complete Weekly Review"}
-            </AppButton>
-              <AppButton
-                onClick={() => handleReview("monthly")}
-                disabled={submittingReview !== null}
-                variant="info"
-                className="w-full"
-              >
-              {submittingReview === "monthly" ? "Completing..." : "Complete Monthly Review"}
-            </AppButton>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+               <AppButton
+                 onClick={() => handleReview("weekly")}
+                 disabled={submittingReview !== null}
+                 variant="success"
+                 className="h-15 w-full rounded-[1.75rem] text-base"
+               >
+               {submittingReview === "weekly" ? "Saving..." : "Weekly Review"}
+             </AppButton>
+               <AppButton
+                 onClick={() => handleReview("monthly")}
+                 disabled={submittingReview !== null}
+                 variant="info"
+                 className="h-15 w-full rounded-[1.75rem] text-base"
+               >
+               {submittingReview === "monthly" ? "Saving..." : "Monthly Review"}
+             </AppButton>
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="xl:col-span-2">
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="self-start xl:col-span-2">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <IconBadge tone="yellow" size="sm">
@@ -237,7 +234,7 @@ export function DashboardGamification() {
         </ElectricCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-8">
         <MonthlyTargetsWidget />
       </div>
     </div>

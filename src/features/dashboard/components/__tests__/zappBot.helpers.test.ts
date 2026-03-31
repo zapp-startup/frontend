@@ -59,6 +59,6 @@ describe("zappBot.helpers", () => {
     const message = buildFallbackAssistantMessage();
 
     expect(message.sender).toBe("assistant");
-    expect(message.text).toContain("Zapp CFO");
+    expect(message.text).toContain("ZappBot");
   });
 });

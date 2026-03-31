@@ -6,8 +6,6 @@ import { MfaEnrollmentCard } from "@/features/auth/components/MfaEnrollmentCard"
 import { PrivacyPolicyLink, PrivacyPolicyMetaLine } from "@/shared/components/PrivacyPolicyLink";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
-import { useAuth } from "@/features/auth";
 import {
   PreferencesAPI,
   RawExplicitAPI,
@@ -205,7 +203,7 @@ const FinancialProfileSection = React.memo(function FinancialProfileSection({
         <LoadingState label="Loading financial profile..." lines={2} compact />
       )}
       {!financialLoading && rawExplicit.length === 0 && (
-        <EmptyState title="No financial profile yet" description="Complete onboarding to set your financial profile." />
+        <EmptyState title="No profile data yet" description="Complete onboarding to set your financial profile." />
       )}
       {!financialLoading && rawExplicit.length > 0 && !editingFinancial && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -263,7 +261,7 @@ const PreferencesSection = React.memo(function PreferencesSection({
         <LoadingState label="Loading preferences..." lines={2} compact />
       )}
       {!prefsLoading && preferences.length === 0 && !addingPref && (
-        <EmptyState title="No preferences yet." description="Add preference keys to store UI or behavior settings." />
+        <EmptyState title="No saved settings yet." description="Add preference keys to store UI or behavior settings." />
       )}
       {!prefsLoading && preferences.length > 0 && (
         <div className="mb-4 space-y-2">

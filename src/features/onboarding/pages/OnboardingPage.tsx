@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Sparkles, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Slider } from "@/shared/components/ui/slider";
 import {
   AppButton,
@@ -12,6 +12,7 @@ import {
 } from "@/shared/components/system";
 import { OnboardingAPI, type OnboardingData } from "@/api/onboarding.api";
 import { toast } from "sonner";
+import { AppLogo } from "@/shared/components/brand/AppLogo";
 
 const TOTAL_STEPS = 5;
 
@@ -182,8 +183,8 @@ export function OnboardingPage() {
 
   const steps = [
     <div className="space-y-6 py-4 text-center" key="welcome">
-      <div className="mx-auto flex size-20 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_10%,transparent)] text-[var(--app-accent-cyan-soft)]">
-        <Zap className="size-9" />
+      <div className="mx-auto flex justify-center">
+        <AppLogo size={92} />
       </div>
       <div className="space-y-3">
         <h2 className="app-section-title">Let's set you up</h2>

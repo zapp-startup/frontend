@@ -135,7 +135,10 @@ describe("AuthProvider", () => {
     });
     mockFetchAuthAssurance.mockResolvedValue({
       mfa_required_by_policy: false,
+      consent_required_by_policy: true,
+      financial_consent_valid: true,
       assurance: { aal: null, amr: [], mfa_factors_count: 0 },
+      aal_normalized: null,
       banking_allowed: true,
       blocking_code: null,
     });

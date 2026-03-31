@@ -14,7 +14,6 @@ import {
   AppSelect,
   FormField,
   IconBadge,
-  StatusChip,
   Surface,
 } from "@/shared/components/system";
 import { COLORS } from "@/shared/theme";
@@ -54,19 +53,18 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
 
   return (
     <AppDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AppDialogContent className="max-h-[min(92vh,920px)] max-w-2xl overflow-hidden border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)] p-0 [&>[data-slot=dialog-close]]:top-6 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:rounded-[var(--app-radius-md)] [&>[data-slot=dialog-close]]:border [&>[data-slot=dialog-close]]:border-[var(--app-color-border-strong)] [&>[data-slot=dialog-close]]:bg-[var(--app-color-surface-inset)] [&>[data-slot=dialog-close]]:p-2 [&>[data-slot=dialog-close]]:text-[var(--app-color-text-secondary)] [&>[data-slot=dialog-close]]:opacity-100">
+      <AppDialogContent className="flex max-h-[min(92vh,920px)] max-w-2xl flex-col overflow-hidden border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)] p-0 [&>[data-slot=dialog-close]]:top-5 [&>[data-slot=dialog-close]]:right-5 [&>[data-slot=dialog-close]]:rounded-[var(--app-radius-md)] [&>[data-slot=dialog-close]]:border [&>[data-slot=dialog-close]]:border-[var(--app-color-border-strong)] [&>[data-slot=dialog-close]]:bg-[var(--app-color-surface-inset)] [&>[data-slot=dialog-close]]:p-2 [&>[data-slot=dialog-close]]:text-[var(--app-color-text-secondary)] [&>[data-slot=dialog-close]]:opacity-100 sm:[&>[data-slot=dialog-close]]:top-6 sm:[&>[data-slot=dialog-close]]:right-6">
         {step === "input" && (
           <>
-            <AppDialogHeader className="gap-4 px-8 pt-8 pr-20">
-              <div className="flex items-start gap-4">
-                <IconBadge tone="cyan" size="lg">
-                  <Zap />
-                </IconBadge>
-                <div className="space-y-3">
-                  <StatusChip tone="info">Pre-purchase intelligence</StatusChip>
-                  <AppDialogTitle>Buy Advisor</AppDialogTitle>
-                  <AppDialogDescription>
-                    Tell me what you are thinking about buying and I will compare it
+            <AppDialogHeader className="gap-4 px-6 pt-6 pr-18 sm:px-8 sm:pt-8 sm:pr-20">
+                <div className="flex items-start gap-4">
+                  <IconBadge tone="cyan" size="lg">
+                    <Zap className="size-5 sm:size-6" />
+                  </IconBadge>
+                  <div className="min-w-0 space-y-3 pr-2">
+                    <AppDialogTitle>Buy Advisor</AppDialogTitle>
+                    <AppDialogDescription>
+                      Tell me what you are thinking about buying and I will compare it
                     against your recent behavior, satisfaction patterns, and likely
                     regret risk.
                   </AppDialogDescription>
@@ -74,10 +72,10 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               </div>
             </AppDialogHeader>
 
-            <AppDialogBody className="space-y-6">
+            <AppDialogBody className="min-h-0 space-y-5 overflow-y-auto">
               <Surface
                 variant="inset"
-                padding="lg"
+                padding="md"
                 className="space-y-4 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -95,7 +93,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
                   type="button"
                   variant="outline"
                   size="hero"
-                  className="flex h-auto w-full flex-col items-center justify-center gap-3 rounded-[var(--app-radius-panel)] border-dashed bg-[var(--app-color-surface-base)]/55 px-6 py-10 text-center normal-case tracking-normal hover:border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_8%,transparent)]"
+                  className="flex h-auto min-h-52 w-full flex-col items-center justify-center gap-3 rounded-[var(--app-radius-panel)] border-dashed bg-[var(--app-color-surface-base)]/55 px-6 py-8 text-center normal-case tracking-normal hover:border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_8%,transparent)]"
                 >
                   <IconBadge tone="neutral" size="md">
                     <Camera />
@@ -117,6 +115,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
                 >
                   <AppInput
                     id="buy-advisor-price"
+                    size="sm"
                     inputMode="decimal"
                     placeholder="0.00"
                     value={predictedPrice}
@@ -153,7 +152,7 @@ export function BuyAdvisorModal({ isOpen, onClose }: BuyAdvisorModalProps) {
               </Surface>
             </AppDialogBody>
 
-            <AppDialogFooter className="gap-3 sm:justify-between">
+            <AppDialogFooter className="shrink-0 gap-3 sm:justify-between">
               <AppButton variant="quiet" onClick={onClose}>
                 Cancel
               </AppButton>

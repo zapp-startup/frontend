@@ -2,11 +2,15 @@ import { apiRequest } from "./client";
 import type { TransactionFeedbackPayload } from "./transactions.api";
 
 export type BankConnection = {
-  id: string;
+  id: string | number;
+  plaid_item_id?: string;
+  institution_id?: string;
   institution_name?: string;
   institution?: string;
   status?: string;
   last_synced_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type BankAccount = {
@@ -33,6 +37,11 @@ export type BankTransaction = {
   category?: string;
 };
 
+export type ExchangePublicTokenResponse = {
+  success: boolean;
+  connection: BankConnection;
+};
+
 export const BankingAPI = {
   /** Prefer calling only via `usePlaidConnect` → `useSecureBankConnect` so MFA + consent run first. */
   createLinkToken: () =>
@@ -43,7 +52,7 @@ export const BankingAPI = {
     }),
 
   exchangePublicToken: (publicToken: string) =>
-    apiRequest<{ ok?: boolean }>("/api/banking/exchange-token/", {
+    apiRequest<ExchangePublicTokenResponse>("/api/banking/exchange-token/", {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ public_token: publicToken }),

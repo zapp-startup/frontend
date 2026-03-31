@@ -252,25 +252,17 @@ export function ZappBot() {
               }}
             >
               <div className="flex items-center justify-between border-b border-[var(--app-color-border-subtle)] px-6 py-5">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <IconBadge tone="purple" size="sm" className="rounded-full">
                     <Zap />
                   </IconBadge>
-                  <div className="space-y-1">
-                    <div className="app-card-title">Zapp CFO</div>
-                    <StatusChip
-                      tone="accent"
-                      className="px-2.5 py-1 text-[9px] tracking-[0.22em]"
-                    >
-                      Active intelligence
-                    </StatusChip>
-                  </div>
+                  <div className="app-card-title">ZappBot</div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <AppButton
                     type="button"
-                    variant="quiet"
+                    variant="info"
                     size="sm"
                     disabled={isTyping}
                     onClick={handleStartNewChat}
@@ -403,7 +395,7 @@ export function ZappBot() {
                     type="text"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Ask your CFO anything..."
+                    placeholder="Ask ZappBot anything..."
                     disabled={isTyping}
                     className="h-14 rounded-[var(--app-radius-panel)] pr-16 text-sm font-semibold"
                   />

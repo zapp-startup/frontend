@@ -1,11 +1,11 @@
 import * as React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
-import { AppButton, AppInput, FormField, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
+import { AppButton, AppInput, FormField, SectionHeader, Surface } from "@/shared/components/system";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
+import { AppLogo } from "@/shared/components/brand/AppLogo";
 
 export function SignUpPage() {
   const { signUp, isAuthenticated, isAuthReady } = useAuth();
@@ -47,9 +47,7 @@ export function SignUpPage() {
       >
         <Surface variant="overlay" padding="xl" className="backdrop-blur-xl">
           <div className="mb-8 flex justify-center">
-            <IconBadge tone="cyan" size="lg" className="shadow-[var(--app-shadow-interactive)]">
-              <Zap />
-            </IconBadge>
+            <AppLogo size={104} />
           </div>
           <SectionHeader
             align="center"

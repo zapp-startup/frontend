@@ -5,6 +5,7 @@ import { Home, CreditCard, BarChart2, Search, User, Camera, List, Users } from "
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
+import { AppLogo } from "@/shared/components/brand/AppLogo";
 import { ThemeModeToggle } from "@/shared/components/layout/theme-mode-toggle";
 import { AppButton, IconBadge } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
@@ -15,7 +16,7 @@ import { PanelProvider } from "../context/PanelContext";
 import { FeedbackPromptFlow } from "@/features/transactions/components/FeedbackPromptFlow";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 import { ApiConfigBanner } from "@/shared/components/ApiConfigBanner";
-import { getPrivacyPolicyMeta } from "@/config/privacy";
+import { usePrivacyPolicyMeta } from "@/config/privacy";
 
 const HomePage = React.lazy(() =>
   import("@/features/home").then((module) => ({ default: module.HomePage }))
@@ -132,6 +133,7 @@ const PageContent = React.memo(function PageContent() {
 
 export function DashboardLayout() {
   const { isAuthenticated, isAuthReady, user } = useAuth();
+  const privacyPolicyMeta = usePrivacyPolicyMeta();
   const { pathname } = useLocation();
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
@@ -160,7 +162,13 @@ export function DashboardLayout() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--app-color-border-subtle)] bg-[var(--app-color-background-canvas)]/72 backdrop-blur-3xl">
         <div className="mx-auto grid h-24 w-full max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6 lg:px-8">
           <div className="justify-self-start">
-            <span className="text-3xl font-black uppercase italic tracking-tighter text-[var(--app-color-text-primary)] sm:text-4xl">Zapp</span>
+            <NavLink to="/" className="inline-flex items-center">
+              <AppLogo
+                showWordmark
+                size={52}
+                wordmarkClassName="text-[2rem] sm:text-[2.35rem]"
+              />
+            </NavLink>
           </div>
 
           <div className="hidden min-w-0 items-center justify-center gap-2 justify-self-center lg:flex xl:gap-3">
@@ -231,7 +239,7 @@ export function DashboardLayout() {
           <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
           <span className="mx-2 text-gray-700">·</span>
           <span className="text-gray-600">
-            Policy v{getPrivacyPolicyMeta().version} · {getPrivacyPolicyMeta().effectiveDate}
+            Policy v{privacyPolicyMeta.version} · {privacyPolicyMeta.effectiveDate}
           </span>
         </footer>
       </main>
