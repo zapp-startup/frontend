@@ -69,10 +69,19 @@ export async function verifyTotpEnrollment(factorId: string, code: string) {
 
 /** Elevate session to AAL2 when MFA is already enrolled (challenge + verify). */
 export async function verifyMfaChallenge(factorId: string, code: string) {
-  return apiRequest<unknown>("/api/auth/mfa/challenge/", {
+  const challenge = await apiRequest<{ challenge_id: string; expires_at?: string | null }>("/api/auth/mfa/challenge/", {
     requireAuth: true,
     method: "POST",
-    body: JSON.stringify({ factor_id: factorId, code: code.replace(/\s/g, "") }),
+    body: JSON.stringify({ factor_id: factorId }),
+  });
+  return apiRequest<unknown>("/api/auth/mfa/verify/", {
+    requireAuth: true,
+    method: "POST",
+    body: JSON.stringify({
+      factor_id: factorId,
+      challenge_id: challenge.challenge_id,
+      code: code.replace(/\s/g, ""),
+    }),
   });
 }
 
