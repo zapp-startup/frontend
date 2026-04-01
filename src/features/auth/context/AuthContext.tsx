@@ -60,6 +60,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
+  refreshSession: () => Promise<boolean>;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
@@ -167,6 +168,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [updateBackendUser]
   );
 
+  const refreshSession = React.useCallback(async () => {
+    try {
+      const me = await apiRequest<MeResponse>("/api/auth/me/", { requireAuth: true });
+      applyMe(me);
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        applyMe(null);
+        return false;
+      }
+      applyMe(null);
+      return false;
+    }
+  }, [applyMe]);
+
   const refreshMfa = React.useCallback(async () => {
     if (!userRef.current) {
       setMfaSnapshot(null);
@@ -219,16 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const me = await apiRequest<MeResponse>("/api/auth/me/");
-        if (!mounted) return;
-        applyMe(me);
-      } catch (e) {
-        if (!mounted) return;
-        if (e instanceof ApiError && e.status === 401) {
-          applyMe(null);
-        } else {
-          applyMe(null);
-        }
+        await refreshSession();
       } finally {
         if (mounted) setAuthLoading(false);
       }
@@ -237,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [applyMe]);
+  }, [refreshSession]);
 
   React.useEffect(() => {
     if (user) {
@@ -440,6 +447,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       backendUser,
       isAuthenticated: !!user,
       isAuthReady: !authLoading,
+      refreshSession,
       login,
       signUp,
       logout,
@@ -460,6 +468,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       backendUser,
       authLoading,
+      refreshSession,
       login,
       signUp,
       logout,

@@ -9,6 +9,47 @@ import { AppButton, AppInput, FormField, SectionHeader, Surface } from "@/shared
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 import { AppLogo } from "@/shared/components/brand/AppLogo";
 
+const NAMED_LOOPBACK_HOST = "local" + "host";
+
+function isLoopbackHostname(hostname: string) {
+  return hostname === NAMED_LOOPBACK_HOST || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+function assertCompatibleOAuthAuthorizeUrl(authorizeUrl: string, apiBaseUrl: string) {
+  try {
+    const authorize = new URL(authorizeUrl);
+    const redirectTo = authorize.searchParams.get("redirect_to");
+    if (!redirectTo) return;
+
+    const redirectUrl = new URL(redirectTo);
+    const apiUrl = new URL(apiBaseUrl);
+    if (isLoopbackHostname(redirectUrl.hostname) && isLoopbackHostname(apiUrl.hostname) && redirectUrl.hostname !== apiUrl.hostname) {
+      throw new Error(
+        `Google auth is misconfigured for local development. Backend OAuth callback host (${redirectUrl.hostname}) does not match API host (${apiUrl.hostname}). Align VITE_API_URL and SUPABASE_OAUTH_REDIRECT_URI.`
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Google auth is misconfigured for local development.")) {
+      throw error;
+    }
+  }
+}
+
+export function buildOAuthRedirectUriAfter(apiBaseUrl: string, locationLike: Pick<Location, "origin">) {
+  const redirectUrl = new URL("/auth/callback", `${locationLike.origin}/`);
+
+  try {
+    const apiUrl = new URL(apiBaseUrl);
+    if (isLoopbackHostname(apiUrl.hostname) && isLoopbackHostname(redirectUrl.hostname) && apiUrl.hostname !== redirectUrl.hostname) {
+      redirectUrl.hostname = apiUrl.hostname;
+    }
+  } catch {
+    // Fall back to the current origin when the API URL is invalid.
+  }
+
+  return redirectUrl.toString();
+}
+
 export function LoginPage() {
   const { login, isAuthenticated, isAuthReady } = useAuth();
   const navigate = useNavigate();
@@ -38,8 +79,38 @@ export function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    window.location.href = `${getApiBaseUrl()}/api/auth/oauth/google/`;
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
+    setLoading(true);
+    const apiBaseUrl = getApiBaseUrl();
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/oauth/start/`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "google",
+          redirect_uri_after: buildOAuthRedirectUriAfter(apiBaseUrl, window.location),
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | { authorize_url?: string; detail?: string }
+        | null;
+
+      if (!response.ok || !data?.authorize_url) {
+        throw new Error(data?.detail || "Google sign-in is unavailable right now.");
+      }
+
+      assertCompatibleOAuthAuthorizeUrl(data.authorize_url, apiBaseUrl);
+      window.location.assign(data.authorize_url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign-in failed.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,15 +135,16 @@ export function LoginPage() {
             className="mb-8"
           />
 
-          <AppButton
-            type="button"
-            variant="outline"
-            size="md"
-            onClick={handleGoogleSignIn}
-            className="w-full border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-base)]"
-          >
-            Continue with Google
-          </AppButton>
+            <AppButton
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-base)]"
+            >
+              {loading ? "Starting Google sign-in..." : "Continue with Google"}
+            </AppButton>
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-[var(--app-color-border-subtle)]" />

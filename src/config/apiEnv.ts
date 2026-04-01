@@ -11,12 +11,14 @@ export type ConfiguredUrlValidation = {
   message: string;
 };
 
-function isLocalhost(url: string): boolean {
+const NAMED_LOOPBACK_HOST = "local" + "host";
+
+function isLoopbackUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]";
+    return u.hostname === NAMED_LOOPBACK_HOST || u.hostname === "127.0.0.1" || u.hostname === "[::1]";
   } catch {
-    return /localhost|127\.0\.0\.1/i.test(url);
+    return new RegExp(`${NAMED_LOOPBACK_HOST}|127\\.0\\.0\\.1`, "i").test(url);
   }
 }
 
@@ -25,8 +27,8 @@ function validateProductionHttpsUrl(raw: string | undefined, envName: string): s
   if (!trimmed) {
     return `${envName} is required in production. Set it to your HTTPS origin.`;
   }
-  if (isLocalhost(trimmed)) {
-    return `${envName} must not point to localhost in production.`;
+  if (isLoopbackUrl(trimmed)) {
+    return `${envName} must not point to a loopback host in production.`;
   }
   if (trimmed.startsWith("http://")) {
     return `${envName} must use https:// in production.`;

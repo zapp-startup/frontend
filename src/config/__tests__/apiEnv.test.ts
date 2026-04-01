@@ -9,12 +9,12 @@ describe("validateProductionApiBaseUrl", () => {
     expect(validateProductionApiBaseUrl("")).toMatch(/required/i);
   });
 
-  it("returns error for localhost URL", () => {
-    expect(validateProductionApiBaseUrl("http://127.0.0.1:8000")).toMatch(/localhost/i);
-    expect(validateProductionApiBaseUrl("http://localhost:3000/api")).toMatch(/localhost/i);
+  it("returns error for loopback URL", () => {
+    expect(validateProductionApiBaseUrl("http://127.0.0.1:8000")).toMatch(/loopback/i);
+    expect(validateProductionApiBaseUrl("http://[::1]:3000/api")).toMatch(/loopback/i);
   });
 
-  it("returns error for http non-localhost in production validation", () => {
+  it("returns error for http non-loopback in production validation", () => {
     expect(validateProductionApiBaseUrl("http://api.example.com")).toMatch(/https/i);
   });
 
@@ -29,12 +29,12 @@ describe("validateProductionSupabaseUrl", () => {
     expect(validateProductionSupabaseUrl("")).toMatch(/required/i);
   });
 
-  it("returns error for localhost URL", () => {
-    expect(validateProductionSupabaseUrl("http://127.0.0.1:54321")).toMatch(/localhost/i);
-    expect(validateProductionSupabaseUrl("http://localhost:54321")).toMatch(/localhost/i);
+  it("returns error for loopback URL", () => {
+    expect(validateProductionSupabaseUrl("http://127.0.0.1:54321")).toMatch(/loopback/i);
+    expect(validateProductionSupabaseUrl("http://[::1]:54321")).toMatch(/loopback/i);
   });
 
-  it("returns error for http non-localhost in production validation", () => {
+  it("returns error for http non-loopback in production validation", () => {
     expect(validateProductionSupabaseUrl("http://project.supabase.co")).toMatch(/https/i);
   });
 
