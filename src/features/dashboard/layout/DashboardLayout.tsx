@@ -42,6 +42,12 @@ const BadgesPage = React.lazy(() =>
 const TargetsPage = React.lazy(() =>
   import("@/features/gamification").then((module) => ({ default: module.TargetsPage }))
 );
+const WeeklyReviewPage = React.lazy(() =>
+  import("@/features/gamification").then((module) => ({ default: module.WeeklyReviewPage }))
+);
+const MonthlyReviewPage = React.lazy(() =>
+  import("@/features/gamification").then((module) => ({ default: module.MonthlyReviewPage }))
+);
 
 type PageId =
   | "home"
@@ -73,6 +79,7 @@ function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/valuations")) return "analytics";
+  if (pathname.startsWith("/reviews")) return "home";
 
   const segment = pathname.replace(/^\//, "").split("/")[0] || "home";
   if (segment === "badges" || segment === "targets") return "circles";
@@ -90,6 +97,8 @@ const ROUTES: { path: string; match?: (pathname: string) => boolean; element: Re
   { path: "/circles", element: <CirclesPage /> },
   { path: "/badges", element: <BadgesPage /> },
   { path: "/targets", element: <TargetsPage /> },
+  { path: "/reviews/weekly", element: <WeeklyReviewPage /> },
+  { path: "/reviews/monthly", element: <MonthlyReviewPage /> },
   {
     path: "/subscriptions",
     match: (pathname) => pathname === "/subscriptions" || pathname === "/subscriptions/new",
