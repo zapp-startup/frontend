@@ -6,7 +6,7 @@ import { GamificationAPI, type Group, type StreakData, type UserBadge } from "@/
 import { BadgeDisplay } from "@/features/gamification/components/BadgeDisplay";
 import { MonthlyTargetsWidget } from "@/features/gamification/components/MonthlyTargetsWidget";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { AppButton, EmptyState, IconBadge, LoadingState } from "@/shared/components/system";
+import { AppButton, IconBadge, LoadingState, Surface } from "@/shared/components/system";
 import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 
@@ -225,11 +225,19 @@ export function DashboardGamification() {
           {badges.length > 0 ? (
             <BadgeDisplay badges={badges} maxDisplay={6} size="lg" />
           ) : (
-            <EmptyState
-              icon={<Award size={28} />}
-              title="No badges unlocked yet."
-              description="Logging purchases and reflections will start the cabinet."
-            />
+            <Surface
+              variant="panel"
+              padding="md"
+              className="flex min-h-[7.5rem] flex-col items-center justify-center rounded-[2.5rem] px-6 py-5 text-center"
+            >
+              <div className="mb-2 flex justify-center text-[var(--app-color-text-tertiary)]">
+                <Award size={24} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="app-card-title">No badges unlocked yet.</h4>
+                <p className="app-helper mx-auto max-w-2xl">Logging purchases and reflections will start the cabinet.</p>
+              </div>
+            </Surface>
           )}
         </ElectricCard>
       </div>
