@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerBackendAuditSink, resetBackendAuditSinkForTests } from "../backendSink";
 import { emitAuditEvent, resetAuditSinks } from "../audit";
 import { setApiAccessToken } from "@/api/client";
+import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
 
 describe("backend audit sink", () => {
   beforeEach(() => {
@@ -26,7 +27,7 @@ describe("backend audit sink", () => {
     await Promise.resolve();
 
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/audit/events/",
+      `${getValidatedUrlOrThrow(resolveApiBaseUrl())}/api/audit/events/`,
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
