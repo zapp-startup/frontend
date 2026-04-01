@@ -1,6 +1,5 @@
-import { supabase } from "./supabaseClient";
 import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
-import { createRequestId, emitAuditEvent, getActorIdFromToken } from "@/shared/audit/audit";
+import { createRequestId, emitAuditEvent } from "@/shared/audit/audit";
 
 const apiEnvResult = resolveApiBaseUrl();
 
@@ -9,11 +8,19 @@ export function getApiConfigurationError(): string | null {
   return apiEnvResult.ok ? null : apiEnvResult.message;
 }
 
-function getBaseUrlForRequests(): string {
+/** Base URL for first-party API (same origin or configured backend). */
+export function getApiBaseUrl(): string {
   return getValidatedUrlOrThrow(apiEnvResult);
 }
 
-let authToken: string | null = null;
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/** Read Django CSRF cookie (must be readable by JS, not HttpOnly). */
+export function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 /** Normalized API failure: safe `message` for UI; `rawBody` for debugging only. */
 export class ApiError extends Error {
@@ -79,42 +86,13 @@ function buildApiError(status: number, rawBody: string): ApiError {
   return new ApiError(message, status, rawBody || undefined);
 }
 
-export function setApiAccessToken(token: string | null) {
-  authToken = token;
-}
-
-export function getApiAccessToken() {
-  return authToken;
-}
-
-export async function getCurrentApiAccessToken() {
-  if (authToken) return authToken;
-
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    return null;
-  }
-
-  const token = data.session?.access_token ?? null;
-  if (token) {
-    setApiAccessToken(token);
-  }
-  return token;
-}
-
-async function resolveRequestToken(requireAuth: boolean) {
-  if (authToken) return authToken;
-  if (!requireAuth) return null;
-  return getCurrentApiAccessToken();
-}
-
 function shouldSetJsonContentType(body: BodyInit | null | undefined) {
   return body != null && !(body instanceof FormData);
 }
 
 function buildRequestHeaders(
   headersInit: HeadersInit | undefined,
-  token: string | null,
+  method: string,
   body: BodyInit | null | undefined
 ) {
   const headers = new Headers(headersInit);
@@ -123,14 +101,18 @@ function buildRequestHeaders(
     headers.set("Content-Type", "application/json");
   }
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (UNSAFE_METHODS.has(method.toUpperCase())) {
+    const csrf = getCsrfToken();
+    if (csrf) {
+      headers.set("X-CSRFToken", csrf);
+    }
   }
 
   return headers;
 }
 
 type ApiRequestOptions = RequestInit & {
+  /** Semantic only: session auth is cookie-based; 401 still throws ApiError. */
   requireAuth?: boolean;
   audit?:
     | {
@@ -148,37 +130,17 @@ export async function apiRequest<T = any>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const { requireAuth = false, audit, ...requestOptions } = options;
-  const token = await resolveRequestToken(requireAuth);
+  const { requireAuth: _requireAuth = false, audit, ...requestOptions } = options;
+  const method = (requestOptions.method ?? "GET").toUpperCase();
   const requestId = createRequestId();
-  const actorId = audit?.actorId ?? getActorIdFromToken(token);
-
-  if (requireAuth && !token) {
-    if (audit) {
-      emitAuditEvent({
-        event_name: audit.eventName,
-        outcome: "failure",
-        actor_id: actorId,
-        source_system: "frontend-web",
-        request_id: requestId,
-        action: audit.action,
-        resource_type: audit.resourceType,
-        resource_id: audit.resourceId,
-        route: path,
-        method: requestOptions.method ?? "GET",
-        error_code: "missing_auth_token",
-        error_message: "Authentication required but no access token is available.",
-        metadata: audit.metadata,
-      });
-    }
-    throw new Error(`Authentication required for ${path}, but no Supabase access token is available.`);
-  }
+  const actorId = audit?.actorId ?? null;
 
   let res: Response;
   try {
-    res = await fetch(`${getBaseUrlForRequests()}${path}`, {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
       ...requestOptions,
-      headers: buildRequestHeaders(requestOptions.headers, token, requestOptions.body),
+      credentials: "include",
+      headers: buildRequestHeaders(requestOptions.headers, method, requestOptions.body),
     });
   } catch (error) {
     if (audit) {
@@ -192,7 +154,7 @@ export async function apiRequest<T = any>(
         resource_type: audit.resourceType,
         resource_id: audit.resourceId,
         route: path,
-        method: requestOptions.method ?? "GET",
+        method,
         error_code: "network_error",
         error_message: error instanceof Error ? error.message : "Network request failed.",
         metadata: audit.metadata,
@@ -215,7 +177,7 @@ export async function apiRequest<T = any>(
         resource_type: audit.resourceType,
         resource_id: audit.resourceId,
         route: path,
-        method: requestOptions.method ?? "GET",
+        method,
         status_code: res.status,
         error_message: apiError.message,
         metadata: audit.metadata,
@@ -235,7 +197,7 @@ export async function apiRequest<T = any>(
       resource_type: audit.resourceType,
       resource_id: audit.resourceId,
       route: path,
-      method: requestOptions.method ?? "GET",
+      method,
       status_code: res.status,
       metadata: audit.metadata,
     });

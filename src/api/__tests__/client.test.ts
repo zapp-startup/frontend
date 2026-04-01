@@ -1,21 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  apiRequest,
-  apiRequestPaginated,
-  setApiAccessToken,
-  PaginatedResponse,
-  ApiError,
-} from "../client";
+import { apiRequest, apiRequestPaginated, PaginatedResponse, ApiError } from "../client";
 import { addAuditSink, resetAuditSinks, type AuditEvent } from "@/shared/audit/audit";
-
-const originalFetch = globalThis.fetch;
 
 describe("client", () => {
   let events: AuditEvent[] = [];
 
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    setApiAccessToken("test-token");
     events = [];
     resetAuditSinks();
     addAuditSink((event) => {
@@ -23,7 +14,7 @@ describe("client", () => {
     });
   });
 
-  it("injects Authorization header when token is set", async () => {
+  it("uses credentials include and does not set Authorization", async () => {
     const mockFetch = vi.mocked(fetch);
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -38,12 +29,13 @@ describe("client", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
+        credentials: "include",
         headers: expect.any(Headers),
       })
     );
     const call = mockFetch.mock.calls[0];
     const headers = call[1]?.headers as Headers;
-    expect(headers.get("Authorization")).toBe("Bearer test-token");
+    expect(headers.get("Authorization")).toBeNull();
   });
 
   it("does not add Content-Type for bodyless requests", async () => {
@@ -83,13 +75,17 @@ describe("client", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
-  it("throws when requireAuth is true and no token", async () => {
-    setApiAccessToken(null);
-    vi.stubGlobal("fetch", vi.fn());
+  it("sends request when requireAuth is true (session is cookie-based)", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve("{}"),
+      headers: new Headers({ "Content-Type": "application/json" }),
+    } as Response);
 
-    await expect(apiRequest("/api/test/", { requireAuth: true })).rejects.toThrow(
-      /Authentication required/
-    );
+    await apiRequest("/api/test/", { requireAuth: true });
+    expect(mockFetch).toHaveBeenCalled();
   });
 
   it("throws ApiError with safe message and rawBody on error responses", async () => {

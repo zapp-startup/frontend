@@ -1,5 +1,5 @@
 import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
-import { getApiAccessToken } from "@/api/client";
+import { getCsrfToken } from "@/api/client";
 import { addAuditSink, type AuditEvent } from "./audit";
 
 const AUDIT_INGEST_PATH = "/api/audit/events/";
@@ -13,9 +13,9 @@ function buildAuditHeaders() {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  const token = getApiAccessToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  const csrf = getCsrfToken();
+  if (csrf) {
+    headers["X-CSRFToken"] = csrf;
   }
   return headers;
 }
@@ -24,6 +24,7 @@ async function postAuditEvent(event: AuditEvent) {
   try {
     await fetch(getAuditIngestUrl(), {
       method: "POST",
+      credentials: "include",
       headers: buildAuditHeaders(),
       body: JSON.stringify(event),
       keepalive: true,

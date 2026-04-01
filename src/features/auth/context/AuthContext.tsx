@@ -1,7 +1,5 @@
 import * as React from "react";
-import type { Session } from "@supabase/supabase-js";
-import { apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
-import { supabase } from "@/api/supabaseClient";
+import { apiRequest, ApiError, getApiConfigurationError } from "@/api/client";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
 import { emitAuditEvent } from "@/shared/audit/audit";
 import {
@@ -12,6 +10,17 @@ import {
   verifyTotpEnrollment as mfaVerifyTotpEnrollment,
   type MfaSnapshot,
 } from "@/features/auth/mfa/mfaOperations";
+
+/** GET /api/auth/me/ — canonical session user from Django. */
+export type MeResponse = {
+  id: number;
+  email: string;
+  username: string;
+  supabase_uid: string;
+  name: string;
+  tier?: string;
+  created_at: string;
+};
 
 export type User = {
   id: number | string;
@@ -51,7 +60,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; session?: Session | null }>;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
@@ -79,34 +88,31 @@ export type SignUpData = {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-function mapSupabaseUser(u: any): User {
-  const meta = (u?.user_metadata ?? {}) as Record<string, any>;
-  const email = u.email ?? "";
-  const fallbackName = email ? String(email).split("@")[0] : "User";
-
+function mapMeToUser(me: MeResponse): User {
   return {
-    id: u.id,
-    supabaseUid: u.id,
-    username: (meta.username as string) ?? fallbackName,
-    name: (meta.name as string) ?? fallbackName,
-    email,
-    tier: meta.tier as string | undefined,
-    createdAt: u.created_at ?? new Date().toISOString(),
+    id: me.id,
+    supabaseUid: me.supabase_uid,
+    username: me.username,
+    name: me.name || me.username,
+    email: me.email,
+    tier: me.tier,
+    createdAt: me.created_at,
   };
 }
 
-function mergeBackendProfile(user: User, backendUser: BackendUserProfile | null): User {
-  if (!backendUser) return user;
-
+function mapMeToBackend(me: MeResponse): BackendUserProfile {
   return {
-    ...user,
-    id: backendUser.id,
-    supabaseUid: backendUser.supabase_uid,
-    username: backendUser.username,
-    name: user.name || backendUser.username,
-    email: backendUser.email || user.email,
+    id: me.id,
+    email: me.email,
+    username: me.username,
+    supabase_uid: me.supabase_uid,
   };
 }
+
+type SignUpApiResponse = {
+  requires_verification?: boolean;
+  user?: MeResponse;
+};
 
 type GateOpts = { loading: boolean; fetchFailed: boolean };
 
@@ -137,17 +143,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mfaError, setMfaError] = React.useState<string | null>(null);
   const [authAssurance, setAuthAssurance] = React.useState<AuthAssuranceResponse | null>(null);
   const backendUserRef = React.useRef<BackendUserProfile | null>(null);
-  const syncBackendUserPromiseRef = React.useRef<Promise<BackendUserProfile | null> | null>(null);
-  const lastSyncedAccessTokenRef = React.useRef<string | null>(null);
+  /** Sync with `user` so `refreshMfa` can run immediately after login before re-render. */
+  const userRef = React.useRef<User | null>(null);
 
   const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
     backendUserRef.current = profile;
     setBackendUser(profile);
   }, []);
 
+  const applyMe = React.useCallback(
+    (me: MeResponse | null) => {
+      if (!me) {
+        userRef.current = null;
+        setUser(null);
+        updateBackendUser(null);
+        return;
+      }
+      const u = mapMeToUser(me);
+      userRef.current = u;
+      setUser(u);
+      updateBackendUser(mapMeToBackend(me));
+    },
+    [updateBackendUser]
+  );
+
   const refreshMfa = React.useCallback(async () => {
-    const token = getApiAccessToken();
-    if (!token) {
+    if (!userRef.current) {
       setMfaSnapshot(null);
       setAuthAssurance(null);
       setMfaError(null);
@@ -193,87 +214,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const syncBackendUser = React.useCallback(async () => {
-    const currentAccessToken = getApiAccessToken();
-    if (currentAccessToken && lastSyncedAccessTokenRef.current === currentAccessToken && backendUserRef.current) {
-      return backendUserRef.current;
-    }
-
-    if (syncBackendUserPromiseRef.current) {
-      return syncBackendUserPromiseRef.current;
-    }
-
-    syncBackendUserPromiseRef.current = (async () => {
-      try {
-        const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
-          requireAuth: true,
-          method: "POST",
-        });
-        lastSyncedAccessTokenRef.current = currentAccessToken;
-        updateBackendUser(profile);
-        setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
-        return profile;
-      } catch {
-        updateBackendUser(null);
-        return null;
-      } finally {
-        syncBackendUserPromiseRef.current = null;
-      }
-    })();
-
-    return syncBackendUserPromiseRef.current;
-  }, [updateBackendUser]);
-
-  const applySession = React.useCallback(
-    async (session: Session | null, shouldSyncBackend: boolean) => {
-      const accessToken = session?.access_token ?? null;
-      setApiAccessToken(accessToken);
-
-      const sbUser = session?.user ?? null;
-      if (!sbUser) {
-        setUser(null);
-        updateBackendUser(null);
-        lastSyncedAccessTokenRef.current = null;
-        return;
-      }
-
-      const mappedUser = mapSupabaseUser(sbUser);
-      setUser(mergeBackendProfile(mappedUser, backendUserRef.current));
-
-      if (shouldSyncBackend) {
-        await syncBackendUser();
-      }
-    },
-    [syncBackendUser, updateBackendUser]
-  );
-
   React.useEffect(() => {
     let mounted = true;
 
     (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!mounted) return;
-
-      if (error) {
-        setApiAccessToken(null);
-        setUser(null);
-        updateBackendUser(null);
-      } else {
-        await applySession(data.session, !!data.session);
+      try {
+        const me = await apiRequest<MeResponse>("/api/auth/me/");
+        if (!mounted) return;
+        applyMe(me);
+      } catch (e) {
+        if (!mounted) return;
+        if (e instanceof ApiError && e.status === 401) {
+          applyMe(null);
+        } else {
+          applyMe(null);
+        }
+      } finally {
+        if (mounted) setAuthLoading(false);
       }
-      setAuthLoading(false);
     })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const shouldSyncBackend = event === "SIGNED_IN";
-      await applySession(session, shouldSyncBackend);
-    });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
     };
-  }, [applySession]);
+  }, [applyMe]);
 
   React.useEffect(() => {
     if (user) {
@@ -285,44 +249,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, refreshMfa]);
 
-  const login = React.useCallback(async (email: string, password: string) => {
-    const { error, data } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+  const login = React.useCallback(
+    async (email: string, password: string) => {
+      try {
+        await apiRequest<MeResponse>("/api/auth/login/", {
+          method: "POST",
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password,
+          }),
+        });
+        const me = await apiRequest<MeResponse>("/api/auth/me/", { requireAuth: true });
+        applyMe(me);
+        await refreshMfa();
 
-    if (error) {
-      emitAuditEvent({
-        event_name: "auth.login",
-        outcome: "failure",
-        actor_id: null,
-        source_system: "frontend-web",
-        action: "login",
-        resource_type: "session",
-        error_message: error.message,
-        metadata: { auth_provider: "supabase", email_domain: email.trim().toLowerCase().split("@")[1] ?? null },
-      });
-      return { ok: false, error: error.message };
-    }
+        emitAuditEvent({
+          event_name: "auth.login",
+          outcome: "success",
+          actor_id: me.supabase_uid,
+          source_system: "frontend-web",
+          action: "login",
+          resource_type: "session",
+          metadata: { auth_provider: "django_session" },
+        });
 
-    setApiAccessToken(data.session?.access_token ?? null);
-    if (data.session) {
-      await syncBackendUser();
-      await refreshMfa();
-    }
-
-    emitAuditEvent({
-      event_name: "auth.login",
-      outcome: "success",
-      actor_id: data.user?.id ?? data.session?.user?.id ?? null,
-      source_system: "frontend-web",
-      action: "login",
-      resource_type: "session",
-      metadata: { auth_provider: "supabase" },
-    });
-
-    return { ok: true, session: data.session };
-  }, [syncBackendUser, refreshMfa]);
+        return { ok: true as const };
+      } catch (e) {
+        const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Sign in failed.";
+        emitAuditEvent({
+          event_name: "auth.login",
+          outcome: "failure",
+          actor_id: null,
+          source_system: "frontend-web",
+          action: "login",
+          resource_type: "session",
+          error_message: message,
+          metadata: { auth_provider: "django_session", email_domain: email.trim().toLowerCase().split("@")[1] ?? null },
+        });
+        return { ok: false as const, error: message };
+      }
+    },
+    [applyMe, refreshMfa]
+  );
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
@@ -330,17 +298,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { ok: false, error: "Passwords do not match." };
     }
 
-    const { error, data: resp } = await supabase.auth.signUp({
-      email: data.email.trim().toLowerCase(),
-      password: data.password,
-      options: {
-        data: {
+    try {
+      const resp = await apiRequest<SignUpApiResponse>("/api/auth/signup/", {
+        method: "POST",
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
           name: data.name.trim(),
-        },
-      },
-    });
+        }),
+      });
 
-    if (error) {
+      const needsVerify = resp.requires_verification === true;
+      if (!needsVerify && resp.user) {
+        applyMe(resp.user);
+      }
+
+      emitAuditEvent({
+        event_name: "auth.signup",
+        outcome: "success",
+        actor_id: resp.user?.supabase_uid ?? null,
+        source_system: "frontend-web",
+        action: "signup",
+        resource_type: "account",
+        metadata: { auth_provider: "django_session", verification_required: needsVerify },
+      });
+
+      return { ok: true as const, requiresVerification: needsVerify };
+    } catch (e) {
+      const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Sign up failed.";
       emitAuditEvent({
         event_name: "auth.signup",
         outcome: "failure",
@@ -348,36 +333,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         source_system: "frontend-web",
         action: "signup",
         resource_type: "account",
-        error_message: error.message,
-        metadata: { auth_provider: "supabase", email_domain: data.email.trim().toLowerCase().split("@")[1] ?? null },
+        error_message: message,
+        metadata: { auth_provider: "django_session", email_domain: data.email.trim().toLowerCase().split("@")[1] ?? null },
       });
-      return { ok: false, error: error.message };
+      return { ok: false as const, error: message };
     }
-
-    if (resp.session) {
-      await applySession(resp.session, true);
-    }
-
-    emitAuditEvent({
-      event_name: "auth.signup",
-      outcome: "success",
-      actor_id: resp.user?.id ?? resp.session?.user?.id ?? null,
-      source_system: "frontend-web",
-      action: "signup",
-      resource_type: "account",
-      metadata: { auth_provider: "supabase", verification_required: !resp.session },
-    });
-
-    return { ok: true, requiresVerification: !resp.session };
-  }, [applySession]);
+  }, [applyMe]);
 
   const logout = React.useCallback(async () => {
-    const actorId = user?.supabaseUid ?? backendUserRef.current?.supabase_uid ?? null;
-    await supabase.auth.signOut();
-    setApiAccessToken(null);
-    setUser(null);
-    updateBackendUser(null);
-    lastSyncedAccessTokenRef.current = null;
+    const actorId = userRef.current?.supabaseUid ?? backendUserRef.current?.supabase_uid ?? null;
+    try {
+      await apiRequest<null>("/api/auth/logout/", { method: "POST" });
+    } catch {
+      // Still clear local state so the UI can recover.
+    }
+    applyMe(null);
     emitAuditEvent({
       event_name: "auth.logout",
       outcome: "success",
@@ -386,7 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       action: "logout",
       resource_type: "session",
     });
-  }, [updateBackendUser, user]);
+  }, [applyMe]);
 
   const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
 
@@ -424,41 +394,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [mfaLoading, mfaError, authAssurance]);
 
-  const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
-    const { error, data: resp } = await supabase.auth.updateUser({
-      data: {
-        ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.tier !== undefined ? { tier: data.tier } : {}),
-      },
-    });
-
-    if (error) {
-      emitAuditEvent({
-        event_name: "account.profile_update",
-        outcome: "failure",
-        actor_id: user?.supabaseUid ?? null,
-        source_system: "frontend-web",
-        action: "update_profile",
-        resource_type: "account",
-        error_message: error.message,
-        metadata: { updated_fields: Object.keys(data) },
-      });
-      return { ok: false as const, error: error.message };
-    }
-
-    const sbUser = resp.user ?? null;
-    setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
-    emitAuditEvent({
-      event_name: "account.profile_update",
-      outcome: "success",
-      actor_id: sbUser?.id ?? user?.supabaseUid ?? null,
-      source_system: "frontend-web",
-      action: "update_profile",
-      resource_type: "account",
-      metadata: { updated_fields: Object.keys(data) },
-    });
-    return { ok: true as const };
-  }, [user]);
+  const updateProfile = React.useCallback(
+    async (data: Partial<Pick<User, "name" | "tier">>) => {
+      try {
+        const me = await apiRequest<MeResponse>("/api/users/profile/", {
+          requireAuth: true,
+          method: "PATCH",
+          body: JSON.stringify({
+            ...(data.name !== undefined ? { name: data.name } : {}),
+            ...(data.tier !== undefined ? { tier: data.tier } : {}),
+          }),
+        });
+        applyMe(me);
+        emitAuditEvent({
+          event_name: "account.profile_update",
+          outcome: "success",
+          actor_id: me.supabase_uid,
+          source_system: "frontend-web",
+          action: "update_profile",
+          resource_type: "account",
+          metadata: { updated_fields: Object.keys(data) },
+        });
+        return { ok: true as const };
+      } catch (e) {
+        const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Update failed.";
+        emitAuditEvent({
+          event_name: "account.profile_update",
+          outcome: "failure",
+          actor_id: userRef.current?.supabaseUid ?? null,
+          source_system: "frontend-web",
+          action: "update_profile",
+          resource_type: "account",
+          error_message: message,
+          metadata: { updated_fields: Object.keys(data) },
+        });
+        return { ok: false as const, error: message };
+      }
+    },
+    [applyMe]
+  );
 
   const value = React.useMemo<AuthContextValue>(
     () => ({

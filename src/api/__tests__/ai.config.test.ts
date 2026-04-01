@@ -30,7 +30,7 @@ describe("ai.api TLS configuration", () => {
   it("throws when validated API config is invalid", async () => {
     mockApiEnv({ ok: false, message: "VITE_API_URL must use https:// in production." });
     vi.doMock("../client", () => ({
-      getApiAccessToken: () => null,
+      getCsrfToken: () => null,
     }));
 
     const { createConversation } = await import("../ai.api");
@@ -43,7 +43,7 @@ describe("ai.api TLS configuration", () => {
   it("uses the validated API base URL when config is valid", async () => {
     mockApiEnv({ ok: true, url: "https://api.example.com" });
     vi.doMock("../client", () => ({
-      getApiAccessToken: () => null,
+      getCsrfToken: () => null,
     }));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,

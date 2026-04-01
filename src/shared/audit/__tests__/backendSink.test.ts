@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { registerBackendAuditSink, resetBackendAuditSinkForTests } from "../backendSink";
 import { emitAuditEvent, resetAuditSinks } from "../audit";
-import { setApiAccessToken } from "@/api/client";
 import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
 
 describe("backend audit sink", () => {
@@ -10,7 +9,7 @@ describe("backend audit sink", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true } as Response)));
     resetAuditSinks();
     resetBackendAuditSinkForTests();
-    setApiAccessToken(null);
+    document.cookie = "";
   });
 
   it("posts emitted audit events to the backend endpoint", async () => {
@@ -30,6 +29,7 @@ describe("backend audit sink", () => {
       `${getValidatedUrlOrThrow(resolveApiBaseUrl())}/api/audit/events/`,
       expect.objectContaining({
         method: "POST",
+        credentials: "include",
         headers: expect.objectContaining({
           "Content-Type": "application/json",
         }),
@@ -37,8 +37,8 @@ describe("backend audit sink", () => {
     );
   });
 
-  it("includes the bearer token when available", async () => {
-    setApiAccessToken("test-token");
+  it("includes X-CSRFToken when csrftoken cookie is present", async () => {
+    document.cookie = "csrftoken=abc123; path=/";
     registerBackendAuditSink();
 
     emitAuditEvent({
@@ -55,7 +55,7 @@ describe("backend audit sink", () => {
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: "Bearer test-token",
+          "X-CSRFToken": "abc123",
         }),
       })
     );

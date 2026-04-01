@@ -1,5 +1,5 @@
 import { getValidatedUrlOrThrow, resolveApiBaseUrl } from "@/config/apiEnv";
-import { getApiAccessToken } from "./client";
+import { getCsrfToken } from "./client";
 
 const apiEnvResult = resolveApiBaseUrl();
 
@@ -63,61 +63,23 @@ type CreateConversationParams = {
   linked_item_valuation?: number;
 };
 
-function parseJwtPayload(token: string) {
-  const [, encodedPayload] = token.split(".");
-  if (!encodedPayload) return null;
-
-  const normalized = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-
-  try {
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function readUsernameFromToken(token: string | null) {
-  if (!token) return null;
-
-  const payload = parseJwtPayload(token);
-  if (!payload) return null;
-
-  const fromPayload = payload.username;
-  if (typeof fromPayload === "string" && fromPayload.trim()) {
-    return fromPayload.trim();
-  }
-
-  const metadata = payload.user_metadata;
-  if (!metadata || typeof metadata !== "object") return null;
-
-  const fromMetadata = (metadata as Record<string, unknown>).username;
-  if (typeof fromMetadata === "string" && fromMetadata.trim()) {
-    return fromMetadata.trim();
-  }
-
-  return null;
-}
-
 function resolveDevUsername(auth?: DevAuthParams) {
-  const explicitUsername = auth?.devUsername?.trim();
-  if (explicitUsername) {
-    return explicitUsername;
-  }
-
-  return readUsernameFromToken(getApiAccessToken());
+  return auth?.devUsername?.trim() ?? null;
 }
 
-function buildAiHeaders(auth?: DevAuthParams, body?: BodyInit | null) {
+function buildAiHeaders(auth?: DevAuthParams, body?: BodyInit | null, method = "GET") {
   const headers: Record<string, string> = {};
-  const token = getApiAccessToken();
 
   if (body != null && !(body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  const upper = method.toUpperCase();
+  if (upper === "POST" || upper === "PUT" || upper === "PATCH" || upper === "DELETE") {
+    const csrf = getCsrfToken();
+    if (csrf) {
+      headers["X-CSRFToken"] = csrf;
+    }
   }
 
   const devUsername = resolveDevUsername(auth);
@@ -159,9 +121,11 @@ async function aiRequest<T>(
   options: RequestInit = {},
   auth?: DevAuthParams
 ) {
+  const method = options.method ?? "GET";
   const res = await fetch(`${getAiBaseUrl()}${path}`, {
     ...options,
-    headers: mergeHeaders(buildAiHeaders(auth, options.body), options.headers),
+    credentials: "include",
+    headers: mergeHeaders(buildAiHeaders(auth, options.body, method), options.headers),
   });
 
   if (!res.ok) {

@@ -4,39 +4,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { addAuditSink, resetAuditSinks, type AuditEvent } from "@/shared/audit/audit";
+import { ApiError } from "@/api/client";
 
-const {
-  mockApiRequest,
-  mockFetchAuthAssurance,
-  mockGetApiAccessToken,
-  mockGetMfaSnapshot,
-  mockSetApiAccessToken,
-  mockGetSession,
-  mockOnAuthStateChange,
-  mockSignUp,
-  mockSignInWithPassword,
-  mockSignOut,
-  mockUpdateUser,
-} = vi.hoisted(() => ({
+const { mockApiRequest, mockFetchAuthAssurance, mockGetMfaSnapshot } = vi.hoisted(() => ({
   mockApiRequest: vi.fn(),
   mockFetchAuthAssurance: vi.fn(),
-  mockGetApiAccessToken: vi.fn(),
   mockGetMfaSnapshot: vi.fn(),
-  mockSetApiAccessToken: vi.fn(),
-  mockGetSession: vi.fn(),
-  mockOnAuthStateChange: vi.fn(),
-  mockSignUp: vi.fn(),
-  mockSignInWithPassword: vi.fn(),
-  mockSignOut: vi.fn(),
-  mockUpdateUser: vi.fn(),
 }));
 
-vi.mock("@/api/client", () => ({
-  apiRequest: mockApiRequest,
-  getApiAccessToken: mockGetApiAccessToken,
-  setApiAccessToken: mockSetApiAccessToken,
-  getApiConfigurationError: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/client")>();
+  return {
+    ...actual,
+    apiRequest: mockApiRequest,
+  };
+});
 
 vi.mock("@/api/compliance.api", () => ({
   fetchAuthAssurance: mockFetchAuthAssurance,
@@ -50,18 +32,14 @@ vi.mock("@/features/auth/mfa/mfaOperations", () => ({
   unenrollFactor: vi.fn(),
 }));
 
-vi.mock("@/api/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-      onAuthStateChange: mockOnAuthStateChange,
-      signUp: mockSignUp,
-      signInWithPassword: mockSignInWithPassword,
-      signOut: mockSignOut,
-      updateUser: mockUpdateUser,
-    },
-  },
-}));
+const meResponse = {
+  id: 7,
+  email: "user@example.com",
+  username: "tester",
+  supabase_uid: "uid-123",
+  name: "Test User",
+  created_at: "2026-03-24T00:00:00Z",
+};
 
 function LoginHarness() {
   const { login } = useAuth();
@@ -135,11 +113,11 @@ describe("AuthProvider", () => {
     addAuditSink((event) => {
       events.push(event);
     });
-    mockApiRequest.mockResolvedValue({
-      id: 7,
-      email: "user@example.com",
-      username: "tester",
-      supabase_uid: "uid-123",
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        throw new ApiError("Authentication required. Please sign in again.", 401);
+      }
+      throw new Error(`Unmocked apiRequest: ${path} ${opts?.method ?? ""}`);
     });
     mockFetchAuthAssurance.mockResolvedValue({
       mfa_required_by_policy: false,
@@ -150,58 +128,27 @@ describe("AuthProvider", () => {
       banking_allowed: true,
       blocking_code: null,
     });
-    mockGetApiAccessToken.mockReturnValue("token-123");
     mockGetMfaSnapshot.mockResolvedValue({
       currentLevel: "aal1",
       nextLevel: "aal2",
       factors: [],
     });
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
-    mockOnAuthStateChange.mockReturnValue({
-      data: {
-        subscription: {
-          unsubscribe: vi.fn(),
-        },
-      },
-    });
-    mockSignUp.mockResolvedValue({ error: null, data: { session: null } });
-    mockSignOut.mockResolvedValue({ error: null });
-    mockUpdateUser.mockResolvedValue({ error: null, data: { user: null } });
   });
 
-  it("deduplicates backend sync when sign-in and auth listener race", async () => {
-    let authListener:
-      | ((event: string, session: { access_token: string; user: { id: string; email: string; user_metadata: Record<string, unknown>; created_at: string } } | null) => Promise<void>)
-      | undefined;
-
-    mockOnAuthStateChange.mockImplementation((callback) => {
-      authListener = callback;
-      return {
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
-          },
-        },
-      };
-    });
-
-    mockSignInWithPassword.mockImplementation(async () => {
-      const session = {
-        access_token: "token-123",
-        user: {
-          id: "uid-123",
-          email: "user@example.com",
-          user_metadata: { name: "Test User", username: "tester" },
-          created_at: "2026-03-24T00:00:00Z",
-        },
-      };
-
-      await authListener?.("SIGNED_IN", session);
-
-      return {
-        error: null,
-        data: { session },
-      };
+  it("calls POST /api/auth/login/ then GET /api/auth/me/ on sign-in", async () => {
+    let meCallCount = 0;
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        meCallCount += 1;
+        if (meCallCount === 1) {
+          throw new ApiError("Authentication required. Please sign in again.", 401);
+        }
+        return meResponse;
+      }
+      if (path === "/api/auth/login/" && opts?.method === "POST") {
+        return null;
+      }
+      throw new Error(`Unmocked: ${path}`);
     });
 
     const user = userEvent.setup();
@@ -215,16 +162,28 @@ describe("AuthProvider", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledTimes(1);
+      expect(mockApiRequest).toHaveBeenCalledWith("/api/auth/login/", {
+        method: "POST",
+        body: JSON.stringify({ email: "user@example.com", password: "secret12" }),
+      });
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith("/api/auth/sync/", {
-      requireAuth: true,
-      method: "POST",
+    await waitFor(() => {
+      expect(mockApiRequest).toHaveBeenCalledWith("/api/auth/me/", { requireAuth: true });
     });
   });
 
   it("returns requiresVerification when signup succeeds without a session", async () => {
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        throw new ApiError("Authentication required. Please sign in again.", 401);
+      }
+      if (path === "/api/auth/signup/" && opts?.method === "POST") {
+        return { requires_verification: true };
+      }
+      throw new Error(`Unmocked: ${path}`);
+    });
+
     const user = userEvent.setup();
 
     render(
@@ -248,14 +207,29 @@ describe("AuthProvider", () => {
   });
 
   it("clears MFA loading when the snapshot refresh fails", async () => {
+    mockApiRequest.mockResolvedValue(meResponse);
+    let mfaCalls = 0;
+    mockGetMfaSnapshot.mockImplementation(async () => {
+      mfaCalls += 1;
+      if (mfaCalls === 1) {
+        return { currentLevel: "aal1" as const, nextLevel: "aal2" as const, factors: [] };
+      }
+      throw new Error("MFA status unavailable");
+    });
+
     const user = userEvent.setup();
-    mockGetMfaSnapshot.mockRejectedValueOnce(new Error("MFA status unavailable"));
 
     render(
       <AuthProvider>
         <RefreshMfaHarness />
       </AuthProvider>
     );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /refresh mfa/i })).toBeEnabled();
+    });
+
+    const assuranceCallsBeforeManualRefresh = mockFetchAuthAssurance.mock.calls.length;
 
     await user.click(screen.getByRole("button", { name: /refresh mfa/i }));
 
@@ -265,14 +239,20 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("mfa-result")).toHaveTextContent('"reason":"auth_assurance_unavailable"');
     });
 
-    expect(mockFetchAuthAssurance).not.toHaveBeenCalled();
+    expect(mockFetchAuthAssurance.mock.calls.length).toBe(assuranceCallsBeforeManualRefresh);
   });
 
   it("records failed login attempts without logging secrets", async () => {
-    mockSignInWithPassword.mockResolvedValueOnce({
-      error: { message: "Invalid login credentials" },
-      data: { session: null, user: null },
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        throw new ApiError("Authentication required. Please sign in again.", 401);
+      }
+      if (path === "/api/auth/login/" && opts?.method === "POST") {
+        throw new ApiError("Invalid login credentials", 401);
+      }
+      throw new Error(`Unmocked: ${path}`);
     });
+
     const user = userEvent.setup();
 
     render(

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
-import { supabase } from "@/api/supabaseClient";
+import { getApiBaseUrl } from "@/api/client";
 import { OnboardingAPI } from "@/api/onboarding.api";
 import { AppButton, AppInput, FormField, SectionHeader, Surface } from "@/shared/components/system";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
@@ -27,16 +27,10 @@ export function LoginPage() {
     setLoading(false);
     if (result.ok) {
       toast.success("Welcome back!");
-
-      const accessToken = result.session?.access_token ?? null;
-      if (accessToken) {
-        try {
-          const isComplete = await OnboardingAPI.checkComplete();
-          navigate(isComplete ? "/" : "/onboarding", { replace: true });
-        } catch {
-          navigate("/", { replace: true });
-        }
-      } else {
+      try {
+        const isComplete = await OnboardingAPI.checkComplete();
+        navigate(isComplete ? "/" : "/onboarding", { replace: true });
+      } catch {
         navigate("/", { replace: true });
       }
     } else {
@@ -44,18 +38,10 @@ export function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      toast.error(error.message);
-    }
+  const handleGoogleSignIn = () => {
+    window.location.href = `${getApiBaseUrl()}/api/auth/oauth/google/`;
   };
+
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <motion.div
@@ -131,7 +117,7 @@ export function LoginPage() {
               Sign up
             </NavLink>
           </p>
-        
+
           <p className="mt-4 text-center text-xs text-gray-600">
             <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
           </p>
