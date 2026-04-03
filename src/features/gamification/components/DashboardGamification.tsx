@@ -2,7 +2,13 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { Award, Calendar, Flame, Trophy, Users } from "lucide-react";
 
-import { GamificationAPI, type Group, type StreakData, type UserBadge } from "@/api/gamification.api";
+import {
+  GamificationAPI,
+  type Group,
+  type ReviewNudges,
+  type StreakData,
+  type UserBadge,
+} from "@/api/gamification.api";
 import { BadgeDisplay } from "@/features/gamification/components/BadgeDisplay";
 import { MonthlyTargetsWidget } from "@/features/gamification/components/MonthlyTargetsWidget";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
@@ -15,27 +21,30 @@ export function DashboardGamification() {
   const [badges, setBadges] = React.useState<UserBadge[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [currentRank, setCurrentRank] = React.useState<number | null>(null);
+  const [reviewNudges, setReviewNudges] = React.useState<ReviewNudges | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [submittingReview, setSubmittingReview] = React.useState<"weekly" | "monthly" | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const loadData = React.useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(null);
-      const [streakResult, badgesResult, groupsResult] = await Promise.allSettled([
+      const [streakResult, badgesResult, groupsResult, nudgesResult] = await Promise.allSettled([
         GamificationAPI.getMyStreak(),
         GamificationAPI.getUserBadges(),
         GamificationAPI.getGroups(),
+        GamificationAPI.getReviewNudges(),
       ]);
 
       const streakData = streakResult.status === "fulfilled" ? streakResult.value : null;
       const badgeData = badgesResult.status === "fulfilled" ? badgesResult.value : [];
       const groupData = groupsResult.status === "fulfilled" ? groupsResult.value : [];
+      const nudgeData = nudgesResult.status === "fulfilled" ? nudgesResult.value : null;
 
       setStreak(streakData);
       setBadges(badgeData);
       setGroups(groupData);
+      setReviewNudges(nudgeData);
 
       if (!streakData) {
         setLoadError("Streak data is not loading from the backend yet.");
@@ -65,25 +74,6 @@ export function DashboardGamification() {
     void loadData();
   }, [loadData]);
 
-  const handleReview = async (kind: "weekly" | "monthly") => {
-    try {
-      setSubmittingReview(kind);
-      if (kind === "weekly") {
-        await GamificationAPI.completeWeeklyReview();
-        toast.success("Weekly review completed. +20 points");
-      } else {
-        await GamificationAPI.completeMonthlyReview();
-        toast.success("Monthly review completed. +35 points");
-      }
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      toast.error(`Failed to complete ${kind} review.`);
-    } finally {
-      setSubmittingReview(null);
-    }
-  };
-
   if (loading) {
     return (
       <LoadingState label="Loading momentum systems..." lines={3} />
@@ -107,6 +97,8 @@ export function DashboardGamification() {
   const levelProgress = streak.next_level_points > streak.level_floor_points
     ? (streak.points_into_level / (streak.next_level_points - streak.level_floor_points)) * 100
     : 0;
+  const weeklyNudge = reviewNudges?.weekly ?? null;
+  const monthlyNudge = reviewNudges?.monthly ?? null;
 
   return (
     <div className="space-y-8">
@@ -188,23 +180,44 @@ export function DashboardGamification() {
             </IconBadge>
             <h3 className="app-card-title">Review Actions</h3>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-               <AppButton
-                 onClick={() => handleReview("weekly")}
-                 disabled={submittingReview !== null}
-                 variant="success"
-                 className="h-15 w-full rounded-[1.75rem] text-base"
-               >
-               {submittingReview === "weekly" ? "Saving..." : "Weekly Review"}
-             </AppButton>
-               <AppButton
-                 onClick={() => handleReview("monthly")}
-                 disabled={submittingReview !== null}
-                 variant="info"
-                 className="h-15 w-full rounded-[1.75rem] text-base"
-               >
-               {submittingReview === "monthly" ? "Saving..." : "Monthly Review"}
-             </AppButton>
+          <p className="mb-6 text-sm leading-relaxed text-gray-400">
+            Weekly and monthly reviews now open guided flows that collect purchase feedback before points are awarded.
+          </p>
+          <div className="space-y-3">
+            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-white">Weekly review</div>
+                  <div className="mt-1 text-xs font-bold text-gray-500">
+                    {weeklyNudge
+                      ? `${weeklyNudge.reviewed_transaction_count} reviewed · ${weeklyNudge.pending_transaction_feedback_count} still worth revisiting`
+                      : "Review last week’s purchases and reflections."}
+                  </div>
+                </div>
+                <Link to="/reviews/weekly">
+                  <Button className="rounded-2xl bg-green-500 text-white hover:bg-green-400">
+                    {weeklyNudge?.status === "completed" ? "View review" : "Start weekly"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-white">Monthly review</div>
+                  <div className="mt-1 text-xs font-bold text-gray-500">
+                    {monthlyNudge
+                      ? `${monthlyNudge.reviewed_transaction_count} reviewed · ${monthlyNudge.upcoming_subscription_renewals_count ?? 0} renewals to inspect`
+                      : "Review bigger purchases, subscriptions, and next-month focus."}
+                  </div>
+                </div>
+                <Link to="/reviews/monthly">
+                  <Button className="rounded-2xl bg-blue-500 text-white hover:bg-blue-400">
+                    {monthlyNudge?.status === "completed" ? "View review" : "Start monthly"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </ElectricCard>
 
@@ -242,8 +255,28 @@ export function DashboardGamification() {
         </ElectricCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
-        <MonthlyTargetsWidget />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        <MonthlyTargetsWidget compact />
+        <ElectricCard semanticColor={COLORS.electricBlue} elevation={1}>
+          <div className="mb-3 flex items-center gap-2">
+            <Target size={18} className="text-blue-400" />
+            <h3 className="text-lg font-black text-white">Monthly Focus</h3>
+          </div>
+          <p className="text-sm leading-relaxed text-gray-400">
+            Use monthly targets to set the habit you want to reinforce most this cycle.
+          </p>
+          {monthlyNudge ? (
+            <div className="mt-4 rounded-[1.5rem] border border-white/[0.05] bg-white/[0.02] p-4 text-xs font-bold text-gray-500">
+              {monthlyNudge.low_value_subscriptions_count ?? 0} low-value subscriptions and{" "}
+              {monthlyNudge.pending_transaction_feedback_count} pending transaction reviews are feeding this month’s reflection flow.
+            </div>
+          ) : null}
+          <Link to="/targets" className="mt-5 inline-flex">
+            <Button variant="outline" className="rounded-2xl border-white/10">
+              Open targets
+            </Button>
+          </Link>
+        </ElectricCard>
       </div>
     </div>
   );
