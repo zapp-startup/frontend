@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { getApiBaseUrl } from "@/api/client";
-import { OnboardingAPI } from "@/api/onboarding.api";
 import { AppButton, AppInput, FormField, SectionHeader, Surface } from "@/shared/components/system";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 import { AppLogo } from "@/shared/components/brand/AppLogo";
@@ -51,15 +50,15 @@ export function buildOAuthRedirectUriAfter(apiBaseUrl: string, locationLike: Pic
 }
 
 export function LoginPage() {
-  const { login, isAuthenticated, isAuthReady } = useAuth();
+  const { login, isAuthenticated, isAuthReady, nextRoute } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (isAuthReady && isAuthenticated) navigate("/", { replace: true });
-  }, [isAuthReady, isAuthenticated, navigate]);
+    if (isAuthReady && isAuthenticated) navigate(nextRoute, { replace: true });
+  }, [isAuthReady, isAuthenticated, navigate, nextRoute]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,12 +67,7 @@ export function LoginPage() {
     setLoading(false);
     if (result.ok) {
       toast.success("Welcome back!");
-      try {
-        const isComplete = await OnboardingAPI.checkComplete();
-        navigate(isComplete ? "/" : "/onboarding", { replace: true });
-      } catch {
-        navigate("/", { replace: true });
-      }
+      navigate(result.nextRoute ?? "/", { replace: true });
     } else {
       toast.error(result.error);
     }

@@ -5,10 +5,9 @@ import { MemoryRouter } from "react-router-dom";
 import { LoginPage, buildOAuthRedirectUriAfter } from "../pages/LoginPage";
 import { toast } from "sonner";
 
-const { mockNavigate, mockLogin, mockCheckComplete, mockGetApiBaseUrl } = vi.hoisted(() => ({
+const { mockNavigate, mockLogin, mockGetApiBaseUrl } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockLogin: vi.fn(),
-  mockCheckComplete: vi.fn(),
   mockGetApiBaseUrl: vi.fn(() => "http://127.0.0.1:8000"),
 }));
 
@@ -32,13 +31,8 @@ vi.mock("../context/AuthContext", () => ({
     login: mockLogin,
     isAuthenticated: false,
     isAuthReady: true,
+    nextRoute: "/",
   }),
-}));
-
-vi.mock("@/api/onboarding.api", () => ({
-  OnboardingAPI: {
-    checkComplete: mockCheckComplete,
-  },
 }));
 
 vi.mock("@/api/client", async () => {
@@ -80,10 +74,9 @@ describe("LoginPage", () => {
     );
   });
 
-  it("navigates home after password login when onboarding is complete", async () => {
+  it("navigates to the route returned by login", async () => {
     const user = userEvent.setup();
-    mockLogin.mockResolvedValue({ ok: true });
-    mockCheckComplete.mockResolvedValue(true);
+    mockLogin.mockResolvedValue({ ok: true, nextRoute: "/" });
 
     render(
       <MemoryRouter>
@@ -102,10 +95,9 @@ describe("LoginPage", () => {
     });
   });
 
-  it("navigates to onboarding after password login when onboarding is incomplete", async () => {
+  it("navigates to MFA setup when login indicates MFA enrollment is required", async () => {
     const user = userEvent.setup();
-    mockLogin.mockResolvedValue({ ok: true });
-    mockCheckComplete.mockResolvedValue(false);
+    mockLogin.mockResolvedValue({ ok: true, nextRoute: "/mfa/setup" });
 
     render(
       <MemoryRouter>
@@ -118,7 +110,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/onboarding", { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith("/mfa/setup", { replace: true });
     });
   });
 
@@ -252,3 +244,4 @@ describe("LoginPage", () => {
     vi.unstubAllGlobals();
   });
 });
+

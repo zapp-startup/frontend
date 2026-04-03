@@ -1,3 +1,7 @@
+/**
+ * `apiRequest` is mocked here. Wire-level `credentials: "include"` for MFA routes is
+ * asserted in `src/api/__tests__/client.test.ts` (MFA session endpoints test).
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   enrollTotpFactor,

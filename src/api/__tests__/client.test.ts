@@ -38,6 +38,44 @@ describe("client", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
+  it("includes credentials for MFA session endpoints (verify-enrollment, challenge, verify)", async () => {
+    const mockFetch = vi.mocked(fetch);
+    const okResponse = {
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve("{}"),
+      headers: new Headers({ "Content-Type": "application/json" }),
+    } as Response;
+    mockFetch.mockResolvedValue(okResponse);
+
+    await apiRequest("/api/auth/mfa/verify-enrollment/", {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({ factor_id: "f1", code: "123456" }),
+    });
+    await apiRequest("/api/auth/mfa/challenge/", {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({ factor_id: "f1" }),
+    });
+    await apiRequest("/api/auth/mfa/verify/", {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({
+        factor_id: "f1",
+        challenge_id: "c1",
+        code: "123456",
+      }),
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    for (const call of mockFetch.mock.calls) {
+      expect(call[1]).toEqual(
+        expect.objectContaining({ credentials: "include" })
+      );
+    }
+  });
+
   it("does not add Content-Type for bodyless requests", async () => {
     const mockFetch = vi.mocked(fetch);
     mockFetch.mockResolvedValueOnce({

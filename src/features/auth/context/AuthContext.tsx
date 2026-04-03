@@ -1,4 +1,5 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { apiRequest, ApiError, getApiConfigurationError } from "@/api/client";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
 import { emitAuditEvent } from "@/shared/audit/audit";
@@ -16,10 +17,20 @@ export type MeResponse = {
   id: number;
   email: string;
   username: string;
-  supabase_uid: string;
-  name: string;
+  supabase_uid: string | null;
+  name?: string;
   tier?: string;
-  created_at: string;
+  created_at?: string;
+  /** Authenticator assurance level from server session (e.g. aal1 / aal2). */
+  aal?: string | null;
+  last_step_up_at?: number | null;
+  logged_in_at?: number | null;
+  mfa_pending?: boolean;
+  mfa_enrollment_required?: boolean;
+  next_step?: string | null;
+  post_mfa_step?: string | null;
+  onboarding_completed?: boolean;
+  onboarding_required?: boolean;
 };
 
 export type User = {
@@ -37,6 +48,17 @@ export type BackendUserProfile = {
   email: string;
   username: string;
   supabase_uid: string;
+};
+
+export type AuthNextStep = "mfa_setup" | "mfa_verify" | "onboarding_survey" | "dashboard" | null;
+export type AuthPostMfaStep = "onboarding_survey" | "dashboard" | null;
+
+export type RefreshSessionResult = {
+  hasSession: boolean;
+  me: MeResponse | null;
+  nextStep: AuthNextStep;
+  postMfaStep: AuthPostMfaStep;
+  nextRoute: string;
 };
 
 /** Why bank linking may be blocked (aligned with auth-assurance blocking_code + client checks). */
@@ -57,11 +79,17 @@ export type RefreshMfaResult = {
 type AuthContextValue = {
   user: User | null;
   backendUser: BackendUserProfile | null;
+  nextStep: AuthNextStep;
+  postMfaStep: AuthPostMfaStep;
+  nextRoute: string;
   isAuthenticated: boolean;
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
-  refreshSession: () => Promise<boolean>;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  refreshSession: () => Promise<RefreshSessionResult>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string; nextRoute?: string; nextStep?: AuthNextStep }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
@@ -92,12 +120,12 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 function mapMeToUser(me: MeResponse): User {
   return {
     id: me.id,
-    supabaseUid: me.supabase_uid,
+    supabaseUid: me.supabase_uid ?? "",
     username: me.username,
     name: me.name || me.username,
     email: me.email,
     tier: me.tier,
-    createdAt: me.created_at,
+    createdAt: me.created_at ?? "",
   };
 }
 
@@ -106,12 +134,69 @@ function mapMeToBackend(me: MeResponse): BackendUserProfile {
     id: me.id,
     email: me.email,
     username: me.username,
-    supabase_uid: me.supabase_uid,
+    supabase_uid: me.supabase_uid ?? "",
   };
+}
+
+function normalizeNextStep(value: unknown): AuthNextStep {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "mfa_setup") return "mfa_setup";
+  if (raw === "mfa_verify") return "mfa_verify";
+  if (raw === "onboarding_survey") return "onboarding_survey";
+  if (raw === "dashboard") return "dashboard";
+  return null;
+}
+
+function normalizePostMfaStep(value: unknown): AuthPostMfaStep {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "onboarding_survey") return "onboarding_survey";
+  if (raw === "dashboard") return "dashboard";
+  return null;
+}
+
+function resolveOnboardingStep(me: MeResponse): "onboarding_survey" | "dashboard" {
+  if (typeof me.onboarding_required === "boolean") {
+    return me.onboarding_required ? "onboarding_survey" : "dashboard";
+  }
+  if (typeof me.onboarding_completed === "boolean") {
+    return me.onboarding_completed ? "dashboard" : "onboarding_survey";
+  }
+  return "dashboard";
+}
+
+function deriveNextStepFromMe(me: MeResponse): Exclude<AuthNextStep, null> {
+  const explicit = normalizeNextStep(me.next_step);
+  if (explicit) return explicit;
+  if (me.mfa_pending) {
+    return me.mfa_enrollment_required ? "mfa_setup" : "mfa_verify";
+  }
+  return resolveOnboardingStep(me);
+}
+
+function derivePostMfaStepFromMe(
+  me: MeResponse,
+  nextStep: Exclude<AuthNextStep, null>
+): AuthPostMfaStep {
+  if (nextStep !== "mfa_setup" && nextStep !== "mfa_verify") {
+    return null;
+  }
+  const explicit = normalizePostMfaStep(me.post_mfa_step);
+  if (explicit) {
+    return explicit;
+  }
+  return resolveOnboardingStep(me);
+}
+
+export function routeForNextStep(nextStep: AuthNextStep): string {
+  if (nextStep === "mfa_setup") return "/mfa/setup";
+  if (nextStep === "mfa_verify") return "/mfa/verify";
+  if (nextStep === "onboarding_survey") return "/onboarding";
+  return "/";
 }
 
 type SignUpApiResponse = {
   requires_verification?: boolean;
+  email_confirmation_required?: boolean;
   user?: MeResponse;
 };
 
@@ -138,6 +223,8 @@ export function computeBankLinkGateFromAssurance(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
+  const [nextStep, setNextStep] = React.useState<AuthNextStep>(null);
+  const [postMfaStep, setPostMfaStep] = React.useState<AuthPostMfaStep>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
   const [mfaSnapshot, setMfaSnapshot] = React.useState<MfaSnapshot | null>(null);
   const [mfaLoading, setMfaLoading] = React.useState(false);
@@ -158,12 +245,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userRef.current = null;
         setUser(null);
         updateBackendUser(null);
+        setNextStep(null);
+        setPostMfaStep(null);
         return;
       }
+      const resolvedNextStep = deriveNextStepFromMe(me);
       const u = mapMeToUser(me);
       userRef.current = u;
       setUser(u);
       updateBackendUser(mapMeToBackend(me));
+      setNextStep(resolvedNextStep);
+      setPostMfaStep(derivePostMfaStepFromMe(me, resolvedNextStep));
     },
     [updateBackendUser]
   );
@@ -171,15 +263,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = React.useCallback(async () => {
     try {
       const me = await apiRequest<MeResponse>("/api/auth/me/", { requireAuth: true });
-      applyMe(me);
-      return true;
+      flushSync(() => {
+        applyMe(me);
+      });
+      const resolvedNextStep = deriveNextStepFromMe(me);
+      return {
+        hasSession: true,
+        me,
+        nextStep: resolvedNextStep,
+        postMfaStep: derivePostMfaStepFromMe(me, resolvedNextStep),
+        nextRoute: routeForNextStep(resolvedNextStep),
+      } satisfies RefreshSessionResult;
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        applyMe(null);
-        return false;
+        flushSync(() => {
+          applyMe(null);
+        });
+        return {
+          hasSession: false,
+          me: null,
+          nextStep: null,
+          postMfaStep: null,
+          nextRoute: "/login",
+        } satisfies RefreshSessionResult;
       }
-      applyMe(null);
-      return false;
+      flushSync(() => {
+        applyMe(null);
+      });
+      return {
+        hasSession: false,
+        me: null,
+        nextStep: null,
+        postMfaStep: null,
+        nextRoute: "/login",
+      } satisfies RefreshSessionResult;
     }
   }, [applyMe]);
 
@@ -266,21 +383,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             password,
           }),
         });
-        const me = await apiRequest<MeResponse>("/api/auth/me/", { requireAuth: true });
-        applyMe(me);
+        const refreshed = await refreshSession();
+        if (!refreshed.hasSession || !refreshed.me) {
+          throw new Error("Sign in did not create a valid session.");
+        }
         await refreshMfa();
 
         emitAuditEvent({
           event_name: "auth.login",
           outcome: "success",
-          actor_id: me.supabase_uid,
+          actor_id: refreshed.me.supabase_uid,
           source_system: "frontend-web",
           action: "login",
           resource_type: "session",
           metadata: { auth_provider: "django_session" },
         });
 
-        return { ok: true as const };
+        return {
+          ok: true as const,
+          nextRoute: refreshed.nextRoute,
+          nextStep: refreshed.nextStep,
+        };
       } catch (e) {
         const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Sign in failed.";
         emitAuditEvent({
@@ -296,7 +419,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false as const, error: message };
       }
     },
-    [applyMe, refreshMfa]
+    [refreshMfa, refreshSession]
   );
 
   const signUp = React.useCallback(async (data: SignUpData) => {
@@ -315,9 +438,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       });
 
-      const needsVerify = resp.requires_verification === true;
-      if (!needsVerify && resp.user) {
-        applyMe(resp.user);
+      const needsVerify =
+        resp.requires_verification === true || resp.email_confirmation_required === true;
+      if (!needsVerify) {
+        await refreshSession();
       }
 
       emitAuditEvent({
@@ -345,7 +469,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return { ok: false as const, error: message };
     }
-  }, [applyMe]);
+  }, [refreshSession]);
 
   const logout = React.useCallback(async () => {
     const actorId = userRef.current?.supabaseUid ?? backendUserRef.current?.supabase_uid ?? null;
@@ -368,21 +492,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
 
   const verifyTotpEnrollment = React.useCallback(
-    (factorId: string, code: string) =>
-      mfaVerifyTotpEnrollment(factorId, code).then(async (r) => {
-        await refreshMfa();
-        return r;
-      }),
-    [refreshMfa]
+    (factorId: string, code: string) => mfaVerifyTotpEnrollment(factorId, code),
+    []
   );
 
   const verifyMfaChallenge = React.useCallback(
-    (factorId: string, code: string) =>
-      mfaVerifyChallenge(factorId, code).then(async (r) => {
-        await refreshMfa();
-        return r;
-      }),
-    [refreshMfa]
+    (factorId: string, code: string) => mfaVerifyChallenge(factorId, code),
+    []
   );
 
   const unenrollMfaFactor = React.useCallback(
@@ -400,6 +516,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchFailed,
     });
   }, [mfaLoading, mfaError, authAssurance]);
+
+  const nextRoute = React.useMemo(() => {
+    if (!user) return "/login";
+    return routeForNextStep(nextStep);
+  }, [user, nextStep]);
 
   const updateProfile = React.useCallback(
     async (data: Partial<Pick<User, "name" | "tier">>) => {
@@ -445,6 +566,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       backendUser,
+      nextStep,
+      postMfaStep,
+      nextRoute,
       isAuthenticated: !!user,
       isAuthReady: !authLoading,
       refreshSession,
@@ -467,6 +591,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       user,
       backendUser,
+      nextStep,
+      postMfaStep,
+      nextRoute,
       authLoading,
       refreshSession,
       login,
@@ -495,3 +622,6 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+
+

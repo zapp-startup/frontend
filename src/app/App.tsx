@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Routes, Route } from "react-router-dom";
-import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/auth";
+import { AuthProvider, LoginPage, SignUpPage, AuthCallback, MfaPage, MfaSetupPage, MfaVerifyPage } from "@/features/auth";
 import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
 import { OnboardingPage } from "@/features/onboarding";
 import { AppThemeProvider } from "@/shared/theme-provider";
@@ -27,6 +27,9 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/mfa" element={<MfaPage />} />
+            <Route path="/mfa/setup" element={<MfaSetupPage />} />
+            <Route path="/mfa/verify" element={<MfaVerifyPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="*" element={<DashboardLayout />} />

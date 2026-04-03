@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { OnboardingAPI } from "@/api/onboarding.api";
 import { useAuth } from "../context/AuthContext";
 
 /**
@@ -16,16 +15,15 @@ export function AuthCallback() {
 
     void (async () => {
       try {
-        const hasSession = await refreshSession();
-        if (!hasSession) {
+        const session = await refreshSession();
+        if (!session.hasSession) {
           if (!cancelled) {
             navigate("/login", { replace: true });
           }
           return;
         }
-        const isComplete = await OnboardingAPI.checkComplete();
         if (!cancelled) {
-          navigate(isComplete ? "/" : "/onboarding", { replace: true });
+          navigate(session.nextRoute, { replace: true });
         }
       } catch {
         if (!cancelled) {

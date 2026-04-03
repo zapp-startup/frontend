@@ -132,7 +132,7 @@ const PageContent = React.memo(function PageContent() {
 });
 
 export function DashboardLayout() {
-  const { isAuthenticated, isAuthReady, user } = useAuth();
+  const { isAuthenticated, isAuthReady, user, nextStep, nextRoute } = useAuth();
   const privacyPolicyMeta = usePrivacyPolicyMeta();
   const { pathname } = useLocation();
   const activePage = pathToPage(pathname);
@@ -146,6 +146,10 @@ export function DashboardLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (nextStep && nextStep !== "dashboard") {
+    return <Navigate to={nextRoute} replace />;
   }
 
   const activeColor = PAGE_ACCENTS[activePage];
@@ -263,3 +267,4 @@ export function DashboardLayout() {
     </PanelProvider>
   );
 }
+

@@ -13,6 +13,7 @@ import {
 import { OnboardingAPI, type OnboardingData } from "@/api/onboarding.api";
 import { toast } from "sonner";
 import { AppLogo } from "@/shared/components/brand/AppLogo";
+import { useAuth } from "@/features/auth";
 
 const TOTAL_STEPS = 5;
 
@@ -147,11 +148,23 @@ function StepSection({
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { isAuthReady, isAuthenticated, nextStep, nextRoute, refreshSession } = useAuth();
   const shouldReduceMotion = useReducedMotion();
   const [step, setStep] = React.useState(0);
   const [direction, setDirection] = React.useState(1);
   const [data, setData] = React.useState<OnboardingData>(defaultData);
   const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isAuthReady) return;
+    if (!isAuthenticated) {
+      navigate("/login", { replace: true });
+      return;
+    }
+    if (nextStep && nextStep !== "onboarding_survey") {
+      navigate(nextRoute, { replace: true });
+    }
+  }, [isAuthReady, isAuthenticated, navigate, nextRoute, nextStep]);
 
   const set = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) =>
     setData((prev) => ({ ...prev, [key]: value }));
@@ -172,8 +185,9 @@ export function OnboardingPage() {
     setSubmitting(true);
     try {
       await OnboardingAPI.submit(data);
+      const session = await refreshSession();
       toast.success("You're all set! Welcome to Zapp.");
-      navigate("/", { replace: true });
+      navigate(session.nextRoute, { replace: true });
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -448,3 +462,4 @@ export function OnboardingPage() {
     </div>
   );
 }
+
