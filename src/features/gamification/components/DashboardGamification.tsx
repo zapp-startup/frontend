@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Award, Calendar, Flame, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Flame, Target, Trophy, Users } from "lucide-react";
 
 import {
   GamificationAPI,
@@ -194,11 +194,11 @@ export function DashboardGamification() {
                       : "Review last week’s purchases and reflections."}
                   </div>
                 </div>
-                <Link to="/reviews/weekly">
-                  <Button className="rounded-2xl bg-green-500 text-white hover:bg-green-400">
+                <AppButton asChild className="rounded-2xl bg-green-500 text-white hover:bg-green-400">
+                  <Link to="/reviews/weekly">
                     {weeklyNudge?.status === "completed" ? "View review" : "Start weekly"}
-                  </Button>
-                </Link>
+                  </Link>
+                </AppButton>
               </div>
             </div>
             <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
@@ -211,11 +211,11 @@ export function DashboardGamification() {
                       : "Review bigger purchases, subscriptions, and next-month focus."}
                   </div>
                 </div>
-                <Link to="/reviews/monthly">
-                  <Button className="rounded-2xl bg-blue-500 text-white hover:bg-blue-400">
+                <AppButton asChild className="rounded-2xl bg-blue-500 text-white hover:bg-blue-400">
+                  <Link to="/reviews/monthly">
                     {monthlyNudge?.status === "completed" ? "View review" : "Start monthly"}
-                  </Button>
-                </Link>
+                  </Link>
+                </AppButton>
               </div>
             </div>
           </div>
@@ -271,11 +271,11 @@ export function DashboardGamification() {
               {monthlyNudge.pending_transaction_feedback_count} pending transaction reviews are feeding this month’s reflection flow.
             </div>
           ) : null}
-          <Link to="/targets" className="mt-5 inline-flex">
-            <Button variant="outline" className="rounded-2xl border-white/10">
+          <AppButton asChild variant="outline" className="mt-5 rounded-2xl border-white/10">
+            <Link to="/targets">
               Open targets
-            </Button>
-          </Link>
+            </Link>
+          </AppButton>
         </ElectricCard>
       </div>
     </div>
