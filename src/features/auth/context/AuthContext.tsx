@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
+import { ApiError, apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
+import { resolveApiBaseUrl } from "@/config/apiEnv";
 import { supabase } from "@/api/supabaseClient";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
 import {
@@ -208,11 +209,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           requireAuth: true,
           method: "POST",
         });
+        // #region agent log
+        fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
+          body: JSON.stringify({
+            sessionId: "8045f8",
+            location: "AuthContext.tsx:syncBackendUser",
+            message: "auth/sync OK",
+            data: { hypothesisId: "H2", backendUserId: profile?.id },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         lastSyncedAccessTokenRef.current = currentAccessToken;
         updateBackendUser(profile);
         setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
         return profile;
-      } catch {
+      } catch (e) {
+        const status = e instanceof ApiError ? e.status : 0;
+        const msg = e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200);
+        // #region agent log
+        fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
+          body: JSON.stringify({
+            sessionId: "8045f8",
+            location: "AuthContext.tsx:syncBackendUser",
+            message: "auth/sync FAILED",
+            data: { hypothesisId: "H2", httpStatus: status, errPreview: msg },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         updateBackendUser(null);
         return null;
       } finally {
@@ -297,10 +326,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshMfa]);
 
   const login = React.useCallback(async (email: string, password: string) => {
+    const apiEnv = resolveApiBaseUrl();
+    let supabaseHost = "";
+    try {
+      const raw = (import.meta.env.VITE_SUPABASE_URL ?? "").trim();
+      if (raw) supabaseHost = new URL(raw).hostname;
+    } catch {
+      supabaseHost = "invalid_url";
+    }
+    // #region agent log
+    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
+      body: JSON.stringify({
+        sessionId: "8045f8",
+        location: "AuthContext.tsx:login",
+        message: "login start env snapshot",
+        data: {
+          hypothesisId: "H1",
+          apiOk: apiEnv.ok,
+          apiBase: apiEnv.ok ? apiEnv.url : apiEnv.message,
+          supabaseHost,
+          hasAnonKey: !!(import.meta.env.VITE_SUPABASE_ANON_KEY ?? "").trim().length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
     const { error, data } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
+
+    // #region agent log
+    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
+      body: JSON.stringify({
+        sessionId: "8045f8",
+        location: "AuthContext.tsx:login",
+        message: "signInWithPassword result",
+        data: {
+          hypothesisId: "H5",
+          supabaseError: error?.message ?? null,
+          hasSession: !!data?.session,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     if (error) return { ok: false, error: error.message };
 
@@ -316,6 +391,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Relying only on onAuthStateChange races the login redirect and sends users back to /login.
     await applySession(data.session, true);
     await refreshMfa();
+
+    // #region agent log
+    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
+      body: JSON.stringify({
+        sessionId: "8045f8",
+        location: "AuthContext.tsx:login",
+        message: "login applySession+mfa done",
+        data: { hypothesisId: "H3", ok: true },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     return { ok: true, session: data.session };
   }, [applySession, refreshMfa]);
