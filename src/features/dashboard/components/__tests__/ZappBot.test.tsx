@@ -10,6 +10,15 @@ vi.mock("@/api/ai.api", () => ({
   sendMessage: vi.fn(),
 }));
 
+vi.mock("@/features/auth", () => ({
+  useAuth: () => ({
+    user: {
+      supabaseUid: "uid-123",
+      username: "tester",
+    },
+  }),
+}));
+
 const navigateMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
@@ -23,6 +32,7 @@ vi.mock("react-router-dom", async () => {
 describe("ZappBot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("starts a fresh backend conversation after clicking new chat", async () => {
@@ -51,31 +61,41 @@ describe("ZappBot", () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /open chat/i }));
+    await user.click(screen.getByRole("button", { name: /open zapp assistant/i }));
 
-    const input = screen.getByPlaceholderText("Ask your CFO anything...");
+    const input = screen.getByPlaceholderText("Ask ZappBot anything...");
     await user.type(input, "How much did I spend?");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => {
       expect(aiApi.createConversation).toHaveBeenCalledTimes(1);
-      expect(aiApi.sendMessage).toHaveBeenCalledWith(101, "How much did I spend?");
+      expect(aiApi.sendMessage).toHaveBeenCalledWith(
+        { devUsername: "tester" },
+        101,
+        "How much did I spend?",
+        undefined
+      );
     });
 
     await screen.findByText("You spent $13.99 in the last 30 days.");
 
     await user.click(screen.getByRole("button", { name: /new chat/i }));
 
-    expect(screen.getByText(/Hello! I'm your Zapp CFO\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Hello! I'm ZappBot\./i)).toBeInTheDocument();
     expect(screen.queryByText("How much did I spend?")).not.toBeInTheDocument();
     expect(screen.queryByText("You spent $13.99 in the last 30 days.")).not.toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText("Ask your CFO anything..."), "What subscriptions are active?");
+    await user.type(screen.getByPlaceholderText("Ask ZappBot anything..."), "What subscriptions are active?");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => {
       expect(aiApi.createConversation).toHaveBeenCalledTimes(2);
-      expect(aiApi.sendMessage).toHaveBeenLastCalledWith(202, "What subscriptions are active?");
+      expect(aiApi.sendMessage).toHaveBeenLastCalledWith(
+        { devUsername: "tester" },
+        202,
+        "What subscriptions are active?",
+        undefined
+      );
       expect(aiApi.sendMessage).toHaveBeenCalledTimes(2);
     });
   });
@@ -106,8 +126,8 @@ describe("ZappBot", () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /open chat/i }));
-    await user.type(screen.getByPlaceholderText("Ask your CFO anything..."), "Log a purchase");
+    await user.click(screen.getByRole("button", { name: /open zapp assistant/i }));
+    await user.type(screen.getByPlaceholderText("Ask ZappBot anything..."), "Log a purchase");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     const routeButton = await screen.findByRole("button", { name: "Add Transaction" });
@@ -157,9 +177,9 @@ describe("ZappBot", () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /open chat/i }));
+    await user.click(screen.getByRole("button", { name: /open zapp assistant/i }));
     await user.type(
-      screen.getByPlaceholderText("Ask your CFO anything..."),
+      screen.getByPlaceholderText("Ask ZappBot anything..."),
       "Set satisfaction for Starbucks to 8"
     );
     await user.click(screen.getByRole("button", { name: /send message/i }));
@@ -168,10 +188,22 @@ describe("ZappBot", () => {
     await user.click(confirmButton);
 
     await waitFor(() => {
-      expect(aiApi.sendMessage).toHaveBeenNthCalledWith(1, 404, "Set satisfaction for Starbucks to 8");
-      expect(aiApi.sendMessage).toHaveBeenNthCalledWith(2, 404, "Confirm", {
-        kind: "confirm_pending_action",
-      });
+      expect(aiApi.sendMessage).toHaveBeenNthCalledWith(
+        1,
+        { devUsername: "tester" },
+        404,
+        "Set satisfaction for Starbucks to 8",
+        undefined
+      );
+      expect(aiApi.sendMessage).toHaveBeenNthCalledWith(
+        2,
+        { devUsername: "tester" },
+        404,
+        "Confirm",
+        {
+          kind: "confirm_pending_action",
+        }
+      );
     });
     expect(await screen.findByText("Updated satisfaction.")).toBeInTheDocument();
   });

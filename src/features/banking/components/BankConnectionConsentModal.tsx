@@ -10,7 +10,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { COLORS } from "@/shared/theme";
-import { getPrivacyPolicyMeta } from "@/config/privacy";
+import { getFinancialConsentDisclosure, usePrivacyPolicyMeta } from "@/config/privacy";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 
 type BankConnectionConsentModalProps = {
@@ -30,7 +30,8 @@ export function BankConnectionConsentModal({
   submitting = false,
 }: BankConnectionConsentModalProps) {
   const [accepted, setAccepted] = React.useState(false);
-  const meta = getPrivacyPolicyMeta();
+  const meta = usePrivacyPolicyMeta();
+  const disclosure = React.useMemo(() => getFinancialConsentDisclosure(meta), [meta]);
 
   React.useEffect(() => {
     if (!open) setAccepted(false);
@@ -45,13 +46,11 @@ export function BankConnectionConsentModal({
           <DialogDescription asChild>
             <div className="text-gray-400 text-left space-y-3 text-sm">
               <p>
-                To import transactions, Zapp uses Plaid to connect to your financial institution. We collect account and
-                transaction data you authorize through Plaid, process it to show spending insights in this app, and store
-                it as described in our privacy policy. We do not sell your data for marketing.
+                {disclosure.intro}
               </p>
               <p className="text-xs text-gray-500">
-                Plaid’s privacy practices are described in Plaid’s policies. Zapp’s handling of your data is described in
-                our <PrivacyPolicyLink className="text-cyan-400" />.
+                {disclosure.policyReference} Our <PrivacyPolicyLink className="text-cyan-400" /> contains the current
+                version and effective date.
               </p>
               <div
                 className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs text-gray-400"
@@ -76,8 +75,7 @@ export function BankConnectionConsentModal({
             className="mt-1 border-white/30 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
           />
           <label htmlFor="bank-consent" className="text-sm text-gray-300 leading-snug cursor-pointer">
-            I have read and agree to the collection and use of my financial information as described in the privacy
-            policy above.
+            {disclosure.checkboxLabel}
           </label>
         </div>
 

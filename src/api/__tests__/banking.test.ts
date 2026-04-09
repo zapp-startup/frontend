@@ -28,7 +28,10 @@ describe("banking.api", () => {
   });
 
   it("exchangePublicToken calls POST /api/banking/exchange-token/ with public_token", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce({ ok: true });
+    vi.mocked(apiRequest).mockResolvedValueOnce({
+      success: true,
+      connection: { id: "conn-1", institution_name: "Chase", status: "active" },
+    });
 
     await BankingAPI.exchangePublicToken("public-sandbox-xyz789");
 
@@ -50,9 +53,12 @@ describe("banking.api", () => {
 
     const result = await BankingAPI.getConnections();
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/banking/connections/", {
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/banking/connections/",
+      expect.objectContaining({
+        requireAuth: true,
+      })
+    );
     expect(result).toEqual(connections);
   });
 
@@ -64,9 +70,12 @@ describe("banking.api", () => {
 
     const result = await BankingAPI.getAccounts();
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/banking/accounts/", {
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/banking/accounts/",
+      expect.objectContaining({
+        requireAuth: true,
+      })
+    );
     expect(result).toEqual(accounts);
   });
 
@@ -86,7 +95,7 @@ describe("banking.api", () => {
 
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/banking/transactions/?limit=20&date_from=2025-01-01&date_to=2025-01-31&category=food&direction=spend",
-      { requireAuth: true }
+      expect.objectContaining({ requireAuth: true })
     );
   });
 

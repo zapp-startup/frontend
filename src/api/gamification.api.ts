@@ -296,6 +296,13 @@ export const GamificationAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ membership_id: membershipId, role }),
+      audit: {
+        eventName: "rbac.group_member_role_change",
+        action: "update_role",
+        resourceType: "group_membership",
+        resourceId: membershipId,
+        metadata: { group_id: groupId, new_role: role },
+      },
     }),
 
   removeMember: (groupId: number, membershipId: number) =>
@@ -303,6 +310,13 @@ export const GamificationAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ membership_id: membershipId }),
+      audit: {
+        eventName: "admin.group_member_remove",
+        action: "remove_member",
+        resourceType: "group_membership",
+        resourceId: membershipId,
+        metadata: { group_id: groupId },
+      },
     }),
 
   getGroupInvites: () => apiRequest<GroupInvite[]>("/api/gamification/group-invites/", { requireAuth: true }),
@@ -330,6 +344,12 @@ export const GamificationAPI = {
     apiRequest<void>(`/api/gamification/group-invites/${inviteId}/`, {
       requireAuth: true,
       method: "DELETE",
+      audit: {
+        eventName: "admin.group_invite_delete",
+        action: "delete_invite",
+        resourceType: "group_invite",
+        resourceId: inviteId,
+      },
     }),
 
   getLeaderboard: (groupId: number, days = 7, page = 1, pageSize = 10) => {

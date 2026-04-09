@@ -1,7 +1,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MessageCircle, X } from "lucide-react";
-import { Button } from "../ui/button";
+import { AppButton, AppInput, IconBadge, Surface } from "@/shared/components/system";
 
 export function CfoChatbot() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -25,7 +25,7 @@ export function CfoChatbot() {
         >
           {/* Lightning Bolt Body */}
           <div className="relative w-16 h-16 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-full h-full text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] fill-[#0B1220]">
+            <svg viewBox="0 0 24 24" className="h-full w-full fill-[var(--app-color-surface-base)] text-[var(--app-accent-cyan-soft)] drop-shadow-[0_0_8px_color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)]">
               <path 
                 fill="currentColor" 
                 stroke="currentColor" 
@@ -41,12 +41,12 @@ export function CfoChatbot() {
             <motion.div 
               animate={{ scaleY: [1, 0.1, 1] }}
               transition={{ repeat: Infinity, duration: 4, times: [0, 0.95, 1] }}
-              className="absolute top-[42%] left-[35%] w-1.5 h-1.5 bg-cyan-900 rounded-full"
+              className="absolute top-[42%] left-[35%] h-1.5 w-1.5 rounded-full bg-[var(--app-color-surface-inset)]"
             />
             <motion.div 
               animate={{ scaleY: [1, 0.1, 1] }}
               transition={{ repeat: Infinity, duration: 4, times: [0, 0.95, 1] }}
-              className="absolute top-[42%] left-[55%] w-1.5 h-1.5 bg-cyan-900 rounded-full"
+              className="absolute top-[42%] left-[55%] h-1.5 w-1.5 rounded-full bg-[var(--app-color-surface-inset)]"
             />
           </div>
 
@@ -57,10 +57,10 @@ export function CfoChatbot() {
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
-                className="absolute right-full mr-4 top-1/2 -translate-y-1/2 whitespace-nowrap bg-cyan-500 text-[#0B1220] px-4 py-2 rounded-2xl text-xs font-bold shadow-lg"
+                className="absolute top-1/2 right-full mr-4 -translate-y-1/2 whitespace-nowrap rounded-2xl bg-[var(--app-accent-cyan-soft)] px-4 py-2 text-xs font-bold text-[var(--app-color-text-inverse)] shadow-lg"
               >
                 How can I help you today?
-                <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-cyan-500 rotate-45" />
+                <div className="absolute top-1/2 right-[-4px] h-2 w-2 -translate-y-1/2 rotate-45 bg-[var(--app-accent-cyan-soft)]" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -73,45 +73,47 @@ export function CfoChatbot() {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="absolute bottom-20 right-0 w-80 bg-[#0F172A]/90 backdrop-blur-2xl border border-cyan-500/20 rounded-[2.5rem] p-6 shadow-2xl overflow-hidden"
+              className="absolute bottom-20 right-0 w-80 overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-6">
+              <Surface variant="overlay" padding="lg" accentColor="var(--app-accent-cyan-soft)" className="space-y-6 rounded-[2.5rem]">
+              <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_#4ade80]" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">Zapp Assistant</span>
+                  <IconBadge tone="green" size="sm" className="size-6 rounded-full [&_svg]:size-0" />
+                  <span className="app-mini-label text-[var(--app-accent-cyan-soft)]">Zapp Assistant</span>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                <AppButton onClick={() => setIsOpen(false)} variant="quiet" size="icon" className="size-9 rounded-xl">
                   <X className="w-4 h-4" />
-                </button>
+                </AppButton>
               </div>
 
               <div className="space-y-6">
-                <div className="bg-white/5 p-4 rounded-2xl text-sm leading-relaxed border border-white/5">
+                <Surface variant="inset" padding="sm" className="rounded-2xl text-sm leading-relaxed">
                   Hey! How did that last coffee purchase feel? Was it high value or just a quick fix?
-                </div>
+                </Surface>
 
                 <div className="space-y-4">
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  <div className="flex justify-between app-mini-label">
                     <span>Low Value</span>
                     <span>High Value</span>
                   </div>
-                  <input 
+                  <AppInput
                     type="range" 
                     min="0" 
                     max="100" 
                     value={value} 
                     onChange={(e) => setValue(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-lg border-0 bg-[var(--app-color-surface-inset)] px-0 accent-[var(--app-accent-cyan-soft)]"
                   />
-                  <div className="text-center text-2xl font-black text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+                  <div className="text-center text-2xl font-black text-[var(--app-accent-cyan-soft)] drop-shadow-[0_0_8px_color-mix(in_srgb,var(--app-accent-cyan-soft)_35%,transparent)]">
                     {value}
                   </div>
                 </div>
 
-                <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] font-bold rounded-xl py-6">
+                <AppButton className="w-full" variant="info" size="lg">
                   Log Reflection
-                </Button>
+                </AppButton>
               </div>
+              </Surface>
             </motion.div>
           )}
         </AnimatePresence>

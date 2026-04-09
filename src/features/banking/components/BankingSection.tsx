@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Landmark } from "lucide-react";
 import { toast } from "sonner";
+import { IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 import { useBankingData } from "../hooks/useBankingData";
 import { useSecureBankConnect } from "../hooks/useSecureBankConnect";
 import { useBankConnectionSync } from "../hooks/useBankConnectionSync";
@@ -77,8 +78,16 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
   return (
     <section className="space-y-6">
       <div className="flex items-center gap-3">
-        <Landmark size={24} className="text-cyan-400" />
-        <h2 className="text-xl font-black tracking-tight text-white">Bank connections</h2>
+        <IconBadge tone="cyan" size="md">
+          <Landmark size={22} />
+        </IconBadge>
+        <SectionHeader
+          eyebrow="Secure sync"
+          title="Bank connections"
+          description="Connect institutions, sync balances, and pull recent transactions through the shared banking flow."
+          className="gap-2"
+          titleClassName="app-card-title text-[var(--app-type-section-title-size)]"
+        />
       </div>
 
       <BankLinkComplianceBanner />
@@ -92,9 +101,17 @@ export function BankingSection({ onTransactionsRefetch }: BankingSectionProps) {
       )}
 
       {linkError && hasConnections && (
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold">
+        <Surface
+          variant="inset"
+          padding="sm"
+          className="text-sm font-bold text-[var(--app-accent-red-soft)]"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-accent-red-soft) 20%, transparent)",
+            backgroundColor: "color-mix(in srgb, var(--app-accent-red-soft) 10%, transparent)",
+          }}
+        >
           {linkError}
-        </div>
+        </Surface>
       )}
 
       {hasConnections && (

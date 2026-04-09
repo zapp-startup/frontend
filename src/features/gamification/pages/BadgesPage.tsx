@@ -3,8 +3,8 @@ import { Award } from "lucide-react";
 
 import { GamificationAPI, type UserBadge } from "@/api/gamification.api";
 import { BadgeGrid } from "@/features/gamification/components/BadgeDisplay";
-import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { toast } from "sonner";
+import { EmptyState, LoadingState, MetricCard, SectionHeader } from "@/shared/components/system";
 
 export function BadgesPage() {
   const [badges, setBadges] = React.useState<UserBadge[]>([]);
@@ -32,31 +32,38 @@ export function BadgesPage() {
 
   return (
     <div className="space-y-8 pb-32">
-      <div>
-        <h1 className="flex items-center gap-3 text-5xl font-black tracking-tighter text-white">
-          <Award size={34} className="text-yellow-400" />
-          Badge Cabinet
-        </h1>
-        <p className="mt-2 text-lg font-medium text-gray-500">
-          Earned milestones that reinforce intentional behavior.
-        </p>
-      </div>
+      <SectionHeader
+        eyebrow="Gamification"
+        title="Badge Cabinet"
+        titleClassName="app-page-title"
+        description="Earned milestones that reinforce intentional behavior."
+      />
+
+      {!loading && badges.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Total Badges"
+            value={badges.length}
+            detail="Visible rewards already unlocked across habits, streaks, and goals."
+          />
+          <MetricCard
+            label="Latest Unlock"
+            value={badges[0]?.badge.name ?? "None yet"}
+            detail={badges[0] ? new Date(badges[0].awarded_at).toLocaleDateString() : "Keep building momentum."}
+          />
+        </div>
+      )}
 
       {loading && (
-        <ElectricCard elevation={0}>
-          <div className="py-16 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
-            Loading badges...
-          </div>
-        </ElectricCard>
+        <LoadingState label="Loading badges..." lines={4} />
       )}
 
       {!loading && badges.length === 0 && (
-        <ElectricCard elevation={0}>
-          <div className="py-16 text-center">
-            <Award size={40} className="mx-auto mb-4 text-gray-700" />
-            <div className="font-bold text-gray-400">No badges earned yet.</div>
-          </div>
-        </ElectricCard>
+        <EmptyState
+          icon={<Award size={40} />}
+          title="No badges earned yet."
+          description="Complete reflections, hit targets, and keep streaks alive to start filling this cabinet."
+        />
       )}
 
       {!loading && badges.length > 0 && <BadgeGrid badges={badges} />}
