@@ -1,6 +1,16 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock3, FileText, RefreshCw, Sparkles, Target, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  RefreshCw,
+  Sparkles,
+  Target,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { ApiError } from "@/api/client";
@@ -19,6 +29,57 @@ import { cn } from "@/shared/components/ui/utils";
 import { COLORS } from "@/shared/theme";
 
 type ReviewKind = "weekly" | "monthly";
+
+const REVIEW_THEME: Record<
+  ReviewKind,
+  {
+    title: string;
+    eyebrow: string;
+    accent: string;
+    heroCard: string;
+    surfaceCard: string;
+    pill: string;
+    ring: string;
+    progress: string;
+    summaryTitle: string;
+    summaryDescription: string;
+    transactionTitle: string;
+    transactionDescription: string;
+  }
+> = {
+  weekly: {
+    title: "Weekly Review",
+    eyebrow: "Weekly Reset",
+    accent: COLORS.electricGreen,
+    heroCard: "from-emerald-400/18 via-cyan-400/10 to-transparent",
+    surfaceCard: "border-emerald-400/15",
+    pill: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
+    ring: "shadow-[0_0_0_1px_rgba(52,211,153,0.16)]",
+    progress: "from-emerald-300 via-cyan-300 to-lime-200",
+    summaryTitle: "Lock the lesson in",
+    summaryDescription:
+      "Capture the one pattern you want to keep, the miss you want to avoid, and the adjustment that matters next week.",
+    transactionTitle: "Purchases worth revisiting",
+    transactionDescription:
+      "These are the strongest spend decisions to review before you close the week.",
+  },
+  monthly: {
+    title: "Monthly Review",
+    eyebrow: "Monthly Audit",
+    accent: COLORS.electricBlue,
+    heroCard: "from-sky-400/18 via-indigo-400/10 to-transparent",
+    surfaceCard: "border-sky-400/15",
+    pill: "border-sky-400/25 bg-sky-400/10 text-sky-200",
+    ring: "shadow-[0_0_0_1px_rgba(56,189,248,0.16)]",
+    progress: "from-sky-300 via-cyan-300 to-indigo-200",
+    summaryTitle: "Close the month with signal",
+    summaryDescription:
+      "Name the standout win, the regret that taught you something, and the focus you want carrying into next month.",
+    transactionTitle: "Purchases to audit",
+    transactionDescription:
+      "Review the most meaningful spending moments first, then use the subscription cards to spot cleanup opportunities.",
+  },
+};
 
 const FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
   wins: {
@@ -59,6 +120,10 @@ const MISSING_COPY: Record<string, string> = {
 
 function formatMissingRequirement(code: string) {
   return MISSING_COPY[code] ?? code.replace(/_/g, " ");
+}
+
+function formatCategoryLabel(code: string) {
+  return code.replace(/_/g, " ");
 }
 
 function toDisplayTransaction(transaction: Transaction): DisplayTransaction {
@@ -158,8 +223,8 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
     }
   };
 
-  const title = kind === "weekly" ? "Weekly Review" : "Monthly Review";
-  const accent = kind === "weekly" ? COLORS.electricGreen : COLORS.electricBlue;
+  const theme = REVIEW_THEME[kind];
+  const accent = theme.accent;
 
   if (loading) {
     return (
@@ -175,7 +240,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
     return (
       <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
         <div className="space-y-3">
-          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">{title}</div>
+          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">{theme.title}</div>
           <div className="text-2xl font-black text-white">Could not load review data</div>
           <div className="text-sm text-gray-400">
             Try refreshing the page once the backend is available again.
@@ -189,120 +254,303 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
   }
 
   const review = overview.review;
+  const requiredTransactions = Math.max(overview.minimum_transactions_required, 1);
+  const reviewedProgress = Math.min(
+    overview.reviewed_transaction_count / requiredTransactions,
+    1,
+  );
+  const filledSummaryFields = overview.summary_requirements.filter(
+    (field) => summary[field]?.trim(),
+  ).length;
+  const summaryProgress =
+    overview.summary_requirements.length === 0
+      ? 1
+      : filledSummaryFields / overview.summary_requirements.length;
+  const overallProgress = Math.round(
+    (((reviewedProgress * 0.55) + (summaryProgress * 0.45)) || 0) * 100,
+  );
+  const outstandingRequirements = [
+    ...(missingRequirements.length > 0
+      ? missingRequirements
+      : overview.summary_requirements.filter((field) => !summary[field]?.trim())),
+  ];
+
+  if (
+    !outstandingRequirements.includes("reviewed_transactions") &&
+    overview.reviewed_transaction_count < overview.minimum_transactions_required
+  ) {
+    outstandingRequirements.unshift("reviewed_transactions");
+  }
 
   return (
     <div className="space-y-8 pb-24">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-3">
-          <Link to="/" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-gray-500 transition-colors hover:text-cyan-400">
-            <ArrowLeft size={14} />
-            Back to dashboard
-          </Link>
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-white">{title}</h1>
-            <p className="mt-2 text-sm text-gray-400">
-              {overview.period_label} · review meaningful purchases, then capture a short summary before points are awarded.
-            </p>
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#08111f] p-6 sm:p-8">
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-gradient-to-br",
+            theme.heroCard,
+          )}
+        />
+        <div className="pointer-events-none absolute -right-16 top-0 h-44 w-44 rounded-full bg-white/6 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-10 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
+
+        <div className="relative space-y-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-4">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-gray-500 transition-colors hover:text-cyan-400"
+              >
+                <ArrowLeft size={14} />
+                Back to dashboard
+              </Link>
+              <div className="space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300/80">
+                  {theme.eyebrow}
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+                    {theme.title}
+                  </h1>
+                  <div
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em]",
+                      statusTone(review),
+                    )}
+                  >
+                    {review.status === "completed" ? "Completed" : "Open"}
+                  </div>
+                </div>
+                <p className="max-w-3xl text-sm leading-6 text-gray-300">
+                  {overview.period_label}. Review the highest-signal purchases
+                  first, then finish the written summary before points are
+                  awarded.
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                "min-w-[220px] rounded-[1.8rem] border bg-white/[0.03] p-5 backdrop-blur",
+                theme.surfaceCard,
+                theme.ring,
+              )}
+            >
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+                Completion progress
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-4">
+                <div className="text-5xl font-black tracking-tight text-white">
+                  {overallProgress}%
+                </div>
+                <div
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em]",
+                    theme.pill,
+                  )}
+                >
+                  {overview.eligible_to_complete ? "Ready to submit" : "Still building"}
+                </div>
+              </div>
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/6">
+                <div
+                  className={cn(
+                    "h-full rounded-full bg-gradient-to-r transition-all duration-500",
+                    theme.progress,
+                  )}
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
+              <div className="mt-3 text-xs font-bold leading-5 text-gray-400">
+                {review.status === "completed"
+                  ? "This review is already closed for the current period."
+                  : overview.eligible_to_complete
+                    ? `You have enough reviewed transactions and summary detail to complete this ${kind} review.`
+                    : "Use the transaction queue below, then finish the summary prompts to unlock completion."}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className={cn("rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em]", statusTone(review))}>
-          {review.status === "completed" ? "Completed" : "Open"}
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <HeroMetricCard
+              label="Reviewed purchases"
+              value={String(overview.reviewed_transaction_count)}
+              note={`Need ${overview.minimum_transactions_required} before submission`}
+            />
+            <HeroMetricCard
+              label="Still pending"
+              value={String(overview.pending_transaction_feedback_count)}
+              note="Meaningful purchases left to reflect on"
+            />
+            <HeroMetricCard
+              label="Summary prompts"
+              value={`${filledSummaryFields}/${overview.summary_requirements.length}`}
+              note="Written reflection progress for this period"
+            />
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <ElectricCard semanticColor={accent} elevation={1}>
-          <div className="mb-6 flex items-center gap-2">
-            <Sparkles size={18} style={{ color: accent }} />
-            <h2 className="text-lg font-black text-white">Review readiness</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Reviewed transactions</div>
-              <div className="mt-3 text-3xl font-black text-white">{overview.reviewed_transaction_count}</div>
-              <div className="mt-2 text-xs font-bold text-gray-500">
-                Need {overview.minimum_transactions_required} to complete
+        <ElectricCard semanticColor={accent} elevation={1} className="overflow-hidden">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Sparkles size={18} style={{ color: accent }} />
+                <h2 className="text-lg font-black text-white">Review map</h2>
               </div>
+              <p className="max-w-xl text-sm leading-6 text-gray-400">
+                See exactly what is blocking completion, and how close this review
+                is to being done.
+              </p>
             </div>
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Pending feedback</div>
-              <div className="mt-3 text-3xl font-black text-white">{overview.pending_transaction_feedback_count}</div>
-              <div className="mt-2 text-xs font-bold text-gray-500">
-                Purchases still worth revisiting
-              </div>
-            </div>
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Completion state</div>
-              <div className="mt-3 text-3xl font-black text-white">
-                {overview.eligible_to_complete ? "Ready" : "In progress"}
-              </div>
-              <div className="mt-2 text-xs font-bold text-gray-500">
-                {review.status === "completed" ? "Already submitted for this period" : "Finish feedback + summary to earn points"}
-              </div>
+            <div
+              className={cn(
+                "rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em]",
+                theme.pill,
+              )}
+            >
+              {kind}
             </div>
           </div>
 
-          {(missingRequirements.length > 0 || !overview.eligible_to_complete) && (
-            <div className="mt-6 rounded-[1.8rem] border border-yellow-500/20 bg-yellow-500/10 p-5">
-              <div className="mb-3 flex items-center gap-2 text-sm font-black text-yellow-200">
-                <Clock3 size={16} />
-                Still needed before completion
+          <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+                Checklist
               </div>
-              <div className="space-y-2 text-sm text-yellow-100/90">
-                {(missingRequirements.length > 0 ? missingRequirements : overview.summary_requirements.filter((field) => !summary[field]?.trim()))
-                  .map((requirement) => (
-                    <div key={requirement}>• {formatMissingRequirement(requirement)}</div>
-                  ))}
-                {!overview.eligible_to_complete && !missingRequirements.includes("reviewed_transactions") && overview.reviewed_transaction_count < overview.minimum_transactions_required ? (
-                  <div>• {formatMissingRequirement("reviewed_transactions")}</div>
-                ) : null}
+              <div className="mt-4 space-y-3">
+                <ChecklistRow
+                  done={
+                    overview.reviewed_transaction_count >=
+                    overview.minimum_transactions_required
+                  }
+                  title="Review required purchases"
+                  description={`${overview.reviewed_transaction_count} of ${overview.minimum_transactions_required} completed`}
+                />
+                {overview.summary_requirements.map((field) => (
+                  <ChecklistRow
+                    key={field}
+                    done={Boolean(summary[field]?.trim())}
+                    title={FIELD_COPY[field]?.label ?? formatCategoryLabel(field)}
+                    description={summary[field]?.trim() ? "Captured" : "Still blank"}
+                  />
+                ))}
               </div>
             </div>
-          )}
+
+            <div className="rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5">
+              <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
+                <Clock3 size={16} className="text-yellow-300" />
+                Outstanding requirements
+              </div>
+              {outstandingRequirements.length === 0 ? (
+                <div className="rounded-[1.4rem] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100">
+                  Everything needed for this review is in place. Submit when you’re
+                  ready.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {outstandingRequirements.map((requirement) => (
+                    <div
+                      key={requirement}
+                      className="rounded-[1.4rem] border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm font-bold leading-6 text-yellow-100/90"
+                    >
+                      {formatMissingRequirement(requirement)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <MiniStat
+                  label="Review state"
+                  value={review.status === "completed" ? "Closed" : "Open"}
+                />
+                <MiniStat label="Period label" value={overview.period_label} />
+              </div>
+            </div>
+          </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricPurple} elevation={1}>
-          <div className="mb-6 flex items-center gap-2">
-            <FileText size={18} className="text-purple-300" />
-            <h2 className="text-lg font-black text-white">Summary</h2>
+        <ElectricCard
+          semanticColor={COLORS.electricPurple}
+          elevation={1}
+          className="overflow-hidden"
+        >
+          <div className="mb-6 space-y-2">
+            <div className="flex items-center gap-2">
+              <FileText size={18} className="text-purple-300" />
+              <h2 className="text-lg font-black text-white">
+                {theme.summaryTitle}
+              </h2>
+            </div>
+            <p className="text-sm leading-6 text-gray-400">
+              {theme.summaryDescription}
+            </p>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-4">
             {overview.summary_requirements.map((field) => {
               const copy = FIELD_COPY[field] ?? {
                 label: field.replace(/_/g, " "),
                 placeholder: "Add your reflection here.",
               };
+              const filled = Boolean(summary[field]?.trim());
               return (
-                <div key={field} className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
-                    {copy.label}
-                  </label>
+                <div
+                  key={field}
+                  className={cn(
+                    "rounded-[1.6rem] border bg-white/[0.02] p-4 transition-colors",
+                    filled
+                      ? "border-cyan-400/20 bg-cyan-400/[0.04]"
+                      : "border-white/[0.06]",
+                  )}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-400">
+                      {copy.label}
+                    </label>
+                    <div
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em]",
+                        filled
+                          ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                          : "border-white/10 bg-white/[0.03] text-gray-500",
+                      )}
+                    >
+                      {filled ? "Done" : "Needed"}
+                    </div>
+                  </div>
                   <textarea
                     value={summary[field] ?? ""}
-                    onChange={(event) => setSummary((current) => ({ ...current, [field]: event.target.value }))}
-                    rows={3}
-                    className="w-full rounded-[1.4rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium text-white outline-none transition-colors focus:border-cyan-500/40"
+                    onChange={(event) =>
+                      setSummary((current) => ({
+                        ...current,
+                        [field]: event.target.value,
+                      }))
+                    }
+                    rows={4}
+                    className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
                     placeholder={copy.placeholder}
                   />
                 </div>
               );
             })}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
+            <div className="rounded-[1.6rem] border border-white/[0.06] bg-white/[0.02] p-4">
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-gray-400">
                 Notes
               </label>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                rows={3}
-                className="w-full rounded-[1.4rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium text-white outline-none transition-colors focus:border-cyan-500/40"
+                rows={4}
+                className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
                 placeholder="Optional context you want to preserve with this review."
               />
             </div>
             <Button
               onClick={handleComplete}
               disabled={submitting || review.status === "completed"}
-              className="w-full rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400"
+              className="h-14 w-full rounded-[1.2rem] bg-cyan-500 text-sm font-black uppercase tracking-[0.18em] text-[#0B1220] hover:bg-cyan-400"
             >
               {review.status === "completed"
                 ? "Review completed"
@@ -314,46 +562,77 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
         </ElectricCard>
       </div>
 
-      <ElectricCard semanticColor={COLORS.electricCyan} elevation={1}>
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Wallet size={18} className="text-cyan-300" />
-            <h2 className="text-lg font-black text-white">Transactions to review</h2>
+      <ElectricCard
+        semanticColor={COLORS.electricCyan}
+        elevation={1}
+        className="overflow-hidden"
+      >
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Wallet size={18} className="text-cyan-300" />
+              <h2 className="text-lg font-black text-white">
+                {theme.transactionTitle}
+              </h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">
+              {theme.transactionDescription}
+            </p>
           </div>
-          <Button variant="outline" onClick={() => void loadReview()} className="rounded-2xl border-white/10">
+          <Button
+            variant="outline"
+            onClick={() => void loadReview()}
+            className="rounded-2xl border-white/10"
+          >
             <RefreshCw size={14} className="mr-2" />
             Refresh
           </Button>
         </div>
         {overview.transaction_candidates.length === 0 ? (
-          <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold text-gray-500">
-            No transaction candidates right now. If you’ve already reviewed your purchases for this period, you can finish the summary above.
+          <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold leading-6 text-gray-500">
+            No transaction candidates right now. If you’ve already reviewed your
+            purchases for this period, you can finish the summary above.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-4 lg:grid-cols-2">
             {overview.transaction_candidates.map((transaction) => (
-              <div
+              <button
                 key={transaction.id}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5"
+                type="button"
+                onClick={() => openFeedback(transaction)}
+                className="group rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5 text-left transition-all hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
               >
-                <div>
-                  <div className="text-lg font-black text-white">{transaction.description_raw || transaction.category}</div>
-                  <div className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
-                    {new Date(transaction.occurred_at).toLocaleDateString()} · {transaction.category}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-xl font-black text-white">{currencyAmount(transaction.amount)}</div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-600">
-                      {transaction.direction}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/80">
+                      Candidate {String(transaction.id).slice(-3)}
+                    </div>
+                    <div className="mt-2 truncate text-xl font-black text-white">
+                      {transaction.description_raw ||
+                        formatCategoryLabel(transaction.category)}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {new Date(transaction.occurred_at).toLocaleDateString()}
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {formatCategoryLabel(transaction.category)}
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {transaction.direction}
+                      </span>
                     </div>
                   </div>
-                  <Button onClick={() => openFeedback(transaction)} className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400">
-                    Review purchase
-                  </Button>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-white">
+                      {currencyAmount(transaction.amount)}
+                    </div>
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 transition-colors group-hover:border-cyan-300/40 group-hover:text-cyan-100">
+                      Review purchase
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -385,6 +664,72 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
           void loadReview();
         }}
       />
+    </div>
+  );
+}
+
+function HeroMetricCard({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
+      <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+        {label}
+      </div>
+      <div className="mt-3 text-3xl font-black tracking-tight text-white">
+        {value}
+      </div>
+      <div className="mt-2 text-xs font-bold leading-5 text-gray-400">
+        {note}
+      </div>
+    </div>
+  );
+}
+
+function ChecklistRow({
+  done,
+  title,
+  description,
+}: {
+  done: boolean;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-[1.2rem] border border-white/[0.05] bg-[#0B1220]/80 p-3">
+      <div
+        className={cn(
+          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+          done
+            ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+            : "border-white/10 bg-white/[0.04] text-gray-500",
+        )}
+      >
+        <CheckCircle2 size={14} />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-black text-white">{title}</div>
+        <div className="mt-1 text-xs font-bold leading-5 text-gray-500">
+          {description}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.2rem] border border-white/[0.05] bg-[#0B1220]/70 p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-black leading-5 text-white">{value}</div>
     </div>
   );
 }

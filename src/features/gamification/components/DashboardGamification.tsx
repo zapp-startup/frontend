@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Award, Calendar, Flame, Target, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Flame, Trophy, Users } from "lucide-react";
 
 import {
   GamificationAPI,
@@ -172,56 +172,33 @@ export function DashboardGamification() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="xl:col-span-1">
+      <div className="grid grid-cols-1 items-stretch gap-8 xl:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="h-full xl:col-span-1">
           <div className="mb-6 flex items-center gap-2">
             <IconBadge tone="green" size="sm">
               <Calendar size={18} />
             </IconBadge>
             <h3 className="app-card-title">Review Actions</h3>
           </div>
-          <p className="mb-6 text-sm leading-relaxed text-gray-400">
-            Weekly and monthly reviews now open guided flows that collect purchase feedback before points are awarded.
-          </p>
-          <div className="space-y-3">
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-white">Weekly review</div>
-                  <div className="mt-1 text-xs font-bold text-gray-500">
-                    {weeklyNudge
-                      ? `${weeklyNudge.reviewed_transaction_count} reviewed · ${weeklyNudge.pending_transaction_feedback_count} still worth revisiting`
-                      : "Review last week’s purchases and reflections."}
-                  </div>
-                </div>
-                <AppButton asChild className="rounded-2xl bg-green-500 text-white hover:bg-green-400">
+          <div className="grid grid-cols-2 gap-3">
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="success" size="hero" className="w-full rounded-[1.5rem]">
                   <Link to="/reviews/weekly">
                     {weeklyNudge?.status === "completed" ? "View review" : "Start weekly"}
                   </Link>
                 </AppButton>
               </div>
-            </div>
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-white">Monthly review</div>
-                  <div className="mt-1 text-xs font-bold text-gray-500">
-                    {monthlyNudge
-                      ? `${monthlyNudge.reviewed_transaction_count} reviewed · ${monthlyNudge.upcoming_subscription_renewals_count ?? 0} renewals to inspect`
-                      : "Review bigger purchases, subscriptions, and next-month focus."}
-                  </div>
-                </div>
-                <AppButton asChild className="rounded-2xl bg-blue-500 text-white hover:bg-blue-400">
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="info" size="hero" className="w-full rounded-[1.5rem]">
                   <Link to="/reviews/monthly">
                     {monthlyNudge?.status === "completed" ? "View review" : "Start monthly"}
                   </Link>
                 </AppButton>
               </div>
-            </div>
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="self-start xl:col-span-2">
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full xl:col-span-2">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <IconBadge tone="yellow" size="sm">
@@ -255,29 +232,7 @@ export function DashboardGamification() {
         </ElectricCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-        <MonthlyTargetsWidget compact />
-        <ElectricCard semanticColor={COLORS.electricBlue} elevation={1}>
-          <div className="mb-3 flex items-center gap-2">
-            <Target size={18} className="text-blue-400" />
-            <h3 className="text-lg font-black text-white">Monthly Focus</h3>
-          </div>
-          <p className="text-sm leading-relaxed text-gray-400">
-            Use monthly targets to set the habit you want to reinforce most this cycle.
-          </p>
-          {monthlyNudge ? (
-            <div className="mt-4 rounded-[1.5rem] border border-white/[0.05] bg-white/[0.02] p-4 text-xs font-bold text-gray-500">
-              {monthlyNudge.low_value_subscriptions_count ?? 0} low-value subscriptions and{" "}
-              {monthlyNudge.pending_transaction_feedback_count} pending transaction reviews are feeding this month’s reflection flow.
-            </div>
-          ) : null}
-          <AppButton asChild variant="outline" className="mt-5 rounded-2xl border-white/10">
-            <Link to="/targets">
-              Open targets
-            </Link>
-          </AppButton>
-        </ElectricCard>
-      </div>
+      <MonthlyTargetsWidget compact />
     </div>
   );
 }

@@ -287,16 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nextRoute: "/login",
         } satisfies RefreshSessionResult;
       }
-      flushSync(() => {
-        applyMe(null);
-      });
-      return {
-        hasSession: false,
-        me: null,
-        nextStep: null,
-        postMfaStep: null,
-        nextRoute: "/login",
-      } satisfies RefreshSessionResult;
+      throw e;
     }
   }, [applyMe]);
 
@@ -492,8 +483,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
 
   const verifyTotpEnrollment = React.useCallback(
-    (factorId: string, code: string) => mfaVerifyTotpEnrollment(factorId, code),
-    []
+    async (factorId: string, code: string) => {
+      const result = await mfaVerifyTotpEnrollment(factorId, code);
+      await refreshMfa();
+      return result;
+    },
+    [refreshMfa]
   );
 
   const verifyMfaChallenge = React.useCallback(

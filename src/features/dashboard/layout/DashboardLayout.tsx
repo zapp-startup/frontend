@@ -13,7 +13,6 @@ import { COLORS, PAGE_ACCENTS } from "@/shared/theme";
 import { ZappBot } from "../components/ZappBot";
 import { BuyAdvisorModal } from "../components/BuyAdvisorModal";
 import { PanelProvider } from "../context/PanelContext";
-import { FeedbackPromptFlow } from "@/features/transactions/components/FeedbackPromptFlow";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 import { ApiConfigBanner } from "@/shared/components/ApiConfigBanner";
 import { usePrivacyPolicyMeta } from "@/config/privacy";
@@ -272,7 +271,6 @@ export function DashboardLayout() {
 
       <ZappBot />
       <BuyAdvisorModal isOpen={isBuyAdvisorOpen} onClose={() => setIsBuyAdvisorOpen(false)} />
-      <FeedbackPromptFlow />
     </PanelProvider>
   );
 }

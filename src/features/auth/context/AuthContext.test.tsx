@@ -6,10 +6,11 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { addAuditSink, resetAuditSinks, type AuditEvent } from "@/shared/audit/audit";
 import { ApiError } from "@/api/client";
 
-const { mockApiRequest, mockFetchAuthAssurance, mockGetMfaSnapshot } = vi.hoisted(() => ({
+const { mockApiRequest, mockFetchAuthAssurance, mockGetMfaSnapshot, mockVerifyTotpEnrollment } = vi.hoisted(() => ({
   mockApiRequest: vi.fn(),
   mockFetchAuthAssurance: vi.fn(),
   mockGetMfaSnapshot: vi.fn(),
+  mockVerifyTotpEnrollment: vi.fn(),
 }));
 
 vi.mock("@/api/client", async (importOriginal) => {
@@ -27,7 +28,7 @@ vi.mock("@/api/compliance.api", () => ({
 vi.mock("@/features/auth/mfa/mfaOperations", () => ({
   getMfaSnapshot: mockGetMfaSnapshot,
   enrollTotpFactor: vi.fn(),
-  verifyTotpEnrollment: vi.fn(),
+  verifyTotpEnrollment: mockVerifyTotpEnrollment,
   verifyMfaChallenge: vi.fn(),
   unenrollFactor: vi.fn(),
 }));
@@ -103,6 +104,47 @@ function RefreshMfaHarness() {
   );
 }
 
+function RefreshSessionHarness() {
+  const { refreshSession, user, isAuthenticated } = useAuth();
+  const [result, setResult] = React.useState("");
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            const response = await refreshSession();
+            setResult(JSON.stringify(response));
+          } catch (error) {
+            setResult(error instanceof Error ? error.message : "unknown");
+          }
+        }}
+      >
+        Refresh session
+      </button>
+      <output data-testid="session-user">{user?.email ?? ""}</output>
+      <output data-testid="session-authenticated">{String(isAuthenticated)}</output>
+      <output data-testid="session-result">{result}</output>
+    </>
+  );
+}
+
+function VerifyTotpEnrollmentHarness() {
+  const { verifyTotpEnrollment } = useAuth();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void verifyTotpEnrollment("factor-1", "123 456");
+      }}
+    >
+      Verify enrollment
+    </button>
+  );
+}
+
 describe("AuthProvider", () => {
   let events: AuditEvent[] = [];
 
@@ -133,6 +175,7 @@ describe("AuthProvider", () => {
       nextLevel: "aal2",
       factors: [],
     });
+    mockVerifyTotpEnrollment.mockResolvedValue({});
   });
 
   it("calls POST /api/auth/login/ then GET /api/auth/me/ on sign-in", async () => {
@@ -273,5 +316,67 @@ describe("AuthProvider", () => {
       );
     });
     expect(JSON.stringify(events)).not.toMatch(/secret12/);
+  });
+
+  it("preserves the current session on non-401 refresh failures", async () => {
+    let meCallCount = 0;
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        meCallCount += 1;
+        if (meCallCount === 1) {
+          return meResponse;
+        }
+        throw new ApiError("Temporary backend failure", 503);
+      }
+      throw new Error(`Unmocked: ${path}`);
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <RefreshSessionHarness />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-user")).toHaveTextContent("user@example.com");
+      expect(screen.getByTestId("session-authenticated")).toHaveTextContent("true");
+    });
+
+    await user.click(screen.getByRole("button", { name: /refresh session/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-result")).toHaveTextContent("Temporary backend failure");
+      expect(screen.getByTestId("session-user")).toHaveTextContent("user@example.com");
+      expect(screen.getByTestId("session-authenticated")).toHaveTextContent("true");
+    });
+  });
+
+  it("refreshes MFA state after verifying TOTP enrollment", async () => {
+    mockApiRequest.mockResolvedValue(meResponse);
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <VerifyTotpEnrollmentHarness />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockGetMfaSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    mockGetMfaSnapshot.mockClear();
+    mockFetchAuthAssurance.mockClear();
+
+    await user.click(screen.getByRole("button", { name: /verify enrollment/i }));
+
+    await waitFor(() => {
+      expect(mockVerifyTotpEnrollment).toHaveBeenCalledWith("factor-1", "123 456");
+      expect(mockGetMfaSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockFetchAuthAssurance).toHaveBeenCalledTimes(1);
+    });
   });
 });
