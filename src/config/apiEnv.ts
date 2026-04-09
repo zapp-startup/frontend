@@ -40,12 +40,24 @@ export function validateProductionApiBaseUrl(raw: string | undefined): string | 
   return null;
 }
 
+/** Strip wrapping quotes from .env (e.g. VITE_API_URL='http://...'). */
+function normalizeEnvUrl(raw: string | undefined, fallback: string): string {
+  let s = (raw ?? "").trim();
+  if (
+    (s.startsWith("'") && s.endsWith("'")) ||
+    (s.startsWith('"') && s.endsWith('"'))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s || fallback;
+}
+
 /**
  * Resolves the API base URL for the current environment.
  */
 export function resolveApiBaseUrl(): ApiBaseUrlValidation {
   const fallback = "http://127.0.0.1:8000";
-  const raw = import.meta.env.VITE_API_URL?.trim() || fallback;
+  const raw = normalizeEnvUrl(import.meta.env.VITE_API_URL, fallback);
 
   if (import.meta.env.PROD) {
     const err = validateProductionApiBaseUrl(raw);

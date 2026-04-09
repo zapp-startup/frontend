@@ -304,14 +304,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) return { ok: false, error: error.message };
 
-    setApiAccessToken(data.session?.access_token ?? null);
-    if (data.session) {
-      await syncBackendUser();
-      await refreshMfa();
+    if (!data.session) {
+      return {
+        ok: false,
+        error:
+          "No active session. If email confirmation is required, confirm your inbox before signing in.",
+      };
     }
 
+    // Apply session synchronously so `user` / `isAuthenticated` update before navigation.
+    // Relying only on onAuthStateChange races the login redirect and sends users back to /login.
+    await applySession(data.session, true);
+    await refreshMfa();
+
     return { ok: true, session: data.session };
-  }, [syncBackendUser, refreshMfa]);
+  }, [applySession, refreshMfa]);
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
