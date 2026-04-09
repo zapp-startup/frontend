@@ -250,22 +250,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
 
-      if (error) {
+        if (error) {
+          setApiAccessToken(null);
+          setUser(null);
+          updateBackendUser(null);
+        } else {
+          await applySession(data.session, !!data.session);
+        }
+      } catch (e) {
+        console.error("Auth bootstrap failed:", e);
         setApiAccessToken(null);
         setUser(null);
         updateBackendUser(null);
-      } else {
-        await applySession(data.session, !!data.session);
+      } finally {
+        if (mounted) setAuthLoading(false);
       }
-      setAuthLoading(false);
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       const shouldSyncBackend = event === "SIGNED_IN";
-      await applySession(session, shouldSyncBackend);
+      try {
+        await applySession(session, shouldSyncBackend);
+      } catch (e) {
+        console.error("Auth state change handler failed:", e);
+      }
     });
 
     return () => {

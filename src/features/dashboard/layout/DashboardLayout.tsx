@@ -141,7 +141,11 @@ export function DashboardLayout() {
   const shouldReduceMotion = useReducedMotion();
 
   if (!isAuthReady) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B1220] text-xs font-black uppercase tracking-widest text-gray-500">
+        Loading…
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
