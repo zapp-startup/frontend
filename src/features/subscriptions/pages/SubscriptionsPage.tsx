@@ -10,6 +10,7 @@ import {
   SubscriptionsAPI,
   MerchantsAPI,
   SubscriptionValuationsAPI,
+  ValueScoresAPI,
   type Subscription,
   type Merchant,
   type SubscriptionValuation,
@@ -551,6 +552,33 @@ export function SubscriptionsPage() {
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_SUBSCRIPTIONS);
+  const [scoring, setScoring] = React.useState(false);
+
+  const refreshScoresAndSubscriptions = React.useCallback(async () => {
+    const [subs, valuations] = await Promise.all([
+      SubscriptionsAPI.list(),
+      SubscriptionValuationsAPI.list().catch(() => [] as SubscriptionValuation[]),
+    ]);
+    setSubscriptions(subs);
+    setSubscriptionValuations(valuations);
+  }, []);
+
+  const handleRecomputeValueScores = React.useCallback(async () => {
+    setScoring(true);
+    try {
+      await ValueScoresAPI.recompute();
+      await refreshScoresAndSubscriptions();
+      toast.success("Value scores updated.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        toast.error("Value score model is not available on the server (add trained checkpoint).");
+      } else {
+        toast.error("Could not update value scores.");
+      }
+    } finally {
+      setScoring(false);
+    }
+  }, [refreshScoresAndSubscriptions]);
 
   React.useEffect(() => {
     setRightPanelOpen(isAddPanelOpen);
@@ -714,15 +742,27 @@ export function SubscriptionsPage() {
           </div>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsAddPanelOpen(true)}
-          className="flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
-        >
-          <Plus size={18} strokeWidth={3} />
-          <span>Add Subscription</span>
-        </motion.button>
+        <div className="flex flex-shrink-0 items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={scoring || subscriptions.length === 0}
+            onClick={() => void handleRecomputeValueScores()}
+            className="border-white/10 text-[10px] font-black uppercase tracking-widest"
+          >
+            {scoring ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update value scores"}
+          </Button>
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsAddPanelOpen(true)}
+            className="flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
+          >
+            <Plus size={18} strokeWidth={3} />
+            <span>Add Subscription</span>
+          </motion.button>
+        </div>
       </div>
 
       {subscriptions.length === 0 && (

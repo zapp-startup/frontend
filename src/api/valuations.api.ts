@@ -55,6 +55,26 @@ export const ValuationModelVersionsAPI = {
     }),
 };
 
+/** Value-score pipeline (platform_bundle model → SubscriptionValuation). */
+export const ValueScoresAPI = {
+  me: (params?: { subscription?: number }) => {
+    const qs =
+      params?.subscription != null ? `?subscription=${params.subscription}` : "";
+    return apiRequest<SubscriptionValuation[]>(`/api/value-scores/me/${qs}`, auth);
+  },
+  recompute: (body?: { subscription_ids?: number[] }) =>
+    apiRequest<{
+      ok: boolean;
+      valuations?: SubscriptionValuation[];
+      model_version?: string;
+      message?: string;
+    }>("/api/value-scores/recompute/", {
+      ...auth,
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+};
+
 export const SubscriptionValuationsAPI = {
   list: (params?: { subscription?: number }) => {
     const qs = params?.subscription != null ? `?subscription=${params.subscription}` : "";
