@@ -2,6 +2,7 @@ import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SpotifyIntegrationSection } from "../components/SpotifyIntegrationSection";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
@@ -678,27 +679,27 @@ export function SubscriptionsPage() {
     );
   }, [subscriptionCards.length]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 size={48} className="animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-16 space-y-4">
-        <div className="text-red-400 font-bold">{error}</div>
-        <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-12 pb-32 relative z-10">
+      <SpotifyIntegrationSection />
+
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={48} className="animate-spin text-cyan-400" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="text-center py-16 space-y-4">
+          <div className="text-red-400 font-bold">{error}</div>
+          <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-4xl font-black tracking-tight">Active Subscriptions</h2>
@@ -788,6 +789,8 @@ export function SubscriptionsPage() {
           <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }
