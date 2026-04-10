@@ -115,7 +115,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Value: 82")).toBeInTheDocument();
@@ -144,7 +144,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Value: 120")).toBeInTheDocument();
