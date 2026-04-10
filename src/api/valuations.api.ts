@@ -2,6 +2,8 @@ import { apiRequest } from "./client";
 
 const auth = { requireAuth: true as const };
 
+export type ValuationJson = Record<string, unknown>;
+
 export type ValuationModelVersion = {
   id: number;
   [key: string]: unknown;
@@ -10,19 +12,27 @@ export type ValuationModelVersion = {
 export type SubscriptionValuation = {
   id: number;
   subscription?: number;
+  personal_value_score?: number | null;
   recommendation?: string;
-  confidence?: number;
-  evidence?: string;
+  confidence?: number | null;
+  evidence_json?: ValuationJson;
+  explanation_json?: ValuationJson;
   [key: string]: unknown;
 };
 
 export type ItemValuation = {
   id: number;
   description?: string;
+  item_name?: string;
+  item_category?: string;
   amount?: string | number;
+  observed_price?: string | number | null;
+  estimated_fair_price?: string | number | null;
+  personal_value_score?: number | null;
   recommendation?: string;
-  confidence?: number;
-  evidence?: string;
+  confidence?: number | null;
+  evidence_json?: ValuationJson;
+  reasoning_json?: ValuationJson;
   [key: string]: unknown;
 };
 

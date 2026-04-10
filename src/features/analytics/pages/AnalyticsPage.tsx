@@ -24,7 +24,7 @@ import type {
   Computed,
   SubscriptionValuation,
   ItemValuation,
-} from "@/api/types";
+} from "@/api";
 
 const OVERVIEW_BARS = [
   { name: "Development Tools", val: 85, color: COLORS.electricGreen, sub: "Essential Utility" },
@@ -171,16 +171,34 @@ function ComputedSection() {
 }
 
 function ValuationCard({
+  score,
   recommendation,
   confidence,
-  evidence,
+  evidenceJson,
+  reasoningJson,
 }: {
+  score?: number | null;
   recommendation?: string;
-  confidence?: number;
-  evidence?: string;
+  confidence?: number | null;
+  evidenceJson?: Record<string, unknown>;
+  reasoningJson?: Record<string, unknown>;
 }) {
+  const confidencePercent =
+    confidence == null ? null : Math.round(Math.min(1, Math.max(0, confidence)) * 100);
+  const evidenceText = evidenceJson ? JSON.stringify(evidenceJson, null, 2) : null;
+  const reasoningText = reasoningJson ? JSON.stringify(reasoningJson, null, 2) : null;
+
   return (
     <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02]">
+      {score != null && (
+        <div className="mb-4">
+          <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+            Personal Value Score
+          </div>
+          <span className="text-lg font-black text-white">{score}/150</span>
+        </div>
+      )}
+
       {recommendation && (
         <div className="mb-4">
           <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
@@ -199,7 +217,7 @@ function ValuationCard({
         </div>
       )}
 
-      {confidence != null && (
+      {confidencePercent != null && (
         <div className="mb-4">
           <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
             Confidence
@@ -209,22 +227,35 @@ function ValuationCard({
               <div
                 className="h-full rounded-full transition-all"
                 style={{
-                  width: `${Math.min(100, Math.max(0, confidence))}%`,
+                  width: `${confidencePercent}%`,
                   backgroundColor: COLORS.electricCyan,
                 }}
               />
             </div>
-            <span className="text-sm font-black text-white">{Math.round(confidence)}%</span>
+            <span className="text-sm font-black text-white">{confidencePercent}%</span>
           </div>
         </div>
       )}
 
-      {evidence && (
+      {evidenceText && (
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
             Evidence
           </div>
-          <p className="text-sm text-gray-300 leading-relaxed">{evidence}</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+            {evidenceText}
+          </pre>
+        </div>
+      )}
+
+      {reasoningText && (
+        <div className="mt-4">
+          <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+            Reasoning
+          </div>
+          <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+            {reasoningText}
+          </pre>
         </div>
       )}
     </div>
@@ -242,7 +273,7 @@ function ValuationsSection({
   const [itemVals, setItemVals] = React.useState<ItemValuation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addingItem, setAddingItem] = React.useState(false);
-  const [newItem, setNewItem] = React.useState({ description: "", amount: "" });
+  const [newItem, setNewItem] = React.useState({ itemName: "", amount: "" });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -273,19 +304,19 @@ function ValuationsSection({
   }, [onItemCreateIntentHandled, shouldStartAddingItem]);
 
   const handleAddItem = async () => {
-    if (!newItem.description.trim()) {
+    if (!newItem.itemName.trim()) {
       toast.error("Description is required.");
       return;
     }
 
     try {
       const created = await ItemValuationsAPI.create({
-        description: newItem.description,
-        amount: newItem.amount ? Number(newItem.amount) : undefined,
+        item_name: newItem.itemName,
+        observed_price: newItem.amount ? Number(newItem.amount) : undefined,
       });
 
       setItemVals((prev) => [...prev, created]);
-      setNewItem({ description: "", amount: "" });
+      setNewItem({ itemName: "", amount: "" });
       setAddingItem(false);
       onItemCreateIntentHandled();
       toast.success("Item valuation added.");
@@ -331,9 +362,9 @@ function ValuationsSection({
                 Description
               </Label>
               <Input
-                value={newItem.description}
+                value={newItem.itemName}
                 onChange={(e) =>
-                  setNewItem((prev) => ({ ...prev, description: e.target.value }))
+                  setNewItem((prev) => ({ ...prev, itemName: e.target.value }))
                 }
                 placeholder="e.g. New laptop"
                 className="bg-[#0B1220] border-white/10 text-white"
@@ -367,7 +398,7 @@ function ValuationsSection({
               variant="outline"
               onClick={() => {
                 setAddingItem(false);
-                setNewItem({ description: "", amount: "" });
+                setNewItem({ itemName: "", amount: "" });
                 onItemCreateIntentHandled();
               }}
             >
@@ -390,9 +421,11 @@ function ValuationsSection({
             {subVals.map((v) => (
               <ValuationCard
                 key={v.id}
+                score={v.personal_value_score}
                 recommendation={v.recommendation}
                 confidence={v.confidence}
-                evidence={v.evidence}
+                evidenceJson={v.evidence_json}
+                reasoningJson={v.explanation_json}
               />
             ))}
           </div>
@@ -406,9 +439,11 @@ function ValuationsSection({
             {itemVals.map((v) => (
               <ValuationCard
                 key={v.id}
+                score={v.personal_value_score}
                 recommendation={v.recommendation}
                 confidence={v.confidence}
-                evidence={v.evidence}
+                evidenceJson={v.evidence_json}
+                reasoningJson={v.reasoning_json}
               />
             ))}
           </div>
