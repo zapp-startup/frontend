@@ -1,19 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createConversation, listMessages, sendMessage } from "../ai.api";
-import { setApiAccessToken } from "../client";
 
 describe("ai.api", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });
-
-  function encodeBase64Url(value: string) {
-    return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-  }
-
-  function makeJwt(payload: Record<string, unknown>) {
-    return `header.${encodeBase64Url(JSON.stringify(payload))}.signature`;
-  }
 
   it("createConversation returns conversation_id", async () => {
     const mockFetch = vi.mocked(fetch);
@@ -32,25 +23,21 @@ describe("ai.api", () => {
 
     expect(result.conversation_id).toBe(123);
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/ai/conversations/",
+      expect.stringMatching(/\/api\/ai\/conversations\/$/),
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          "X-Dev-User": "seed_user_0",
-        }),
+        credentials: "include",
       })
     );
+    const init = mockFetch.mock.calls[0]?.[1];
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("X-Dev-User")).toBe("seed_user_0");
+    expect(headers.get("Authorization")).toBeNull();
   });
 
-  it("always sends Authorization and only uses the debug username header when available", async () => {
+  it("uses session cookies and omits Authorization; X-Dev-User only when passed explicitly", async () => {
     const mockFetch = vi.mocked(fetch);
-    setApiAccessToken(
-      makeJwt({
-        email: "person@example.com",
-        user_metadata: { username: "devuser" },
-      })
-    );
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -62,12 +49,11 @@ describe("ai.api", () => {
     await createConversation({ context_type: "general" });
 
     const init = mockFetch.mock.calls[0]?.[1];
+    expect(init).toMatchObject({ credentials: "include" });
     const headers = new Headers(init?.headers);
 
-    expect(headers.get("Authorization")).toContain("Bearer header.");
-    if (headers.has("X-Dev-User")) {
-      expect(headers.get("X-Dev-User")).toBe("devuser");
-    }
+    expect(headers.get("Authorization")).toBeNull();
+    expect(headers.has("X-Dev-User")).toBe(false);
   });
 
   it("sendMessage returns user_message and assistant_message", async () => {

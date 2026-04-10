@@ -1,4 +1,4 @@
-import { supabase } from "@/api/supabaseClient";
+import { apiRequest } from "@/api/client";
 
 export type MfaFactorView = {
   id: string;
@@ -13,62 +13,81 @@ export type MfaSnapshot = {
   factors: MfaFactorView[];
 };
 
-export async function getMfaSnapshot(): Promise<MfaSnapshot> {
-  const [{ data: aal, error: aalErr }, { data: factorsData, error: facErr }] = await Promise.all([
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    supabase.auth.mfa.listFactors(),
-  ]);
+type MfaFactorApi = {
+  id: string;
+  friendly_name?: string;
+  factor_type: string;
+  status: string;
+};
 
-  if (aalErr) throw aalErr;
-  if (facErr) throw facErr;
+type MfaSnapshotApi = {
+  current_level: "aal1" | "aal2" | null;
+  next_level: "aal1" | "aal2" | null;
+  factors: MfaFactorApi[];
+};
 
-  const totp = factorsData?.totp ?? [];
-  const factors: MfaFactorView[] = totp.map((f: { id: string; friendly_name?: string; factor_type: string; status: string }) => ({
+function mapSnapshot(data: MfaSnapshotApi): MfaSnapshot {
+  const factors: MfaFactorView[] = (data.factors ?? []).map((f) => ({
     id: f.id,
     friendlyName: f.friendly_name ?? "Authenticator",
     factorType: f.factor_type,
     status: f.status,
   }));
-
   return {
-    currentLevel: (aal?.currentLevel as "aal1" | "aal2") ?? null,
-    nextLevel: (aal?.nextLevel as "aal1" | "aal2") ?? null,
+    currentLevel: data.current_level ?? null,
+    nextLevel: data.next_level ?? null,
     factors,
   };
 }
 
+export async function getMfaSnapshot(): Promise<MfaSnapshot> {
+  const data = await apiRequest<MfaSnapshotApi>("/api/auth/mfa/snapshot/", { requireAuth: true });
+  return mapSnapshot(data);
+}
+
+export type TotpEnrollResponse = {
+  id: string;
+  totp?: { qr_code?: string; secret?: string };
+};
+
 export async function enrollTotpFactor(friendlyName = "Authenticator app") {
-  const { data, error } = await supabase.auth.mfa.enroll({
-    factorType: "totp",
-    friendlyName,
+  return apiRequest<TotpEnrollResponse>("/api/auth/mfa/enroll/", {
+    requireAuth: true,
+    method: "POST",
+    body: JSON.stringify({ friendly_name: friendlyName }),
   });
-  if (error) throw error;
-  if (!data) throw new Error("MFA enroll returned no data");
-  return data;
 }
 
 /** Complete TOTP enrollment with a code from the authenticator app. */
 export async function verifyTotpEnrollment(factorId: string, code: string) {
-  const { data: challenge, error: cErr } = await supabase.auth.mfa.challenge({ factorId });
-  if (cErr) throw cErr;
-  if (!challenge) throw new Error("MFA challenge failed");
-
-  const { data, error } = await supabase.auth.mfa.verify({
-    factorId,
-    challengeId: challenge.id,
-    code: code.replace(/\s/g, ""),
+  return apiRequest<unknown>("/api/auth/mfa/verify-enrollment/", {
+    requireAuth: true,
+    method: "POST",
+    body: JSON.stringify({ factor_id: factorId, code: code.replace(/\s/g, "") }),
   });
-  if (error) throw error;
-  if (!data) throw new Error("MFA verify returned no data");
-  return data;
 }
 
 /** Elevate session to AAL2 when MFA is already enrolled (challenge + verify). */
 export async function verifyMfaChallenge(factorId: string, code: string) {
-  return verifyTotpEnrollment(factorId, code);
+  const challenge = await apiRequest<{ challenge_id: string; expires_at?: string | null }>("/api/auth/mfa/challenge/", {
+    requireAuth: true,
+    method: "POST",
+    body: JSON.stringify({ factor_id: factorId }),
+  });
+  return apiRequest<unknown>("/api/auth/mfa/verify/", {
+    requireAuth: true,
+    method: "POST",
+    body: JSON.stringify({
+      factor_id: factorId,
+      challenge_id: challenge.challenge_id,
+      code: code.replace(/\s/g, ""),
+    }),
+  });
 }
 
 export async function unenrollFactor(factorId: string): Promise<void> {
-  const { error } = await supabase.auth.mfa.unenroll({ factorId });
-  if (error) throw error;
+  await apiRequest<null>(`/api/auth/mfa/factors/${encodeURIComponent(factorId)}/`, {
+    requireAuth: true,
+    method: "DELETE",
+  });
 }

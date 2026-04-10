@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/features/auth";
 import { usePlaidConnect } from "./usePlaidConnect";
 import { fetchConsentStatus, recordFinancialDataConsent } from "@/api/compliance.api";
-import { getPrivacyPolicyMeta } from "@/config/privacy";
+import { getFinancialConsentDisclosure, usePrivacyPolicyMeta } from "@/config/privacy";
 import { bankLinkGateMessage } from "../security/bankLinkMessages";
 import { messageForSecurityFlowError } from "../security/securityFlowErrors";
 
@@ -24,6 +24,11 @@ export function useSecureBankConnect(params: Params = {}) {
   const { onConnected } = params;
   const { verifyMfaChallenge, refreshMfa } = useAuth();
   const plaid = usePlaidConnect({ onConnected });
+  const privacyPolicyMeta = usePrivacyPolicyMeta();
+  const consentDisclosure = React.useMemo(
+    () => getFinancialConsentDisclosure(privacyPolicyMeta),
+    [privacyPolicyMeta]
+  );
   const [consentOpen, setConsentOpen] = React.useState(false);
   const [consentSubmitting, setConsentSubmitting] = React.useState(false);
   const [challengeOpen, setChallengeOpen] = React.useState(false);
@@ -46,7 +51,7 @@ export function useSecureBankConnect(params: Params = {}) {
 
     try {
       const status = await fetchConsentStatus();
-      if (status.financial_data_access === true) {
+      if (status.has_valid_financial_consent === true) {
         const { gate: gateBeforePlaid } = await refreshMfa();
         if (!gateBeforePlaid.can) {
           toast.error(bankLinkGateMessage(gateBeforePlaid.reason));
@@ -64,8 +69,7 @@ export function useSecureBankConnect(params: Params = {}) {
   const handleConsentConfirm = React.useCallback(async () => {
     setConsentSubmitting(true);
     try {
-      const meta = getPrivacyPolicyMeta();
-      await recordFinancialDataConsent(meta.version);
+      await recordFinancialDataConsent(consentDisclosure.auditText);
     } catch (e) {
       toast.error(messageForSecurityFlowError(e, "Could not record consent."));
       setConsentSubmitting(false);
@@ -81,7 +85,7 @@ export function useSecureBankConnect(params: Params = {}) {
     setConsentOpen(false);
     setConsentSubmitting(false);
     plaid.startConnect();
-  }, [plaid, refreshMfa]);
+  }, [consentDisclosure.auditText, plaid, refreshMfa]);
 
   const submitChallenge = React.useCallback(async () => {
     const { mfaSnapshot: snap } = await refreshMfa();
@@ -103,7 +107,7 @@ export function useSecureBankConnect(params: Params = {}) {
       }
       try {
         const status = await fetchConsentStatus();
-        if (status.financial_data_access === true) {
+        if (status.has_valid_financial_consent === true) {
           const { gate: gateBeforePlaid } = await refreshMfa();
           if (!gateBeforePlaid.can) {
             toast.error(bankLinkGateMessage(gateBeforePlaid.reason));

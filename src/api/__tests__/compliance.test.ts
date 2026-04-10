@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { recordFinancialDataConsent, fetchAuthAssurance, fetchConsentStatus } from "../compliance.api";
+import {
+  recordFinancialDataConsent,
+  fetchAuthAssurance,
+  fetchConsentStatus,
+  fetchPrivacyPolicyMetadata,
+} from "../compliance.api";
 import { apiRequest } from "../client";
 
 vi.mock("../client", async (importOriginal) => {
@@ -18,7 +23,10 @@ describe("compliance.api", () => {
   it("fetchAuthAssurance calls auth-assurance endpoint", async () => {
     const body = {
       mfa_required_by_policy: false,
+      consent_required_by_policy: true,
+      financial_consent_valid: true,
       assurance: { aal: "aal2" as string | null, amr: ["mfa"], mfa_factors_count: 1 },
+      aal_normalized: "aal2" as string | null,
       banking_allowed: true,
       blocking_code: null,
     };
@@ -29,22 +37,37 @@ describe("compliance.api", () => {
   });
 
   it("fetchConsentStatus calls consent status endpoint", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce({ financial_data_access: false });
+    vi.mocked(apiRequest).mockResolvedValueOnce({
+      has_valid_financial_consent: false,
+      required_policy_version: "2.1.0",
+    });
     const r = await fetchConsentStatus();
-    expect(r.financial_data_access).toBe(false);
+    expect(r.has_valid_financial_consent).toBe(false);
+    expect(r.required_policy_version).toBe("2.1.0");
     expect(apiRequest).toHaveBeenCalledWith("/api/compliance/consent/status/", { requireAuth: true });
   });
 
-  it("recordFinancialDataConsent sends consent_type and policy_version", async () => {
+  it("fetchPrivacyPolicyMetadata calls privacy-policy endpoint", async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce({
+      privacy_policy_url: "/privacy",
+      privacy_policy_version: "2.1.0",
+      privacy_policy_effective_date: "2026-04-01",
+    });
+    const r = await fetchPrivacyPolicyMetadata();
+    expect(r.privacy_policy_version).toBe("2.1.0");
+    expect(apiRequest).toHaveBeenCalledWith("/api/compliance/privacy-policy/");
+  });
+
+  it("recordFinancialDataConsent sends consent_text and source", async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce({});
-    await recordFinancialDataConsent("2.1.0");
+    await recordFinancialDataConsent("I agree to the current policy.");
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/compliance/consent/",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          consent_type: "financial_data_access",
-          policy_version: "2.1.0",
+          consent_text: "I agree to the current policy.",
+          source: "web",
         }),
         requireAuth: true,
       })
@@ -54,6 +77,6 @@ describe("compliance.api", () => {
   it("recordFinancialDataConsent propagates errors (no silent 404)", async () => {
     const { ApiError } = await import("../client");
     vi.mocked(apiRequest).mockRejectedValueOnce(new ApiError("Not found", 404));
-    await expect(recordFinancialDataConsent("1.0")).rejects.toBeTruthy();
+    await expect(recordFinancialDataConsent("consent text")).rejects.toBeTruthy();
   });
 });

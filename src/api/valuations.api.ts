@@ -9,9 +9,10 @@ export type ValuationModelVersion = {
 
 export type SubscriptionValuation = {
   id: number;
-  subscription?: number;
+  subscription?: number | null;
+  personal_value_score?: number | null;
   recommendation?: string;
-  confidence?: number;
+  confidence?: number | null;
   evidence?: string;
   [key: string]: unknown;
 };

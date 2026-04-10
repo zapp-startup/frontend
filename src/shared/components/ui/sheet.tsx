@@ -72,10 +72,10 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        <SheetClose className="ring-offset-background absolute top-6 right-6 inline-flex size-10 items-center justify-center rounded-[var(--app-radius-md)] border border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-inset)] text-[var(--app-color-text-secondary)] opacity-100 transition-colors hover:bg-[var(--app-color-surface-base)] hover:text-[var(--app-color-text-primary)] focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
+        </SheetClose>
       </SheetPrimitive.Content>
     </SheetPortal>
   );

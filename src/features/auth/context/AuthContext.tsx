@@ -1,9 +1,8 @@
 import * as React from "react";
-import type { Session } from "@supabase/supabase-js";
-import { ApiError, apiRequest, getApiAccessToken, getApiConfigurationError, setApiAccessToken } from "@/api/client";
-import { resolveApiBaseUrl } from "@/config/apiEnv";
-import { supabase } from "@/api/supabaseClient";
+import { flushSync } from "react-dom";
+import { apiRequest, ApiError, getApiConfigurationError } from "@/api/client";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
+import { emitAuditEvent } from "@/shared/audit/audit";
 import {
   enrollTotpFactor as mfaEnrollTotp,
   getMfaSnapshot,
@@ -12,6 +11,27 @@ import {
   verifyTotpEnrollment as mfaVerifyTotpEnrollment,
   type MfaSnapshot,
 } from "@/features/auth/mfa/mfaOperations";
+
+/** GET /api/auth/me/ — canonical session user from Django. */
+export type MeResponse = {
+  id: number;
+  email: string;
+  username: string;
+  supabase_uid: string | null;
+  name?: string;
+  tier?: string;
+  created_at?: string;
+  /** Authenticator assurance level from server session (e.g. aal1 / aal2). */
+  aal?: string | null;
+  last_step_up_at?: number | null;
+  logged_in_at?: number | null;
+  mfa_pending?: boolean;
+  mfa_enrollment_required?: boolean;
+  next_step?: string | null;
+  post_mfa_step?: string | null;
+  onboarding_completed?: boolean;
+  onboarding_required?: boolean;
+};
 
 export type User = {
   id: number | string;
@@ -28,6 +48,17 @@ export type BackendUserProfile = {
   email: string;
   username: string;
   supabase_uid: string;
+};
+
+export type AuthNextStep = "mfa_setup" | "mfa_verify" | "onboarding_survey" | "dashboard" | null;
+export type AuthPostMfaStep = "onboarding_survey" | "dashboard" | null;
+
+export type RefreshSessionResult = {
+  hasSession: boolean;
+  me: MeResponse | null;
+  nextStep: AuthNextStep;
+  postMfaStep: AuthPostMfaStep;
+  nextRoute: string;
 };
 
 /** Why bank linking may be blocked (aligned with auth-assurance blocking_code + client checks). */
@@ -48,10 +79,17 @@ export type RefreshMfaResult = {
 type AuthContextValue = {
   user: User | null;
   backendUser: BackendUserProfile | null;
+  nextStep: AuthNextStep;
+  postMfaStep: AuthPostMfaStep;
+  nextRoute: string;
   isAuthenticated: boolean;
   /** True after the first session check has completed; use to avoid redirecting before bootstrap. */
   isAuthReady: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; session?: Session | null }>;
+  refreshSession: () => Promise<RefreshSessionResult>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string; nextRoute?: string; nextStep?: AuthNextStep }>;
   signUp: (data: SignUpData) => Promise<{ ok: boolean; error?: string; requiresVerification?: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Pick<User, "name" | "tier">>) => Promise<{ ok: boolean; error?: string }>;
@@ -79,34 +117,88 @@ export type SignUpData = {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-function mapSupabaseUser(u: any): User {
-  const meta = (u?.user_metadata ?? {}) as Record<string, any>;
-  const email = u.email ?? "";
-  const fallbackName = email ? String(email).split("@")[0] : "User";
-
+function mapMeToUser(me: MeResponse): User {
   return {
-    id: u.id,
-    supabaseUid: u.id,
-    username: (meta.username as string) ?? fallbackName,
-    name: (meta.name as string) ?? fallbackName,
-    email,
-    tier: meta.tier as string | undefined,
-    createdAt: u.created_at ?? new Date().toISOString(),
+    id: me.id,
+    supabaseUid: me.supabase_uid ?? "",
+    username: me.username,
+    name: me.name || me.username,
+    email: me.email,
+    tier: me.tier,
+    createdAt: me.created_at ?? "",
   };
 }
 
-function mergeBackendProfile(user: User, backendUser: BackendUserProfile | null): User {
-  if (!backendUser) return user;
-
+function mapMeToBackend(me: MeResponse): BackendUserProfile {
   return {
-    ...user,
-    id: backendUser.id,
-    supabaseUid: backendUser.supabase_uid,
-    username: backendUser.username,
-    name: user.name || backendUser.username,
-    email: backendUser.email || user.email,
+    id: me.id,
+    email: me.email,
+    username: me.username,
+    supabase_uid: me.supabase_uid ?? "",
   };
 }
+
+function normalizeNextStep(value: unknown): AuthNextStep {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "mfa_setup") return "mfa_setup";
+  if (raw === "mfa_verify") return "mfa_verify";
+  if (raw === "onboarding_survey") return "onboarding_survey";
+  if (raw === "dashboard") return "dashboard";
+  return null;
+}
+
+function normalizePostMfaStep(value: unknown): AuthPostMfaStep {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (raw === "onboarding_survey") return "onboarding_survey";
+  if (raw === "dashboard") return "dashboard";
+  return null;
+}
+
+function resolveOnboardingStep(me: MeResponse): "onboarding_survey" | "dashboard" {
+  if (typeof me.onboarding_required === "boolean") {
+    return me.onboarding_required ? "onboarding_survey" : "dashboard";
+  }
+  if (typeof me.onboarding_completed === "boolean") {
+    return me.onboarding_completed ? "dashboard" : "onboarding_survey";
+  }
+  return "dashboard";
+}
+
+function deriveNextStepFromMe(me: MeResponse): Exclude<AuthNextStep, null> {
+  const explicit = normalizeNextStep(me.next_step);
+  if (explicit) return explicit;
+  if (me.mfa_pending) {
+    return me.mfa_enrollment_required ? "mfa_setup" : "mfa_verify";
+  }
+  return resolveOnboardingStep(me);
+}
+
+function derivePostMfaStepFromMe(
+  me: MeResponse,
+  nextStep: Exclude<AuthNextStep, null>
+): AuthPostMfaStep {
+  if (nextStep !== "mfa_setup" && nextStep !== "mfa_verify") {
+    return null;
+  }
+  const explicit = normalizePostMfaStep(me.post_mfa_step);
+  if (explicit) {
+    return explicit;
+  }
+  return resolveOnboardingStep(me);
+}
+
+export function routeForNextStep(nextStep: AuthNextStep): string {
+  if (nextStep === "mfa_setup") return "/mfa/setup";
+  if (nextStep === "mfa_verify") return "/mfa/verify";
+  if (nextStep === "onboarding_survey") return "/onboarding";
+  return "/";
+}
+
+type SignUpApiResponse = {
+  requires_verification?: boolean;
+  email_confirmation_required?: boolean;
+  user?: MeResponse;
+};
 
 type GateOpts = { loading: boolean; fetchFailed: boolean };
 
@@ -131,23 +223,76 @@ export function computeBankLinkGateFromAssurance(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [backendUser, setBackendUser] = React.useState<BackendUserProfile | null>(null);
+  const [nextStep, setNextStep] = React.useState<AuthNextStep>(null);
+  const [postMfaStep, setPostMfaStep] = React.useState<AuthPostMfaStep>(null);
   const [authLoading, setAuthLoading] = React.useState(true);
   const [mfaSnapshot, setMfaSnapshot] = React.useState<MfaSnapshot | null>(null);
   const [mfaLoading, setMfaLoading] = React.useState(false);
   const [mfaError, setMfaError] = React.useState<string | null>(null);
   const [authAssurance, setAuthAssurance] = React.useState<AuthAssuranceResponse | null>(null);
   const backendUserRef = React.useRef<BackendUserProfile | null>(null);
-  const syncBackendUserPromiseRef = React.useRef<Promise<BackendUserProfile | null> | null>(null);
-  const lastSyncedAccessTokenRef = React.useRef<string | null>(null);
+  /** Sync with `user` so `refreshMfa` can run immediately after login before re-render. */
+  const userRef = React.useRef<User | null>(null);
 
   const updateBackendUser = React.useCallback((profile: BackendUserProfile | null) => {
     backendUserRef.current = profile;
     setBackendUser(profile);
   }, []);
 
+  const applyMe = React.useCallback(
+    (me: MeResponse | null) => {
+      if (!me) {
+        userRef.current = null;
+        setUser(null);
+        updateBackendUser(null);
+        setNextStep(null);
+        setPostMfaStep(null);
+        return;
+      }
+      const resolvedNextStep = deriveNextStepFromMe(me);
+      const u = mapMeToUser(me);
+      userRef.current = u;
+      setUser(u);
+      updateBackendUser(mapMeToBackend(me));
+      setNextStep(resolvedNextStep);
+      setPostMfaStep(derivePostMfaStepFromMe(me, resolvedNextStep));
+    },
+    [updateBackendUser]
+  );
+
+  const refreshSession = React.useCallback(async () => {
+    try {
+      const me = await apiRequest<MeResponse>("/api/auth/me/", { requireAuth: true });
+      flushSync(() => {
+        applyMe(me);
+      });
+      const resolvedNextStep = deriveNextStepFromMe(me);
+      return {
+        hasSession: true,
+        me,
+        nextStep: resolvedNextStep,
+        postMfaStep: derivePostMfaStepFromMe(me, resolvedNextStep),
+        nextRoute: routeForNextStep(resolvedNextStep),
+      } satisfies RefreshSessionResult;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        flushSync(() => {
+          applyMe(null);
+        });
+        return {
+          hasSession: false,
+          me: null,
+          nextStep: null,
+          postMfaStep: null,
+          nextRoute: "/login",
+        } satisfies RefreshSessionResult;
+      }
+      throw e;
+    }
+  }, [applyMe]);
+
   const refreshMfa = React.useCallback(async () => {
-    const token = getApiAccessToken();
-    if (!token) {
+    if (!userRef.current) {
       setMfaSnapshot(null);
       setAuthAssurance(null);
       setMfaError(null);
@@ -193,127 +338,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const syncBackendUser = React.useCallback(async () => {
-    const currentAccessToken = getApiAccessToken();
-    if (currentAccessToken && lastSyncedAccessTokenRef.current === currentAccessToken && backendUserRef.current) {
-      return backendUserRef.current;
-    }
-
-    if (syncBackendUserPromiseRef.current) {
-      return syncBackendUserPromiseRef.current;
-    }
-
-    syncBackendUserPromiseRef.current = (async () => {
-      try {
-        const profile = await apiRequest<BackendUserProfile>("/api/auth/sync/", {
-          requireAuth: true,
-          method: "POST",
-        });
-        // #region agent log
-        fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
-          body: JSON.stringify({
-            sessionId: "8045f8",
-            location: "AuthContext.tsx:syncBackendUser",
-            message: "auth/sync OK",
-            data: { hypothesisId: "H2", backendUserId: profile?.id },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-        lastSyncedAccessTokenRef.current = currentAccessToken;
-        updateBackendUser(profile);
-        setUser((prev) => (prev ? mergeBackendProfile(prev, profile) : prev));
-        return profile;
-      } catch (e) {
-        const status = e instanceof ApiError ? e.status : 0;
-        const msg = e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200);
-        // #region agent log
-        fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
-          body: JSON.stringify({
-            sessionId: "8045f8",
-            location: "AuthContext.tsx:syncBackendUser",
-            message: "auth/sync FAILED",
-            data: { hypothesisId: "H2", httpStatus: status, errPreview: msg },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-        updateBackendUser(null);
-        return null;
-      } finally {
-        syncBackendUserPromiseRef.current = null;
-      }
-    })();
-
-    return syncBackendUserPromiseRef.current;
-  }, [updateBackendUser]);
-
-  const applySession = React.useCallback(
-    async (session: Session | null, shouldSyncBackend: boolean) => {
-      const accessToken = session?.access_token ?? null;
-      setApiAccessToken(accessToken);
-
-      const sbUser = session?.user ?? null;
-      if (!sbUser) {
-        setUser(null);
-        updateBackendUser(null);
-        lastSyncedAccessTokenRef.current = null;
-        return;
-      }
-
-      const mappedUser = mapSupabaseUser(sbUser);
-      setUser(mergeBackendProfile(mappedUser, backendUserRef.current));
-
-      if (shouldSyncBackend) {
-        await syncBackendUser();
-      }
-    },
-    [syncBackendUser, updateBackendUser]
-  );
-
   React.useEffect(() => {
     let mounted = true;
 
     (async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        if (error) {
-          setApiAccessToken(null);
-          setUser(null);
-          updateBackendUser(null);
-        } else {
-          await applySession(data.session, !!data.session);
-        }
-      } catch (e) {
-        console.error("Auth bootstrap failed:", e);
-        setApiAccessToken(null);
-        setUser(null);
-        updateBackendUser(null);
+        await refreshSession();
       } finally {
         if (mounted) setAuthLoading(false);
       }
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const shouldSyncBackend = event === "SIGNED_IN";
-      try {
-        await applySession(session, shouldSyncBackend);
-      } catch (e) {
-        console.error("Auth state change handler failed:", e);
-      }
-    });
-
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
     };
-  }, [applySession]);
+  }, [refreshSession]);
 
   React.useEffect(() => {
     if (user) {
@@ -325,89 +364,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, refreshMfa]);
 
-  const login = React.useCallback(async (email: string, password: string) => {
-    const apiEnv = resolveApiBaseUrl();
-    let supabaseHost = "";
-    try {
-      const raw = (import.meta.env.VITE_SUPABASE_URL ?? "").trim();
-      if (raw) supabaseHost = new URL(raw).hostname;
-    } catch {
-      supabaseHost = "invalid_url";
-    }
-    // #region agent log
-    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
-      body: JSON.stringify({
-        sessionId: "8045f8",
-        location: "AuthContext.tsx:login",
-        message: "login start env snapshot",
-        data: {
-          hypothesisId: "H1",
-          apiOk: apiEnv.ok,
-          apiBase: apiEnv.ok ? apiEnv.url : apiEnv.message,
-          supabaseHost,
-          hasAnonKey: !!(import.meta.env.VITE_SUPABASE_ANON_KEY ?? "").trim().length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+  const login = React.useCallback(
+    async (email: string, password: string) => {
+      try {
+        await apiRequest<MeResponse>("/api/auth/login/", {
+          method: "POST",
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password,
+          }),
+        });
+        const refreshed = await refreshSession();
+        if (!refreshed.hasSession || !refreshed.me) {
+          throw new Error("Sign in did not create a valid session.");
+        }
+        await refreshMfa();
 
-    const { error, data } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+        emitAuditEvent({
+          event_name: "auth.login",
+          outcome: "success",
+          actor_id: refreshed.me.supabase_uid,
+          source_system: "frontend-web",
+          action: "login",
+          resource_type: "session",
+          metadata: { auth_provider: "django_session" },
+        });
 
-    // #region agent log
-    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
-      body: JSON.stringify({
-        sessionId: "8045f8",
-        location: "AuthContext.tsx:login",
-        message: "signInWithPassword result",
-        data: {
-          hypothesisId: "H5",
-          supabaseError: error?.message ?? null,
-          hasSession: !!data?.session,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    if (error) return { ok: false, error: error.message };
-
-    if (!data.session) {
-      return {
-        ok: false,
-        error:
-          "No active session. If email confirmation is required, confirm your inbox before signing in.",
-      };
-    }
-
-    // Apply session synchronously so `user` / `isAuthenticated` update before navigation.
-    // Relying only on onAuthStateChange races the login redirect and sends users back to /login.
-    await applySession(data.session, true);
-    await refreshMfa();
-
-    // #region agent log
-    fetch("http://127.0.0.1:7762/ingest/2813d3a2-4c39-4fb0-a3d8-03476374a40e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8045f8" },
-      body: JSON.stringify({
-        sessionId: "8045f8",
-        location: "AuthContext.tsx:login",
-        message: "login applySession+mfa done",
-        data: { hypothesisId: "H3", ok: true },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    return { ok: true, session: data.session };
-  }, [applySession, refreshMfa]);
+        return {
+          ok: true as const,
+          nextRoute: refreshed.nextRoute,
+          nextStep: refreshed.nextStep,
+        };
+      } catch (e) {
+        const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Sign in failed.";
+        emitAuditEvent({
+          event_name: "auth.login",
+          outcome: "failure",
+          actor_id: null,
+          source_system: "frontend-web",
+          action: "login",
+          resource_type: "session",
+          error_message: message,
+          metadata: { auth_provider: "django_session", email_domain: email.trim().toLowerCase().split("@")[1] ?? null },
+        });
+        return { ok: false as const, error: message };
+      }
+    },
+    [refreshMfa, refreshSession]
+  );
 
   const signUp = React.useCallback(async (data: SignUpData) => {
     if (data.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
@@ -415,52 +419,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { ok: false, error: "Passwords do not match." };
     }
 
-    const { error, data: resp } = await supabase.auth.signUp({
-      email: data.email.trim().toLowerCase(),
-      password: data.password,
-      options: {
-        data: {
+    try {
+      const resp = await apiRequest<SignUpApiResponse>("/api/auth/signup/", {
+        method: "POST",
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
           name: data.name.trim(),
-          tier: "Intentional Tier",
-        },
-      },
-    });
+        }),
+      });
 
-    if (error) return { ok: false, error: error.message };
+      const needsVerify =
+        resp.requires_verification === true || resp.email_confirmation_required === true;
+      if (!needsVerify) {
+        await refreshSession();
+      }
 
-    if (resp.session) {
-      await applySession(resp.session, true);
+      emitAuditEvent({
+        event_name: "auth.signup",
+        outcome: "success",
+        actor_id: resp.user?.supabase_uid ?? null,
+        source_system: "frontend-web",
+        action: "signup",
+        resource_type: "account",
+        metadata: { auth_provider: "django_session", verification_required: needsVerify },
+      });
+
+      return { ok: true as const, requiresVerification: needsVerify };
+    } catch (e) {
+      const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Sign up failed.";
+      emitAuditEvent({
+        event_name: "auth.signup",
+        outcome: "failure",
+        actor_id: null,
+        source_system: "frontend-web",
+        action: "signup",
+        resource_type: "account",
+        error_message: message,
+        metadata: { auth_provider: "django_session", email_domain: data.email.trim().toLowerCase().split("@")[1] ?? null },
+      });
+      return { ok: false as const, error: message };
     }
-
-    return { ok: true, requiresVerification: !resp.session };
-  }, [applySession]);
+  }, [refreshSession]);
 
   const logout = React.useCallback(async () => {
-    await supabase.auth.signOut();
-    setApiAccessToken(null);
-    setUser(null);
-    updateBackendUser(null);
-    lastSyncedAccessTokenRef.current = null;
-  }, [updateBackendUser]);
+    const actorId = userRef.current?.supabaseUid ?? backendUserRef.current?.supabase_uid ?? null;
+    try {
+      await apiRequest<null>("/api/auth/logout/", { method: "POST" });
+    } catch {
+      // Still clear local state so the UI can recover.
+    }
+    applyMe(null);
+    emitAuditEvent({
+      event_name: "auth.logout",
+      outcome: "success",
+      actor_id: actorId,
+      source_system: "frontend-web",
+      action: "logout",
+      resource_type: "session",
+    });
+  }, [applyMe]);
 
   const enrollTotpFactor = React.useCallback(() => mfaEnrollTotp(), []);
 
   const verifyTotpEnrollment = React.useCallback(
-    (factorId: string, code: string) =>
-      mfaVerifyTotpEnrollment(factorId, code).then(async (r) => {
-        await refreshMfa();
-        return r;
-      }),
+    async (factorId: string, code: string) => {
+      const result = await mfaVerifyTotpEnrollment(factorId, code);
+      await refreshMfa();
+      return result;
+    },
     [refreshMfa]
   );
 
   const verifyMfaChallenge = React.useCallback(
-    (factorId: string, code: string) =>
-      mfaVerifyChallenge(factorId, code).then(async (r) => {
-        await refreshMfa();
-        return r;
-      }),
-    [refreshMfa]
+    (factorId: string, code: string) => mfaVerifyChallenge(factorId, code),
+    []
   );
 
   const unenrollMfaFactor = React.useCallback(
@@ -479,29 +512,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [mfaLoading, mfaError, authAssurance]);
 
-  const updateProfile = React.useCallback(async (data: Partial<Pick<User, "name" | "tier">>) => {
-    const { error, data: resp } = await supabase.auth.updateUser({
-      data: {
-        ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.tier !== undefined ? { tier: data.tier } : {}),
-      },
-    });
+  const nextRoute = React.useMemo(() => {
+    if (!user) return "/login";
+    return routeForNextStep(nextStep);
+  }, [user, nextStep]);
 
-    if (error) {
-      return { ok: false as const, error: error.message };
-    }
-
-    const sbUser = resp.user ?? null;
-    setUser(sbUser ? mergeBackendProfile(mapSupabaseUser(sbUser), backendUserRef.current) : null);
-    return { ok: true as const };
-  }, []);
+  const updateProfile = React.useCallback(
+    async (data: Partial<Pick<User, "name" | "tier">>) => {
+      try {
+        const me = await apiRequest<MeResponse>("/api/users/profile/", {
+          requireAuth: true,
+          method: "PATCH",
+          body: JSON.stringify({
+            ...(data.name !== undefined ? { name: data.name } : {}),
+            ...(data.tier !== undefined ? { tier: data.tier } : {}),
+          }),
+        });
+        applyMe(me);
+        emitAuditEvent({
+          event_name: "account.profile_update",
+          outcome: "success",
+          actor_id: me.supabase_uid,
+          source_system: "frontend-web",
+          action: "update_profile",
+          resource_type: "account",
+          metadata: { updated_fields: Object.keys(data) },
+        });
+        return { ok: true as const };
+      } catch (e) {
+        const message = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Update failed.";
+        emitAuditEvent({
+          event_name: "account.profile_update",
+          outcome: "failure",
+          actor_id: userRef.current?.supabaseUid ?? null,
+          source_system: "frontend-web",
+          action: "update_profile",
+          resource_type: "account",
+          error_message: message,
+          metadata: { updated_fields: Object.keys(data) },
+        });
+        return { ok: false as const, error: message };
+      }
+    },
+    [applyMe]
+  );
 
   const value = React.useMemo<AuthContextValue>(
     () => ({
       user,
       backendUser,
+      nextStep,
+      postMfaStep,
+      nextRoute,
       isAuthenticated: !!user,
       isAuthReady: !authLoading,
+      refreshSession,
       login,
       signUp,
       logout,
@@ -521,7 +586,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       user,
       backendUser,
+      nextStep,
+      postMfaStep,
+      nextRoute,
       authLoading,
+      refreshSession,
       login,
       signUp,
       logout,

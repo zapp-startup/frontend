@@ -20,26 +20,43 @@ import {
   Trash2,
   MessageSquare,
 } from "lucide-react";
-import { COLORS, GLOWS } from "@/shared/theme";
+import { COLORS } from "@/shared/theme";
+import {
+  formatDateLabel,
+  formatLocalDateYYYYMMDD,
+  getLocalDateKey,
+  parseDateForDisplay,
+} from "@/shared/date";
 import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
 import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
-import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
 import { BankingSection } from "@/features/banking";
 import { useMergedTransactions } from "../hooks/useMergedTransactions";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
 import { TransactionFeedbackModal } from "../components/TransactionFeedbackModal";
+import {
+  AppButton,
+  AppInput,
+  AppSheet,
+  AppSheetBody,
+  AppSheetContent,
+  AppSheetDescription,
+  AppSheetFooter,
+  AppSheetHeader,
+  AppSheetTitle,
+  EmptyState,
+  FormField,
+  LoadingState,
+  MetricCard,
+  StatusChip,
+  Surface,
+  ValueScoreMeter,
+  appButtonVariants,
+} from "@/shared/components/system";
 import { toast } from "sonner";
-
-function formatLocalDateYYYYMMDD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function createEmptyTransactionForm(): NewTransaction {
   return {
@@ -98,6 +115,7 @@ type TransactionRowViewModel = {
   amountText: string;
   isIncome: boolean;
   valueScore: number | null;
+  valueDisplayScoreText: string;
   valueLabel: string;
   valueTone: string;
   valueColor: string;
@@ -110,7 +128,7 @@ type TransactionGroupViewModel = {
 };
 
 function formatDayLabel(date: string) {
-  return new Date(date).toLocaleDateString("en-US", {
+  return formatDateLabel(date, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -154,7 +172,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
     React.useMemo(() => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayStrMemo = today.toISOString().split("T")[0];
+      const todayStrMemo = formatLocalDateYYYYMMDD(today);
 
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - today.getDay() - 7 * (NUM_WEEKS - 1));
@@ -163,13 +181,13 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
       const cursor = new Date(startDate);
 
       while (cursor <= today) {
-        allDaysMemo.push(cursor.toISOString().split("T")[0]);
+        allDaysMemo.push(formatLocalDateYYYYMMDD(cursor));
         cursor.setDate(cursor.getDate() + 1);
       }
 
       const spendByDayMemo: Record<string, number> = {};
       for (const tx of transactions) {
-        const day = tx.occurred_at.split("T")[0];
+        const day = getLocalDateKey(tx.occurred_at);
         if (tx.direction === "spend") {
           spendByDayMemo[day] = (spendByDayMemo[day] ?? 0) + Math.abs(Number(tx.amount));
         }
@@ -184,7 +202,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
       const monthLabelByWeekMemo: Record<number, string> = {};
       weeksMemo.forEach((week, wi) => {
         for (const date of week) {
-          const d = new Date(date);
+          const d = parseDateForDisplay(date);
           const key = `${d.getFullYear()}-${d.getMonth()}`;
           if (!seenMonths.has(key)) {
             seenMonths.add(key);
@@ -198,7 +216,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
       thisWeekStart.setDate(today.getDate() - today.getDay());
 
       const thisWeekSpendMemo = allDaysMemo
-        .filter((d) => d >= thisWeekStart.toISOString().split("T")[0])
+        .filter((d) => d >= formatLocalDateYYYYMMDD(thisWeekStart))
         .reduce((s, d) => s + (spendByDayMemo[d] ?? 0), 0);
 
       const biggestDayMemo = Object.entries(spendByDayMemo).sort((a, b) => b[1] - a[1])[0];
@@ -238,7 +256,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white/[0.02] rounded-2xl p-4 border border-white/5 flex items-center gap-3">
+        <Surface variant="inset" padding="sm" className="flex items-center gap-3 rounded-2xl">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${COLORS.electricCyan}15` }}
@@ -246,12 +264,12 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
             <TrendingDown size={18} style={{ color: COLORS.electricCyan }} />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-gray-500">This Week</div>
-            <div className="text-2xl font-black text-white">${thisWeekSpend.toFixed(0)}</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">This Week</div>
+            <div className="text-2xl font-black text-[var(--app-color-text-primary)]">${thisWeekSpend.toFixed(0)}</div>
           </div>
-        </div>
+        </Surface>
 
-        <div className="bg-white/[0.02] rounded-2xl p-4 border border-white/5 flex items-center gap-3">
+        <Surface variant="inset" padding="sm" className="flex items-center gap-3 rounded-2xl">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${COLORS.electricRed}15` }}
@@ -259,22 +277,22 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
             <Flame size={18} style={{ color: COLORS.electricRed }} />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-gray-500">Peak Day</div>
-            <div className="text-2xl font-black text-white">
-              {biggestDay ? `$${biggestDay[1].toFixed(0)}` : "—"}
-            </div>
-            {biggestDay && (
-              <div className="text-[9px] text-gray-500 font-bold mt-0.5">
-                {new Date(biggestDay[0]).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+            <div className="text-[9px] font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">Peak Day</div>
+            <div className="text-2xl font-black text-[var(--app-color-text-primary)]">
+                {biggestDay ? `$${biggestDay[1].toFixed(0)}` : "—"}
+              </div>
+              {biggestDay && (
+                <div className="mt-0.5 text-[9px] font-bold text-[var(--app-color-text-tertiary)]">
+                  {formatDateLabel(biggestDay[0], {
+                    month: "short",
+                    day: "numeric",
+                  })}
               </div>
             )}
           </div>
-        </div>
+        </Surface>
 
-        <div className="bg-white/[0.02] rounded-2xl p-4 border border-white/5 flex items-center gap-3">
+        <Surface variant="inset" padding="sm" className="flex items-center gap-3 rounded-2xl">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${COLORS.electricGreen}15` }}
@@ -282,12 +300,12 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
             <Sparkles size={18} style={{ color: COLORS.electricGreen }} />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-gray-500">No-Spend Streak</div>
-            <div className="text-2xl font-black text-white">
+            <div className="text-[9px] font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">No-Spend Streak</div>
+            <div className="text-2xl font-black text-[var(--app-color-text-primary)]">
               {streak} {streak === 1 ? "day" : "days"}
             </div>
           </div>
-        </div>
+        </Surface>
       </div>
 
       <div ref={containerRef} style={{ width: "100%" }}>
@@ -313,7 +331,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                   fontWeight: 900,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "#6b7280",
+                  color: "var(--app-color-text-tertiary)",
                   opacity: i % 2 === 0 ? 1 : 0,
                   userSelect: "none",
                 }}
@@ -373,7 +391,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                             borderRadius: Math.max(4, cellSize * 0.2),
                             backgroundColor: isFuture ? "transparent" : getColor(spend, isSelected),
                             boxShadow: isSelected ? `0 0 12px ${COLORS.electricCyan}60` : undefined,
-                            outline: isToday && !isSelected ? `2px solid rgba(255,255,255,0.25)` : undefined,
+                            outline: isToday && !isSelected ? "2px solid var(--app-color-border-strong)" : undefined,
                             outlineOffset: -1,
                             cursor: isFuture ? "default" : "pointer",
                           }}
@@ -392,16 +410,16 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                           >
                             <div
                               style={{
-                                background: "#0B1220",
-                                border: "1px solid rgba(255,255,255,0.1)",
+                                background: "var(--app-color-surface-overlay)",
+                                border: "1px solid var(--app-color-border-strong)",
                                 borderRadius: 10,
                                 padding: "6px 10px",
                                 boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>
-                                {new Date(date).toLocaleDateString("en-US", {
+                              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--app-color-text-primary)" }}>
+                                {formatDateLabel(date, {
                                   weekday: "short",
                                   month: "short",
                                   day: "numeric",
@@ -415,7 +433,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
                                   fontSize: 11,
                                   fontWeight: 700,
                                   marginTop: 2,
-                                  color: spend > 0 ? COLORS.electricCyan : "#6b7280",
+                                  color: spend > 0 ? COLORS.electricCyan : "var(--app-color-text-tertiary)",
                                 }}
                               >
                                 {spend > 0 ? `$${spend.toFixed(2)} spent` : "No spend"}
@@ -434,21 +452,26 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
       </div>
 
       {selectedDate && (
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          onClick={() => onSelectDate(null)}
-          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-400 hover:text-cyan-300 transition-colors"
         >
-          <X size={10} />
-          Showing{" "}
-          {new Date(selectedDate).toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          })}{" "}
-          · Clear
-        </motion.button>
+          <AppButton
+          onClick={() => onSelectDate(null)}
+            variant="quietAccent"
+            size="sm"
+            className="h-auto px-0 py-0 text-[10px] uppercase tracking-widest"
+          >
+            <X size={10} />
+            Showing{" "}
+            {formatDateLabel(selectedDate, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            · Clear
+          </AppButton>
+        </motion.div>
       )}
 
       <div
@@ -458,7 +481,7 @@ const SpendingCalendar = React.memo(function SpendingCalendar({
           fontWeight: 900,
           textTransform: "uppercase",
           letterSpacing: "0.1em",
-          color: "#6b7280",
+          color: "var(--app-color-text-tertiary)",
         }}
       >
         <span>Less</span>
@@ -502,7 +525,7 @@ function AddPanel({
           amount: editingTransaction.amount,
           direction: editingTransaction.direction,
           category: editingTransaction.category,
-          occurred_at: editingTransaction.occurred_at.split("T")[0],
+          occurred_at: getLocalDateKey(editingTransaction.occurred_at),
           satisfaction_rating: editingTransaction.satisfaction_rating,
         }
       : createEmptyTransactionForm()
@@ -518,7 +541,7 @@ function AddPanel({
         amount: editingTransaction.amount,
         direction: editingTransaction.direction,
         category: editingTransaction.category,
-        occurred_at: editingTransaction.occurred_at.split("T")[0],
+        occurred_at: getLocalDateKey(editingTransaction.occurred_at),
         satisfaction_rating: editingTransaction.satisfaction_rating,
       });
     } else {
@@ -567,175 +590,142 @@ function AddPanel({
   };
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-[#0B1220]/80 backdrop-blur-md z-[110]"
-      />
-
-      <motion.div
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[#101A2E] border-l border-white/5 z-[120] p-12 shadow-2xl flex flex-col"
-        style={{ boxShadow: `-20px 0 60px rgba(0,0,0,0.5)` }}
-      >
-        <div className="flex items-center justify-between mb-10">
+    <AppSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <AppSheetContent className="flex w-full max-w-lg flex-col rounded-none border-l shadow-2xl">
+        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)]">
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter">
-              {isEdit ? "Edit Transaction" : "Add Transaction"}
-            </h2>
-            <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">
+            <AppSheetTitle>{isEdit ? "Edit Transaction" : "Add Transaction"}</AppSheetTitle>
+            <AppSheetDescription>
+              {isEdit ? "Update a manual transaction and keep the feed consistent." : "Log a manual transaction with type, category, date, and satisfaction context."}
+            </AppSheetDescription>
+            <div className="mt-3 text-[10px] font-black uppercase tracking-[0.32em] text-[var(--app-accent-cyan-soft)]">
               {isEdit ? "Update" : "Manual Entry"}
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
-            <X size={24} className="text-gray-500" />
-          </button>
-        </div>
+        </AppSheetHeader>
 
-        <div className="flex-1 space-y-8 overflow-y-auto pr-2">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Description</label>
-            <input
+        <AppSheetBody className="space-y-7 pt-6">
+          <FormField label="Description">
+            <AppInput
               type="text"
               placeholder="e.g. Sushi dinner with friends"
               value={form.description_raw}
               onChange={(e) => set("description_raw", e.target.value)}
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all placeholder:text-gray-700"
             />
-          </div>
+          </FormField>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Amount ($)</label>
-              <input
+          <div className="grid gap-6 sm:grid-cols-2">
+            <FormField label="Amount ($)">
+              <AppInput
                 type="number"
                 min="0"
                 step="0.01"
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Type</label>
-              <div className="flex bg-[#0B1220] rounded-2xl p-1.5 border border-white/10">
+            <FormField label="Type">
+              <Surface variant="inset" padding="sm" className="flex rounded-2xl p-1.5">
                 {["spend", "income"].map((type) => (
-                  <button
+                  <AppButton
                     key={type}
                     onClick={() => set("direction", type)}
-                    className="flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                    style={
-                      form.direction === type
-                        ? { backgroundColor: COLORS.electricCyan, color: "#0B1220" }
-                        : { color: "#64748b" }
-                    }
+                    variant={form.direction === type ? "primary" : "quiet"}
+                    size="sm"
+                    className="flex-1"
                   >
                     {type === "spend" ? "Expense" : "Income"}
-                  </button>
+                  </AppButton>
                 ))}
-              </div>
-            </div>
+              </Surface>
+            </FormField>
           </div>
 
-          <div className="space-y-3" style={{ position: "relative" }}>
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Category</label>
-            <button
+          <FormField label="Category" className="relative">
+            <AppButton
               onClick={() => setCategoryOpen((o) => !o)}
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-left flex items-center justify-between hover:border-white/20 transition-all"
+              variant="outline"
+              size="lg"
+              className="w-full justify-between px-6 text-left"
             >
               <div className="flex items-center gap-3">
                 <selectedCat.icon size={18} style={{ color: selectedCat.color }} />
-                <span className="font-bold text-white">{selectedCat.label}</span>
+                <span className="font-bold text-[var(--app-color-text-primary)]">{selectedCat.label}</span>
               </div>
               {categoryOpen ? (
-                <ChevronUp size={18} className="text-gray-600" />
+                <ChevronUp size={18} className="text-[var(--app-color-text-tertiary)]" />
               ) : (
-                <ChevronDown size={18} className="text-gray-600" />
+                <ChevronDown size={18} className="text-[var(--app-color-text-tertiary)]" />
               )}
-            </button>
+            </AppButton>
 
             {categoryOpen && (
-              <div
-                className="absolute left-0 right-0 mt-2 bg-[#0B1220] border border-white/10 rounded-2xl overflow-auto z-[200] max-h-64"
+              <Surface
+                variant="overlay"
+                padding="none"
+                className="absolute left-0 right-0 z-[200] mt-2 max-h-64 overflow-auto rounded-2xl"
                 style={{ top: "100%" }}
               >
                 {CATEGORY_OPTIONS.map((cat) => (
-                  <button
+                  <AppButton
                     key={cat.value}
                     onClick={() => {
                       set("category", cat.value);
                       setCategoryOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-6 py-4 hover:bg-white/5 transition-all text-left"
+                    variant="quiet"
+                    size="lg"
+                    className="w-full justify-start rounded-none px-6 text-left hover:bg-[var(--app-color-surface-inset)]"
                   >
                     <cat.icon size={16} style={{ color: cat.color }} />
-                    <span className="font-bold text-white text-sm">{cat.label}</span>
-                  </button>
+                    <span className="text-sm font-bold text-[var(--app-color-text-primary)]">{cat.label}</span>
+                  </AppButton>
                 ))}
-              </div>
+              </Surface>
             )}
-          </div>
+          </FormField>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Date</label>
-            <div className="relative">
-              <Calendar size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
+          <FormField label="Date">
+              <AppInput
                 type="date"
                 value={form.occurred_at}
                 onChange={(e) => set("occurred_at", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 pl-16 pr-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
+                startAdornment={<Calendar size={18} />}
               />
-            </div>
-          </div>
+          </FormField>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Satisfaction <span className="text-gray-600">(optional)</span>
-            </label>
-            <div className="flex gap-2">
+          <FormField label={<>Satisfaction <span className="text-[var(--app-color-text-tertiary)]">(optional)</span></>}>
+            <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <button
+                <AppButton
                   key={n}
                   onClick={() => set("satisfaction_rating", form.satisfaction_rating === n ? null : n)}
-                  className="flex-1 py-3 rounded-xl text-xs font-black transition-all"
-                  style={{
-                    backgroundColor:
-                      form.satisfaction_rating === n ? COLORS.electricCyan : "rgba(255,255,255,0.04)",
-                    color: form.satisfaction_rating === n ? "#0B1220" : "#64748b",
-                    border: `1px solid ${
-                      form.satisfaction_rating === n
-                        ? COLORS.electricCyan
-                        : "rgba(255,255,255,0.06)"
-                    }`,
-                  }}
+                  variant={form.satisfaction_rating === n ? "primary" : "secondary"}
+                  size="sm"
+                  className="min-w-0 px-0 text-[11px] tracking-normal sm:text-xs"
                 >
                   {n}
-                </button>
+                </AppButton>
               ))}
             </div>
-          </div>
-        </div>
+          </FormField>
+        </AppSheetBody>
 
-        <div className="pt-8 mt-auto">
-          <Button
+        <AppSheetFooter className="mt-auto border-t border-[var(--app-color-border-subtle)]">
+          <AppButton
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] rounded-[2rem] py-10 text-xl font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-50"
+            variant="hero"
+            size="hero"
+            className="w-full text-sm"
           >
             {submitting ? "Saving..." : isEdit ? "Update Transaction" : "Add Transaction"}
-          </Button>
-        </div>
-      </motion.div>
-    </>
+          </AppButton>
+        </AppSheetFooter>
+      </AppSheetContent>
+    </AppSheet>
   );
 }
 
@@ -765,111 +755,115 @@ const FilterBar = React.memo(function FilterBar({
 
   const btnClass = (active: boolean) =>
     cn(
-      "whitespace-nowrap px-4 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer",
+      appButtonVariants({ variant: active ? "info" : "outline", size: "sm" }),
+      "justify-between rounded-xl px-4 text-[10px] tracking-widest shadow-none",
       active
-        ? "border-cyan-500/40 text-cyan-400 bg-cyan-500/10"
-        : "bg-[#101A2E] border-white/5 text-gray-400 hover:text-white hover:border-white/10"
+        ? ""
+        : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] text-[var(--app-color-text-secondary)]"
     );
 
   return (
     <div data-filterbar className="flex items-center gap-2 flex-wrap" style={{ position: "relative", zIndex: 100 }}>
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "date" ? null : "date")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!(filters.date_from || filters.date_to))}
         >
           {filters.date_from || filters.date_to
             ? `${filters.date_from || "…"} → ${filters.date_to || "…"}`
             : "Date Range"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "date" && (
           <div
             style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 9999, minWidth: 220 }}
-            className="bg-[#101A2E] border border-white/10 rounded-2xl p-4 space-y-3 shadow-2xl"
+            className="app-surface-overlay space-y-3 rounded-2xl p-4 shadow-2xl"
           >
             <div className="space-y-1">
-              <div className="text-[10px] font-black uppercase text-gray-500">From</div>
-              <input
+              <div className="text-[10px] font-black uppercase text-[var(--app-color-text-tertiary)]">From</div>
+              <AppInput
                 type="date"
                 value={filters.date_from}
                 onChange={(e) => onChange({ ...filters, date_from: e.target.value })}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-xl px-4 py-2.5 text-white font-bold outline-none text-sm"
+                size="sm"
               />
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] font-black uppercase text-gray-500">To</div>
-              <input
+              <div className="text-[10px] font-black uppercase text-[var(--app-color-text-tertiary)]">To</div>
+              <AppInput
                 type="date"
                 value={filters.date_to}
                 onChange={(e) => onChange({ ...filters, date_to: e.target.value })}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-xl px-4 py-2.5 text-white font-bold outline-none text-sm"
+                size="sm"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(null)}
-              className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-cyan-400"
-            >
+            <AppButton type="button" variant="quietAccent" size="sm" onClick={() => setOpen(null)} className="w-full justify-center">
               Apply
-            </button>
+            </AppButton>
           </div>
         )}
       </div>
 
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "cat" ? null : "cat")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!filters.category)}
         >
           {filters.category ? getCategoryMeta(filters.category).label : "Category"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "cat" && (
           <div
             style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 9999, minWidth: 180 }}
-            className="bg-[#101A2E] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+            className="app-surface-overlay overflow-hidden rounded-2xl shadow-2xl"
           >
-            <button
+            <AppButton
               type="button"
               onClick={() => {
                 onChange({ ...filters, category: "" });
                 setOpen(null);
               }}
-              className="w-full px-5 py-3 text-left text-[10px] font-black uppercase text-gray-500 hover:bg-white/5"
+              variant="quiet"
+              size="sm"
+              className="w-full justify-start rounded-none px-5 text-left text-[var(--app-color-text-tertiary)] hover:bg-[var(--app-color-surface-inset)]"
             >
               All
-            </button>
+            </AppButton>
 
             {CATEGORY_OPTIONS.map((cat) => (
-              <button
+              <AppButton
                 key={cat.value}
                 type="button"
                 onClick={() => {
                   onChange({ ...filters, category: cat.value });
                   setOpen(null);
                 }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-5 py-3 hover:bg-white/5 transition-all text-left",
-                  filters.category === cat.value && "bg-white/5"
-                )}
+                variant={filters.category === cat.value ? "secondary" : "quiet"}
+                size="sm"
+                className="w-full justify-start rounded-none px-5 text-left hover:bg-[var(--app-color-surface-inset)]"
               >
                 <cat.icon size={14} style={{ color: cat.color }} />
-                <span className="font-bold text-white text-xs">{cat.label}</span>
-              </button>
+                <span className="text-xs font-bold text-[var(--app-color-text-primary)]">{cat.label}</span>
+              </AppButton>
             ))}
           </div>
         )}
       </div>
 
       <div style={{ position: "relative" }}>
-        <button
+        <AppButton
           type="button"
           onClick={() => setOpen(open === "type" ? null : "type")}
+          variant="outline"
+          size="sm"
           className={btnClass(!!filters.direction)}
         >
           {filters.direction
@@ -878,12 +872,12 @@ const FilterBar = React.memo(function FilterBar({
               : filters.direction.charAt(0).toUpperCase() + filters.direction.slice(1)
             : "Type"}
           <ChevronDown size={12} />
-        </button>
+        </AppButton>
 
         {open === "type" && (
           <div
             style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 9999, minWidth: 140 }}
-            className="bg-[#101A2E] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+            className="app-surface-overlay overflow-hidden rounded-2xl shadow-2xl"
           >
             {[
               { label: "All", value: "" },
@@ -891,33 +885,28 @@ const FilterBar = React.memo(function FilterBar({
               { label: "Income", value: "income" },
               { label: "Refund", value: "refund" },
             ].map((opt) => (
-              <button
+              <AppButton
                 key={opt.value}
                 type="button"
                 onClick={() => {
                   onChange({ ...filters, direction: opt.value });
                   setOpen(null);
                 }}
-                className={cn(
-                  "w-full px-5 py-3 text-left text-xs font-black text-white hover:bg-white/5 transition-all",
-                  filters.direction === opt.value && "bg-white/5"
-                )}
+                variant={filters.direction === opt.value ? "secondary" : "quiet"}
+                size="sm"
+                className="w-full justify-start rounded-none px-5 text-left hover:bg-[var(--app-color-surface-inset)]"
               >
                 {opt.label}
-              </button>
+              </AppButton>
             ))}
           </div>
         )}
       </div>
 
       {hasFilters && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="whitespace-nowrap px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2"
-        >
+        <AppButton type="button" variant="outline" size="sm" onClick={onClear}>
           <X size={12} /> Clear
-        </button>
+        </AppButton>
       )}
     </div>
   );
@@ -936,33 +925,14 @@ const TransactionStats = React.memo(function TransactionStats({
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <ElectricCard className="p-6" semanticColor={COLORS.electricCyan} elevation={1}>
-        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">
-          Total Transactions
-        </div>
-        <div className="text-3xl font-black text-white">{count}</div>
-      </ElectricCard>
-
-      <ElectricCard className="p-6" semanticColor={COLORS.electricRed} elevation={1}>
-        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">
-          Total Spent
-        </div>
-        <div className="text-3xl font-black text-white">${totalSpend.toFixed(2)}</div>
-      </ElectricCard>
-
-      <ElectricCard className="p-6" semanticColor={COLORS.electricGreen} elevation={1}>
-        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">
-          Total Income
-        </div>
-        <div className="text-3xl font-black text-white">${totalIncome.toFixed(2)}</div>
-      </ElectricCard>
-
-      <ElectricCard className="p-6" semanticColor={COLORS.electricBlue} elevation={1}>
-        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black mb-1">Net</div>
-        <div className={cn("text-3xl font-black", net >= 0 ? "text-emerald-400" : "text-red-400")}>
-          {net >= 0 ? "+" : ""}${net.toFixed(2)}
-        </div>
-      </ElectricCard>
+      <MetricCard label="Total Transactions" value={count} className="app-surface-card" />
+      <MetricCard label="Total Spent" value={`$${totalSpend.toFixed(2)}`} className="app-surface-card" />
+      <MetricCard label="Total Income" value={`$${totalIncome.toFixed(2)}`} className="app-surface-card" />
+      <MetricCard
+        label="Net"
+        value={<span className={cn(net >= 0 ? "text-emerald-400" : "text-red-400")}>{net >= 0 ? "+" : ""}${net.toFixed(2)}</span>}
+        className="app-surface-card"
+      />
     </div>
   );
 });
@@ -985,16 +955,12 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
   return (
     <div className="flex flex-row gap-4 items-center">
       <div className="relative w-80 flex-shrink-0 group">
-        <Search
-          size={18}
-          className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
-        />
-        <input
+        <AppInput
           type="text"
           placeholder="Search transactions..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full bg-[#101A2E] border border-white/5 rounded-2xl py-4 pl-14 pr-6 text-white font-bold outline-none focus:border-cyan-500/30 transition-all placeholder:text-gray-600"
+          startAdornment={<Search size={18} className="text-[var(--app-color-text-tertiary)] group-focus-within:text-[var(--app-accent-cyan-soft)] transition-colors" />}
         />
       </div>
 
@@ -1002,14 +968,16 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
         <FilterBar filters={filters} onChange={onFiltersChange} onClear={onClearFilters} />
       </div>
 
-      <motion.button
-        whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-        whileTap={{ scale: 0.95 }}
+      <AppButton
+        type="button"
         onClick={onOpenAdd}
-        className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
+        aria-label="Add transaction"
+        variant="info"
+        size="icon"
+        className="size-14 rounded-full"
       >
         <Plus size={22} strokeWidth={3} />
-      </motion.button>
+      </AppButton>
     </div>
   );
 });
@@ -1056,21 +1024,15 @@ const TransactionGroups = React.memo(function TransactionGroups({
   }, []);
 
   if (loading) {
-    return (
-      <div className="text-center py-16 text-gray-600 text-xs font-black uppercase tracking-widest animate-pulse">
-        Loading transactions...
-      </div>
-    );
+    return <LoadingState label="Loading transactions..." lines={4} compact />;
   }
 
   if (groups.length === 0) {
     return (
-      <div className="text-center py-16 space-y-3">
-        <div className="text-gray-600 text-xs font-black uppercase tracking-widest">
-          No transactions found
-        </div>
-        <div className="text-gray-700 text-xs">Add your first transaction using the + button.</div>
-      </div>
+      <EmptyState
+        title="No transactions found"
+        description="Add your first transaction using the add button."
+      />
     );
   }
 
@@ -1081,16 +1043,16 @@ const TransactionGroups = React.memo(function TransactionGroups({
 
         return (
           <div key={group.date} className="space-y-4">
-            <button onClick={() => toggleGroup(group.date)} className="flex items-center gap-4 w-full text-left group">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 bg-[#101A2E] px-4 py-1 rounded-full border border-white/5">
+            <AppButton onClick={() => toggleGroup(group.date)} variant="quiet" className="group h-auto w-full justify-start gap-4 px-0 py-0 text-left">
+              <div className="rounded-full border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] px-4 py-1 text-[10px] font-black uppercase tracking-[0.3em] text-[var(--app-color-text-tertiary)]">
                 {group.dateLabel}
               </div>
-              <div className="h-px flex-1 bg-white/[0.03]" />
+              <div className="h-px flex-1 bg-[var(--app-color-border-subtle)]" />
               <ChevronDown
                 size={16}
-                className={cn("text-gray-600 transition-transform duration-300", !isExpanded && "-rotate-90")}
+                className={cn("text-[var(--app-color-text-tertiary)] transition-transform duration-300", !isExpanded && "-rotate-90")}
               />
-            </button>
+            </AppButton>
 
             <AnimatePresence initial={false}>
               {isExpanded && (
@@ -1105,9 +1067,11 @@ const TransactionGroups = React.memo(function TransactionGroups({
                     const isManual = row.tx.source === "manual";
 
                     return (
-                      <div
+                      <Surface
                         key={`${row.tx.source}-${row.tx.id}`}
-                        className="bg-[#101A2E]/50 border border-white/[0.03] rounded-3xl p-5 flex items-center justify-between group/tx transition-all hover:bg-white/[0.02]"
+                        variant="inset"
+                        padding="md"
+                        className="group/tx flex items-center justify-between rounded-[1.75rem] transition-all hover:border-[var(--app-color-border-strong)]"
                       >
                         <div
                           className={cn("flex items-center gap-5 flex-1", isManual && "cursor-pointer")}
@@ -1123,118 +1087,84 @@ const TransactionGroups = React.memo(function TransactionGroups({
                           </div>
 
                           <div>
-                            <h4 className="font-black text-white text-lg">{row.heading}</h4>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                              <span>{row.categoryLabel}</span>
-                              <span className="w-1 h-1 rounded-full bg-gray-700" />
-                              <span>{row.timeLabel}</span>
-
-                              {row.tx.source === "bank" && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
-                                  <span className="text-cyan-400/80">Bank</span>
-                                </>
-                              )}
-
+                            <h4 className="text-lg font-black text-[var(--app-color-text-primary)]">{row.heading}</h4>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {row.tx.source === "bank" && <StatusChip tone="info">Bank</StatusChip>}
                               {row.valueScore != null && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
-                                  <span style={{ color: row.valueColor }}>
-                                    Value {row.valueScore} · {row.valueLabel}
-                                  </span>
-                                </>
+                                <StatusChip tone="neutral" style={{ color: row.valueColor, borderColor: `${row.valueColor}45` }}>
+                                  {row.valueLabel}
+                                </StatusChip>
                               )}
-
-                              {row.satisfactionLabel && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full bg-gray-700" />
-                                  <span style={{ color: COLORS.electricCyan }}>{row.satisfactionLabel}</span>
-                                </>
-                              )}
+                              {row.satisfactionLabel && <StatusChip tone="info">{row.satisfactionLabel}</StatusChip>}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          {row.valueScore != null && (
-                            <div className="min-w-[138px] rounded-2xl border border-white/5 bg-[#0B1220]/80 px-4 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-gray-500">
-                                  Value
+                         <div className="flex items-center gap-4">
+                           <div className="w-[240px] shrink-0 text-right">
+                             <div className={cn("text-xl font-black", row.isIncome ? "text-emerald-400" : "text-[var(--app-color-text-primary)]")}>
+                               {row.amountText}
+                             </div>
+                              {row.valueScore != null ? (
+                                <div className="mt-2 space-y-2.5">
+                                  <div className="flex items-baseline justify-end text-right">
+                                    <div className="text-lg font-black tracking-tight text-[var(--app-color-text-primary)]">
+                                      Value: {row.valueDisplayScoreText}
+                                    </div>
+                                  </div>
+                                  <ValueScoreMeter score={row.valueScore} />
                                 </div>
-                                <div className="text-lg font-black" style={{ color: row.valueColor }}>
-                                  {row.valueScore}
-                                </div>
-                              </div>
+                              ) : (
+                                <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
+                                  No score yet
+                               </div>
+                             )}
+                           </div>
 
-                              <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all"
-                                  style={{
-                                    width: `${Math.min(100, (row.valueScore / 150) * 100)}%`,
-                                    backgroundColor: row.valueColor,
-                                  }}
-                                />
-                              </div>
-
-                              <div
-                                className="mt-2 text-[9px] font-black uppercase tracking-[0.18em]"
-                                style={{ color: row.valueColor }}
-                              >
-                                {row.valueLabel}
-                              </div>
-
-                              <div className="mt-1 text-[10px] leading-tight text-gray-500">
-                                {row.valueTone}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="text-right">
-                            <div className={cn("text-xl font-black", row.isIncome ? "text-emerald-400" : "text-white")}>
-                              {row.amountText}
-                            </div>
-                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                              {row.directionLabel}
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onFeedback(row.tx);
+                           <div className="text-right">
+                            <AppButton
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               onFeedback(row.tx);
                             }}
-                            className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
-                            title="Give feedback"
-                          >
-                            <MessageSquare size={18} />
-                          </button>
+                            variant="quiet"
+                            size="sm"
+                            className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-[var(--app-accent-cyan-soft)]"
+                             title="Give feedback"
+                           >
+                             <MessageSquare size={18} />
+                           </AppButton>
 
-                          {isManual && (
-                            <>
-                              <button
+                           {isManual && (
+                             <>
+                              <AppButton
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onEdit(row.tx);
                                 }}
-                                className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-cyan-400 transition-colors"
+                                variant="quiet"
+                                size="sm"
+                                className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-[var(--app-accent-cyan-soft)]"
                                 title="Edit"
                               >
                                 <Pencil size={18} />
-                              </button>
+                              </AppButton>
 
-                              <button
+                              <AppButton
                                 onClick={(e) => onDelete(row.tx, e)}
-                                className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
+                                variant="quiet"
+                                size="sm"
+                                className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:bg-red-500/10 hover:text-red-400"
+                                 title="Delete"
+                               >
+                                 <Trash2 size={18} />
+                               </AppButton>
+                             </>
+                           )}
+                           </div>
+                         </div>
+                       </Surface>
+                     );
                   })}
                 </motion.div>
               )}
@@ -1245,13 +1175,12 @@ const TransactionGroups = React.memo(function TransactionGroups({
 
       {visibleGroupCount < groups.length && (
         <div className="flex justify-center pt-2">
-          <Button
+          <AppButton
             variant="outline"
             onClick={() => setVisibleGroupCount((prev) => Math.min(prev + INITIAL_VISIBLE_GROUPS, groups.length))}
-            className="rounded-2xl border-white/10"
           >
             Load More Dates
-          </Button>
+          </AppButton>
         </div>
       )}
     </div>
@@ -1333,7 +1262,7 @@ export const TransactionsPage = () => {
       Array.from(
         filteredTransactions
           .reduce<Map<string, TransactionRowViewModel[]>>((acc, tx) => {
-            const date = tx.occurred_at.split("T")[0];
+            const date = getLocalDateKey(tx.occurred_at);
             if (selectedDate && date !== selectedDate) return acc;
 
             const category = getCategoryMeta(tx.category);
@@ -1347,7 +1276,7 @@ export const TransactionsPage = () => {
               categoryLabel: category.label,
               categoryColor: category.color,
               categoryIcon: category.icon,
-              timeLabel: new Date(tx.occurred_at).toLocaleTimeString([], {
+              timeLabel: parseDateForDisplay(tx.occurred_at).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
@@ -1357,6 +1286,7 @@ export const TransactionsPage = () => {
               amountText: `${isIncome ? "+" : "-"}$${amount.toFixed(2)}`,
               isIncome,
               valueScore,
+              valueDisplayScoreText: value.displayScoreText,
               valueLabel: value.label,
               valueTone:
                 valueScore == null ? "Waiting for satisfaction or regret data." : value.tone,
@@ -1437,8 +1367,8 @@ export const TransactionsPage = () => {
       />
 
       <div className="space-y-4">
-        <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-          <Calendar size={20} className="text-cyan-400" /> Spending Calendar
+        <h3 className="flex items-center gap-2 text-xl font-black tracking-tight text-[var(--app-color-text-primary)]">
+          <Calendar size={20} className="text-[var(--app-accent-cyan-soft)]" /> Spending Calendar
         </h3>
         <ElectricCard className="p-8" elevation={0}>
           <SpendingCalendar

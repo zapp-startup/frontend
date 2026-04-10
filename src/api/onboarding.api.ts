@@ -25,5 +25,10 @@ export const OnboardingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify(payload),
+      audit: {
+        eventName: "account.onboarding_submit",
+        action: "create",
+        resourceType: "raw_explicit_profile",
+      },
     }),
 };

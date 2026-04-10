@@ -2,6 +2,7 @@ import * as React from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, GLOWS } from "@/shared/theme";
+import { getSurfaceAccentStyle, surfaceVariants } from "@/shared/components/system";
 
 type ElectricCardProps = {
   children: React.ReactNode;
@@ -29,6 +30,8 @@ export const ElectricCard = ({
     2: { shadow: GLOWS.ambient(0.8), y: -8, scale: 1.01 },
   }[elevation];
 
+  const accentStyle = getSurfaceAccentStyle(semanticColor, "glow");
+
   return (
     <motion.div
       initial={shouldReduceMotion ? false : { opacity: 0 }}
@@ -36,13 +39,15 @@ export const ElectricCard = ({
       viewport={shouldReduceMotion ? undefined : { once: true }}
       transition={{ duration: 0.24, delay, ease: "easeOut" }}
       className={cn(
-        "relative group bg-[#101A2E] rounded-[2.5rem] border border-white/[0.03] p-8 transition-all duration-500",
+        surfaceVariants({ variant: "card", padding: "lg" }),
+        "relative group transition-all duration-500",
         className
       )}
       style={{
         transform: elevationStyles.y !== 0 || elevationStyles.scale !== 1
           ? `translateY(${elevationStyles.y}px) scale(${elevationStyles.scale})`
           : undefined,
+        ...accentStyle,
         boxShadow: `${elevationStyles.shadow}, ${GLOWS.inner}, ${GLOWS[glowIntensity](semanticColor)}`,
         ...style,
       }}

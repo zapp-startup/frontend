@@ -2,6 +2,7 @@ import * as React from "react";
 import { Wallet } from "lucide-react";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { COLORS } from "@/shared/theme";
+import { IconBadge, Surface } from "@/shared/components/system";
 import type { BankAccount } from "@/api/banking.api";
 
 type LinkedAccountsSectionProps = {
@@ -20,10 +21,8 @@ export function LinkedAccountsSection({ accounts, loading = false }: LinkedAccou
   if (loading && accounts.length === 0) {
     return (
       <ElectricCard className="p-6" semanticColor={COLORS.electricBlue} elevation={1}>
-        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">
-          Linked accounts
-        </div>
-        <div className="h-20 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="mb-4 app-mini-label">Linked accounts</div>
+        <div className="h-20 rounded-2xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] animate-pulse" />
       </ElectricCard>
     );
   }
@@ -32,33 +31,33 @@ export function LinkedAccountsSection({ accounts, loading = false }: LinkedAccou
 
   return (
     <ElectricCard className="p-6" semanticColor={COLORS.electricBlue} elevation={1}>
-      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">
-        Linked accounts
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="mb-4 app-mini-label">Linked accounts</div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {accounts.map((acc) => (
-          <div
+          <Surface
             key={acc.id}
-            className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5"
+            variant="inset"
+            padding="sm"
+            className="flex items-center gap-4 rounded-2xl"
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-500/20">
-              <Wallet size={18} className="text-blue-400" />
-            </div>
+            <IconBadge tone="blue" size="sm">
+              <Wallet size={18} />
+            </IconBadge>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-white text-sm truncate">
+              <div className="truncate text-sm font-bold text-[var(--app-color-text-primary)]">
                 {acc.name ?? "Account"}
               </div>
-              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              <div className="app-mini-label">
                 {[acc.type, acc.subtype].filter(Boolean).join(" · ") || "—"}
                 {acc.mask ? ` •••• ${acc.mask}` : ""}
               </div>
             </div>
             <div className="text-right">
-              <div className="font-black text-white">
+              <div className="font-black text-[var(--app-color-text-primary)]">
                 {formatBalance(acc.current_balance ?? acc.available_balance)}
               </div>
             </div>
-          </div>
+          </Surface>
         ))}
       </div>
     </ElectricCard>
