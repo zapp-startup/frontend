@@ -35,6 +35,10 @@ export type BankTransaction = {
   description_raw?: string;
   direction?: string;
   category?: string;
+  personal_value_score?: number | null;
+  value_score_confidence?: number | null;
+  value_score_model_version?: string | null;
+  value_score_computed_at?: string | null;
 };
 
 export type ExchangePublicTokenResponse = {
@@ -127,6 +131,18 @@ export const BankingAPI = {
         action: "update_feedback",
         resourceType: "bank_transaction",
         resourceId: plaidTransactionId,
+      },
+    }),
+  score: (transactionId: string | number) =>
+    apiRequest<BankTransaction>(`/api/banking/transactions/${transactionId}/score/`, {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.transaction.score",
+        action: "score",
+        resourceType: "bank_transaction",
+        resourceId: transactionId,
       },
     }),
 };
