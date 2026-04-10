@@ -80,7 +80,7 @@ describe("SubscriptionsPage", () => {
     expect(screen.getByText("$15.99")).toBeInTheDocument();
   });
 
-  it("uses the 0-150 value scale labels on subscription cards", async () => {
+  it("renders subscription value scores with the transaction-style display", async () => {
     vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
       {
         id: 1,
@@ -97,7 +97,57 @@ describe("SubscriptionsPage", () => {
     renderSubscriptions();
 
     await waitFor(() => {
-      expect(screen.getAllByText("Decent").length).toBeGreaterThan(0);
+      expect(screen.getByText("Value: 100")).toBeInTheDocument();
+    });
+  });
+
+  it("normalizes fractional subscription feedback scores before display", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 0.82,
+      },
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Value: 82")).toBeInTheDocument();
+    });
+  });
+
+  it("prefers subscription valuation scores when available", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 0.82,
+      },
+    ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockResolvedValue([
+      {
+        id: 10,
+        subscription: 1,
+        personal_value_score: 120,
+        recommendation: "Keep it",
+      },
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Value: 120")).toBeInTheDocument();
     });
   });
 

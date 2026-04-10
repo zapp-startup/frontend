@@ -13,7 +13,7 @@ const QUICK_ACTION_ROUTE_ALIASES: Record<string, string> = {
 };
 
 export const DEFAULT_ZAPPBOT_GREETING =
-  "Hello! I'm your Zapp CFO. I've been monitoring your subscriptions. How can I help you optimize your value score today?";
+  "Hello! I'm ZappBot. I've been monitoring your subscriptions. How can I help you optimize your value score today?";
 
 export function normalizeQuickActionRoute(route: string) {
   const trimmedRoute = route.replace(/\/+$/, "") || "/";

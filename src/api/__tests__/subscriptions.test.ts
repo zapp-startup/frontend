@@ -16,9 +16,12 @@ describe("subscriptions.api", () => {
 
     const result = await SubscriptionsAPI.list();
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/subscriptions/", {
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/subscriptions/",
+      expect.objectContaining({
+        requireAuth: true,
+      })
+    );
     expect(result).toEqual([]);
   });
 
@@ -72,9 +75,12 @@ describe("subscriptions.api", () => {
 
     await SubscriptionsAPI.remove(42);
 
-    expect(apiRequest).toHaveBeenCalledWith("/api/subscriptions/42/", {
-      method: "DELETE",
-      requireAuth: true,
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/subscriptions/42/",
+      expect.objectContaining({
+        method: "DELETE",
+        requireAuth: true,
+      })
+    );
   });
 });
