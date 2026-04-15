@@ -58,10 +58,10 @@ const REVIEW_THEME: Record<
     progress: "from-emerald-300 via-cyan-300 to-lime-200",
     summaryTitle: "Lock the lesson in",
     summaryDescription:
-      "Capture the one pattern you want to keep, the miss you want to avoid, and the adjustment that matters next week.",
+      "Capture one win, one miss, and one adjustment for next week.",
     transactionTitle: "Purchases worth revisiting",
     transactionDescription:
-      "These are the strongest spend decisions to review before you close the week.",
+      "Review the purchases that mattered most this week.",
   },
   monthly: {
     title: "Monthly Review",
@@ -74,48 +74,48 @@ const REVIEW_THEME: Record<
     progress: "from-sky-300 via-cyan-300 to-indigo-200",
     summaryTitle: "Close the month with signal",
     summaryDescription:
-      "Name the standout win, the regret that taught you something, and the focus you want carrying into next month.",
+      "Capture the best call, the miss, and the focus for next month.",
     transactionTitle: "Purchases to audit",
     transactionDescription:
-      "Review the most meaningful spending moments first, then use the subscription cards to spot cleanup opportunities.",
+      "Review the biggest purchases first, then check subscriptions.",
   },
 };
 
 const FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
   wins: {
-    label: "What went well this week?",
-    placeholder: "Call out one spending decision or pattern you want to keep.",
+    label: "Biggest win",
+    placeholder: "Name one spending choice to keep.",
   },
   regrets: {
-    label: "What would you rethink?",
-    placeholder: "Name the purchase, habit, or moment that felt off.",
+    label: "Biggest miss",
+    placeholder: "Name one purchase or pattern to rethink.",
   },
   adjustment: {
-    label: "What will you change next week?",
-    placeholder: "Describe one concrete adjustment you want to make.",
+    label: "Next adjustment",
+    placeholder: "Name one change for next week.",
   },
   best_purchase: {
-    label: "Best purchase this month",
-    placeholder: "What delivered the most value and why?",
+    label: "Best purchase",
+    placeholder: "Which purchase delivered the most value?",
   },
   most_regretted_purchase: {
     label: "Most regretted purchase",
-    placeholder: "What missed the mark, and what did you learn from it?",
+    placeholder: "Which purchase missed the mark?",
   },
   next_month_focus: {
-    label: "Focus for next month",
-    placeholder: "What habit or spending area deserves your attention next month?",
+    label: "Next month focus",
+    placeholder: "What needs the most attention next month?",
   },
 };
 
 const MISSING_COPY: Record<string, string> = {
-  reviewed_transactions: "Review the required number of transactions before completing this review.",
-  wins: "Add your biggest win for this period.",
-  regrets: "Add at least one regret or miss worth learning from.",
-  adjustment: "Describe one next-step adjustment.",
-  best_purchase: "Choose your best purchase of the month.",
-  most_regretted_purchase: "Choose the purchase you most regret this month.",
-  next_month_focus: "Describe your focus for next month.",
+  reviewed_transactions: "Review enough purchases before submitting.",
+  wins: "Add your biggest win.",
+  regrets: "Add your biggest miss.",
+  adjustment: "Add one next step.",
+  best_purchase: "Add your best purchase.",
+  most_regretted_purchase: "Add your most regretted purchase.",
+  next_month_focus: "Add next month's focus.",
 };
 
 function formatMissingRequirement(code: string) {
@@ -322,9 +322,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   </div>
                 </div>
                 <p className="max-w-3xl text-sm leading-6 text-gray-300">
-                  {overview.period_label}. Review the highest-signal purchases
-                  first, then finish the written summary before points are
-                  awarded.
+                  {overview.period_label}. Review the key purchases, then finish the summary.
                 </p>
               </div>
             </div>
@@ -349,7 +347,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                     theme.pill,
                   )}
                 >
-                  {overview.eligible_to_complete ? "Ready to submit" : "Still building"}
+                  {overview.eligible_to_complete ? "Ready to submit" : "In progress"}
                 </div>
               </div>
               <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/6">
@@ -363,10 +361,10 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               </div>
               <div className="mt-3 text-xs font-bold leading-5 text-gray-400">
                 {review.status === "completed"
-                  ? "This review is already closed for the current period."
+                  ? "This period is already complete."
                   : overview.eligible_to_complete
-                    ? `You have enough reviewed transactions and summary detail to complete this ${kind} review.`
-                    : "Use the transaction queue below, then finish the summary prompts to unlock completion."}
+                    ? `You can submit this ${kind} review now.`
+                    : "Review the queue, then finish the summary."}
               </div>
             </div>
           </div>
@@ -375,17 +373,17 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             <HeroMetricCard
               label="Reviewed purchases"
               value={String(overview.reviewed_transaction_count)}
-              note={`Need ${overview.minimum_transactions_required} before submission`}
+              note={`Need ${overview.minimum_transactions_required} total`}
             />
             <HeroMetricCard
               label="Still pending"
               value={String(overview.pending_transaction_feedback_count)}
-              note="Meaningful purchases left to reflect on"
+              note="Purchases still waiting for feedback"
             />
             <HeroMetricCard
               label="Summary prompts"
               value={`${filledSummaryFields}/${overview.summary_requirements.length}`}
-              note="Written reflection progress for this period"
+              note="Summary questions answered"
             />
           </div>
         </div>
@@ -400,8 +398,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                 <h2 className="text-lg font-black text-white">Review map</h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-gray-400">
-                See exactly what is blocking completion, and how close this review
-                is to being done.
+                See what is left before you can submit.
               </p>
             </div>
             <div
@@ -425,15 +422,15 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                     overview.reviewed_transaction_count >=
                     overview.minimum_transactions_required
                   }
-                  title="Review required purchases"
-                  description={`${overview.reviewed_transaction_count} of ${overview.minimum_transactions_required} completed`}
+                  title="Review purchases"
+                  description={`${overview.reviewed_transaction_count} of ${overview.minimum_transactions_required} done`}
                 />
                 {overview.summary_requirements.map((field) => (
                   <ChecklistRow
                     key={field}
                     done={Boolean(summary[field]?.trim())}
                     title={FIELD_COPY[field]?.label ?? formatCategoryLabel(field)}
-                    description={summary[field]?.trim() ? "Captured" : "Still blank"}
+                    description={summary[field]?.trim() ? "Done" : "Missing"}
                   />
                 ))}
               </div>
@@ -446,8 +443,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               </div>
               {outstandingRequirements.length === 0 ? (
                 <div className="rounded-[1.4rem] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100">
-                  Everything needed for this review is in place. Submit when you’re
-                  ready.
+                  Everything is in place. Submit when you're ready.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -463,7 +459,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               )}
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <MiniStat
-                  label="Review state"
+                  label="Review status"
                   value={review.status === "completed" ? "Closed" : "Open"}
                 />
                 <MiniStat label="Period label" value={overview.period_label} />
@@ -492,7 +488,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             {overview.summary_requirements.map((field) => {
               const copy = FIELD_COPY[field] ?? {
                 label: field.replace(/_/g, " "),
-                placeholder: "Add your reflection here.",
+                placeholder: "Add a note.",
               };
               const filled = Boolean(summary[field]?.trim());
               return (
@@ -544,7 +540,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                 onChange={(event) => setNotes(event.target.value)}
                 rows={4}
                 className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
-                placeholder="Optional context you want to preserve with this review."
+                placeholder="Optional notes for this review."
               />
             </div>
             <Button
@@ -590,8 +586,8 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
         </div>
         {overview.transaction_candidates.length === 0 ? (
           <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold leading-6 text-gray-500">
-            No transaction candidates right now. If you’ve already reviewed your
-            purchases for this period, you can finish the summary above.
+            No purchases to review right now. If you've already finished them,
+            complete the summary above.
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">

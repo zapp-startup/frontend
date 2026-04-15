@@ -100,10 +100,10 @@ export function TransactionFeedbackModal({
         : null;
   const footerNote =
     primaryAction === "feedback"
-      ? "Your rating, sliders, and reflection note will be saved together."
+      ? "Rating, sliders, and note save together."
       : hasReflectionText
-        ? "Only the reflection note will be recorded for this purchase."
-        : "Choose a satisfaction score or add a reflection note to enable submit.";
+        ? "Only the note will be saved for this purchase."
+        : "Add a rating or note to continue.";
 
   const handleSubmit = async () => {
     if (!canSubmit || !transaction) return;
@@ -144,7 +144,7 @@ export function TransactionFeedbackModal({
       } else {
         throw new Error("Invalid transaction for feedback");
       }
-      toast.success("Feedback saved!");
+      toast.success("Feedback saved.");
       onSubmitted?.();
       onOpenChange(false);
     } catch {
@@ -158,7 +158,7 @@ export function TransactionFeedbackModal({
     if (!transaction) return;
     const notes = form.reflection_text.trim();
     if (!notes) {
-      toast.error("Add a short reflection before saving it on its own.");
+      toast.error("Add a reflection before saving it.");
       return;
     }
 
@@ -169,15 +169,15 @@ export function TransactionFeedbackModal({
           transaction: transaction.id,
           notes,
         });
-        toast.success("Reflection submitted.");
+        toast.success("Reflection saved.");
       } else {
-        toast.success("Reflection recorded for this session.");
+        toast.success("Reflection saved for this session.");
       }
       onSubmitted?.();
       onOpenChange(false);
     } catch (error) {
       console.error(error);
-      toast.success("Reflection recorded for this session.");
+      toast.success("Reflection saved for this session.");
       onSubmitted?.();
       onOpenChange(false);
     } finally {
@@ -202,7 +202,7 @@ export function TransactionFeedbackModal({
       <AppDialogContent className="flex max-h-[min(88vh,900px)] max-w-2xl flex-col overflow-hidden">
         <AppDialogHeader className="gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusChip tone="info">Reflection Prompt</StatusChip>
+            <StatusChip tone="info">Purchase reflection</StatusChip>
             <StatusChip tone="neutral">
               {new Date(transaction.occurred_at).toLocaleDateString(undefined, {
                 month: "short",
@@ -226,9 +226,9 @@ export function TransactionFeedbackModal({
             padding="sm"
             className="space-y-2 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
           >
-            <div className="app-label text-[var(--app-accent-cyan-soft)]">Best after some real use</div>
+            <div className="app-label text-[var(--app-accent-cyan-soft)]">After using it</div>
             <p className="app-helper">
-              Add a satisfaction score for the full feedback pass, or leave just a note to save a quick reflection.
+              Add a rating for full feedback, or leave a note for a quick reflection.
             </p>
           </Surface>
 
@@ -238,7 +238,7 @@ export function TransactionFeedbackModal({
                 <span>Satisfaction</span> <span className="text-[var(--app-accent-red-soft)]">*</span>
               </>
             }
-            helperText="Rate the outcome from 1 to 10."
+            helperText="Rate it from 1 to 10."
           >
             <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
@@ -257,7 +257,7 @@ export function TransactionFeedbackModal({
           </FormField>
 
           <div className="grid gap-5 lg:grid-cols-2">
-            <FormField label="Regret" helperText="0 means none. 100 means high regret.">
+            <FormField label="Regret" helperText="0 is none. 100 is high.">
               <div className="flex items-center gap-4">
                 <Slider
                   value={[form.regret_rating]}
@@ -273,7 +273,7 @@ export function TransactionFeedbackModal({
 
             <FormField
               label={wording?.repurchaseLabel ?? "Would you buy or use this again?"}
-              helperText="0 means never. 100 means definitely."
+              helperText="0 is never. 100 is definitely."
             >
               <div className="flex items-center gap-4">
                 <Slider
@@ -305,20 +305,14 @@ export function TransactionFeedbackModal({
             </FormField>
           )}
 
-          <FormField label="Reflection" helperText="Capture what felt worth it, disappointing, or surprising.">
+          <FormField label="Reflection" helperText="What stood out?">
             <Surface
               variant="inset"
               padding="md"
               className="space-y-4 border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_4%,transparent)]"
             >
-              <div className="space-y-1">
-                <div className="app-label text-[var(--app-color-text-primary)]">Add context</div>
-                <p className="app-helper">
-                  If you skip the rating, this note becomes the only thing that gets submitted.
-                </p>
-              </div>
               <AppTextarea
-                placeholder="Any thoughts on this purchase..."
+                placeholder="What stood out?"
                 value={form.reflection_text}
                 onChange={(e) => set("reflection_text", e.target.value)}
                 className="min-h-28"
@@ -345,15 +339,13 @@ export function TransactionFeedbackModal({
               disabled={submittingAction != null || primaryAction == null}
               className="sm:min-w-[12rem]"
             >
-              {submittingAction === "feedback"
-                ? "Submitting..."
-                : submittingAction === "reflection"
-                  ? "Saving..."
-                  : primaryAction === "feedback"
-                    ? "Submit feedback"
-                    : primaryAction === "reflection"
-                      ? "Save reflection"
-                      : "Add rating or note"}
+              {submittingAction != null
+                ? "Saving..."
+                : primaryAction === "feedback"
+                  ? "Save feedback"
+                  : primaryAction === "reflection"
+                    ? "Save reflection"
+                    : "Add rating or note"}
             </AppButton>
           </div>
         </AppDialogFooter>
