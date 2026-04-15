@@ -1,6 +1,7 @@
 import * as React from "react";
 import { TransactionsAPI, type Transaction } from "@/api/transactions.api";
 import { BankingAPI, type BankTransaction } from "@/api/banking.api";
+import { parseDateForDisplay } from "@/shared/date";
 import {
   normalizeBankTransaction,
   type DisplayTransaction,
@@ -77,11 +78,15 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
       usage_frequency: t.usage_frequency ?? null,
       reflection_text: t.reflection_text ?? null,
       considered_at: t.considered_at ?? null,
+      personal_value_score: t.personal_value_score ?? null,
+      value_score_confidence: t.value_score_confidence ?? null,
+      value_score_model_version: t.value_score_model_version ?? null,
+      value_score_computed_at: t.value_score_computed_at ?? null,
       source: "manual" as const,
     }));
     const bank: DisplayTransaction[] = bankTx.map(normalizeBankTransaction);
     const sorted = [...manual, ...bank].sort(
-      (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+      (a, b) => parseDateForDisplay(b.occurred_at).getTime() - parseDateForDisplay(a.occurred_at).getTime()
     );
     return filters.limit ? sorted.slice(0, filters.limit) : sorted;
   }, [manualTx, bankTx, filters.limit]);

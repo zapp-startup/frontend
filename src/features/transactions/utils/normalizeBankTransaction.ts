@@ -19,6 +19,10 @@ export type DisplayTransaction = {
   usage_frequency?: number | null;
   reflection_text?: string | null;
   considered_at?: string | null;
+  personal_value_score?: number | null;
+  value_score_confidence?: number | null;
+  value_score_model_version?: string | null;
+  value_score_computed_at?: string | null;
   source: "manual" | "bank";
 };
 
@@ -87,7 +91,7 @@ export function normalizeBankTransaction(bankTx: BankTransaction): DisplayTransa
     bankTx.merchant_name ?? bankTx.name ?? bankTx.description_raw ?? "Bank transaction";
 
   return {
-    id: `bank-${bankTx.id}`,
+    id: bankTx.id,
     description_raw: description,
     occurred_at: occurredAt,
     amount: amountStr,
@@ -101,6 +105,10 @@ export function normalizeBankTransaction(bankTx: BankTransaction): DisplayTransa
     usage_frequency: null,
     reflection_text: null,
     considered_at: null,
+    personal_value_score: bankTx.personal_value_score ?? null,
+    value_score_confidence: bankTx.value_score_confidence ?? null,
+    value_score_model_version: bankTx.value_score_model_version ?? null,
+    value_score_computed_at: bankTx.value_score_computed_at ?? null,
     source: "bank",
   };
 }

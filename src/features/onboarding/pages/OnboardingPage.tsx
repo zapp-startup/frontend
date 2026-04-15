@@ -1,12 +1,52 @@
 import * as React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Slider } from "@/shared/components/ui/slider";
+import {
+  AppButton,
+  AppInput,
+  FormField,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
 import { OnboardingAPI, type OnboardingData } from "@/api/onboarding.api";
-import { COLORS, GLOWS } from "@/shared/theme";
 import { toast } from "sonner";
+import { AppLogo } from "@/shared/components/brand/AppLogo";
+import { useAuth } from "@/features/auth";
 
 const TOTAL_STEPS = 5;
+
+const LIFE_STAGE_OPTIONS = [
+  { label: "Student", value: "student" },
+  { label: "Early Career", value: "early_career" },
+  { label: "Mid Career", value: "mid_career" },
+  { label: "Late Career", value: "late_career" },
+  { label: "Parent", value: "parent" },
+  { label: "Retired", value: "retired" },
+] as const;
+
+const INCOME_OPTIONS = ["< $2k", "$2k-4k", "$4k-7k", "$7k-10k", "$10k+"] as const;
+
+const GOAL_OPTIONS = [
+  { label: "Save more", value: "save_more" },
+  { label: "Invest", value: "invest" },
+  { label: "Reduce debt", value: "reduce_debt" },
+  { label: "Build credit", value: "build_credit" },
+  { label: "Control subscriptions", value: "control_subs" },
+] as const;
+
+const RISK_OPTIONS = [
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
+] as const;
+
+const BUDGET_OPTIONS = [
+  { label: "Strict", value: "strict" },
+  { label: "Flexible", value: "flexible" },
+  { label: "Optimize value", value: "optimize_value" },
+] as const;
 
 const defaultData: OnboardingData = {
   life_stage: "",
@@ -23,68 +63,132 @@ const defaultData: OnboardingData = {
   self_report_research_habit: null,
 };
 
-function OptionButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+function OptionButton({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button
+    <AppButton
+      type="button"
+      variant={selected ? "primary" : "secondary"}
+      size="lg"
       onClick={onClick}
-      className="w-full text-left px-6 py-4 rounded-2xl border font-bold text-sm transition-all"
-      style={{
-        backgroundColor: selected ? `${COLORS.electricCyan}15` : "rgba(255,255,255,0.03)",
-        borderColor: selected ? COLORS.electricCyan : "rgba(255,255,255,0.08)",
-        color: selected ? COLORS.electricCyan : "#94a3b8",
-        boxShadow: selected ? GLOWS.soft(COLORS.electricCyan) : "none",
-      }}
+      className="w-full justify-start rounded-[var(--app-radius-control)] px-5 text-left text-sm normal-case tracking-normal"
     >
       {label}
-    </button>
+    </AppButton>
   );
 }
 
-function SliderInput({ label, question, value, onChange }: { label: string; question: string; value: number; onChange: (v: number) => void }) {
+function SliderInput({
+  label,
+  question,
+  value,
+  onChange,
+}: {
+  label: string;
+  question: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-1">{label}</div>
-        <div className="text-white font-bold">{question}</div>
+    <Surface variant="inset" padding="md" className="space-y-4">
+      <div className="space-y-2">
+        <div className="app-label">{label}</div>
+        <p className="text-sm font-semibold text-[var(--app-color-text-primary)]">
+          {question}
+        </p>
       </div>
       <div className="flex items-center gap-4">
-        <input
-          type="range"
+        <Slider
+          value={[value]}
+          onValueChange={([next]) => onChange(next ?? value)}
           min={0}
           max={100}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 accent-cyan-400"
+          step={1}
+          className="flex-1 [&_[data-slot=slider-range]]:bg-[var(--app-accent-cyan-soft)] [&_[data-slot=slider-thumb]]:border-[var(--app-accent-cyan-soft)] [&_[data-slot=slider-thumb]]:bg-[var(--app-color-surface-base)] [&_[data-slot=slider-track]]:bg-[var(--app-color-border-subtle)]"
         />
-        <span className="text-2xl font-black w-12 text-right" style={{ color: COLORS.electricCyan }}>
+        <StatusChip tone="info" className="min-w-12 justify-center">
           {value}
-        </span>
+        </StatusChip>
       </div>
+    </Surface>
+  );
+}
+
+function StepSection({
+  section,
+  title,
+  description,
+  children,
+}: {
+  section?: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        {section ? <StatusChip tone="info">{section}</StatusChip> : null}
+        <div className="space-y-2">
+          <h2 className="app-section-title">{title}</h2>
+          {description ? <p className="app-helper">{description}</p> : null}
+        </div>
+      </div>
+      {children}
     </div>
   );
 }
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { isAuthReady, isAuthenticated, nextStep, nextRoute, refreshSession } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
   const [step, setStep] = React.useState(0);
   const [direction, setDirection] = React.useState(1);
   const [data, setData] = React.useState<OnboardingData>(defaultData);
   const [submitting, setSubmitting] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!isAuthReady) return;
+    if (!isAuthenticated) {
+      navigate("/login", { replace: true });
+      return;
+    }
+    if (nextStep && nextStep !== "onboarding_survey") {
+      navigate(nextRoute, { replace: true });
+    }
+  }, [isAuthReady, isAuthenticated, navigate, nextRoute, nextStep]);
+
   const set = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) =>
     setData((prev) => ({ ...prev, [key]: value }));
 
-  const goNext = () => { setDirection(1); setStep((s) => s + 1); };
-  const goPrev = () => { setDirection(-1); setStep((s) => s - 1); };
+  const goNext = () => {
+    setDirection(1);
+    setStep((current) => current + 1);
+  };
+
+  const goPrev = () => {
+    setDirection(-1);
+    setStep((current) => current - 1);
+  };
+
   const handleSkip = () => navigate("/", { replace: true });
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       await OnboardingAPI.submit(data);
+      const session = await refreshSession();
       toast.success("You're all set! Welcome to Zapp.");
-      navigate("/", { replace: true });
-    } catch (e) {
+      navigate(session.nextRoute, { replace: true });
+    } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
@@ -92,205 +196,270 @@ export function OnboardingPage() {
   };
 
   const steps = [
-    // STEP 0 — Welcome
-    <div className="space-y-6 text-center">
-      <div className="text-5xl">⚡</div>
-      <div>
-        <h2 className="text-3xl font-black text-white mb-3">Let's set you up</h2>
-        <p className="text-gray-400 leading-relaxed">
-          Answer a few quick questions so Zapp can personalize your value scores and spending insights.
-        </p>
-      </div>
-      <p className="text-xs text-gray-600 uppercase tracking-widest">Takes about 2 minutes</p>
-    </div>,
-
-    // STEP 1 — Identity + Financial Capacity
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: COLORS.electricCyan }}>Section 1 of 4</div>
-        <h2 className="text-2xl font-black text-white">About you</h2>
+    <div className="space-y-6 py-4 text-center" key="welcome">
+      <div className="mx-auto flex justify-center">
+        <AppLogo size={92} />
       </div>
       <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Life Stage</div>
-        {["Student", "Early Career", "Mid Career", "Late Career", "Parent", "Retired"].map((opt) => (
-          <OptionButton key={opt} label={opt} selected={data.life_stage === opt.toLowerCase().replace(" ", "_")} onClick={() => set("life_stage", opt.toLowerCase().replace(" ", "_"))} />
-        ))}
+        <h2 className="app-section-title">Let's set you up</h2>
+        <p className="app-helper mx-auto max-w-md">
+          Answer a few quick questions so Zapp can personalize your value scores
+          and spending insights.
+        </p>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <div className="text-xs font-black uppercase tracking-widest text-gray-500">Household Size</div>
-          <input
+      <div className="flex items-center justify-center gap-2">
+        <Sparkles className="size-4 text-[var(--app-accent-cyan-soft)]" aria-hidden="true" />
+        <span className="app-label text-[var(--app-accent-cyan-soft)]">Takes about 2 minutes</span>
+      </div>
+    </div>,
+
+    <StepSection
+      key="about"
+      section="Section 1 of 4"
+      title="About you"
+      description="A little context helps tailor category scoring and household-aware suggestions."
+    >
+      <FormField label="Life stage">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {LIFE_STAGE_OPTIONS.map((option) => (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={data.life_stage === option.value}
+              onClick={() => set("life_stage", option.value)}
+            />
+          ))}
+        </div>
+      </FormField>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Household size">
+          <AppInput
             type="number"
             min={1}
             placeholder="e.g. 2"
             value={data.household_size ?? ""}
-            onChange={(e) => set("household_size", e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-cyan-500/50"
+            onChange={(event) =>
+              set(
+                "household_size",
+                event.target.value ? Number(event.target.value) : null
+              )
+            }
           />
-        </div>
-        <div className="space-y-2">
-          <div className="text-xs font-black uppercase tracking-widest text-gray-500">Zip Code</div>
-          <input
+        </FormField>
+
+        <FormField label="Zip code">
+          <AppInput
             type="text"
             placeholder="e.g. 90210"
             value={data.location_zip}
-            onChange={(e) => set("location_zip", e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-cyan-500/50"
+            onChange={(event) => set("location_zip", event.target.value)}
           />
-        </div>
+        </FormField>
       </div>
-    </div>,
+    </StepSection>,
 
-    // STEP 2 — Financial Capacity + Goals
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: COLORS.electricCyan }}>Section 2 of 4</div>
-        <h2 className="text-2xl font-black text-white">Your finances</h2>
-      </div>
-      <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Monthly Income</div>
-        {["< $2k", "$2k–4k", "$4k–7k", "$7k–10k", "$10k+"].map((opt) => (
-          <OptionButton key={opt} label={opt} selected={data.income_range === opt} onClick={() => set("income_range", opt)} />
-        ))}
-      </div>
-      <div className="space-y-2">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Monthly Fixed Expenses (optional)</div>
-        <input
+    <StepSection
+      key="finances"
+      section="Section 2 of 4"
+      title="Your finances"
+      description="These answers anchor recommendations to your actual spending capacity."
+    >
+      <FormField label="Monthly income">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {INCOME_OPTIONS.map((option) => (
+            <OptionButton
+              key={option}
+              label={option}
+              selected={data.income_range === option}
+              onClick={() => set("income_range", option)}
+            />
+          ))}
+        </div>
+      </FormField>
+
+      <FormField
+        label="Monthly fixed expenses"
+        helperText="Optional."
+      >
+        <AppInput
           type="number"
           placeholder="e.g. 1500"
           value={data.monthly_fixed_expenses ?? ""}
-          onChange={(e) => set("monthly_fixed_expenses", e.target.value ? Number(e.target.value) : null)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-cyan-500/50"
+          onChange={(event) =>
+            set(
+              "monthly_fixed_expenses",
+              event.target.value ? Number(event.target.value) : null
+            )
+          }
+        />
+      </FormField>
+    </StepSection>,
+
+    <StepSection
+      key="goals"
+      section="Section 3 of 4"
+      title="Your goals"
+      description="These preference signals help Zapp prioritize advice, risk, and planning style."
+    >
+      <FormField label="Primary financial goal">
+        <div className="grid gap-3">
+          {GOAL_OPTIONS.map((option) => (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={data.financial_goal === option.value}
+              onClick={() => set("financial_goal", option.value)}
+            />
+          ))}
+        </div>
+      </FormField>
+
+      <FormField label="Risk tolerance">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {RISK_OPTIONS.map((option) => (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={data.risk_tolerance === option.value}
+              onClick={() => set("risk_tolerance", option.value)}
+            />
+          ))}
+        </div>
+      </FormField>
+
+      <FormField label="Budget style">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {BUDGET_OPTIONS.map((option) => (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={data.budget_style === option.value}
+              onClick={() => set("budget_style", option.value)}
+            />
+          ))}
+        </div>
+      </FormField>
+    </StepSection>,
+
+    <StepSection
+      key="values"
+      section="Section 4 of 4"
+      title="What matters to you?"
+      description="These sliders power the value-fit system behind your purchase guidance."
+    >
+      <div className="space-y-4">
+        <SliderInput
+          label="Cost sensitivity"
+          question="How important is getting the lowest price?"
+          value={data.value_priority_cost}
+          onChange={(value) => set("value_priority_cost", value)}
+        />
+        <SliderInput
+          label="Quality importance"
+          question="How important is product quality to you?"
+          value={data.value_priority_quality}
+          onChange={(value) => set("value_priority_quality", value)}
+        />
+        <SliderInput
+          label="Sustainability"
+          question="How important is sustainability or ethics in purchases?"
+          value={data.value_priority_sustainability}
+          onChange={(value) => set("value_priority_sustainability", value)}
+        />
+        <SliderInput
+          label="Research habit"
+          question="How much do you research before buying something?"
+          value={data.self_report_research_habit ?? 50}
+          onChange={(value) => set("self_report_research_habit", value)}
         />
       </div>
-    </div>,
-
-    // STEP 3 — Goals + Style
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: COLORS.electricCyan }}>Section 3 of 4</div>
-        <h2 className="text-2xl font-black text-white">Your goals</h2>
-      </div>
-      <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Primary Financial Goal</div>
-        {[
-          { label: "Save more", value: "save_more" },
-          { label: "Invest", value: "invest" },
-          { label: "Reduce debt", value: "reduce_debt" },
-          { label: "Build credit", value: "build_credit" },
-          { label: "Control subscriptions", value: "control_subs" },
-        ].map((opt) => (
-          <OptionButton key={opt.value} label={opt.label} selected={data.financial_goal === opt.value} onClick={() => set("financial_goal", opt.value)} />
-        ))}
-      </div>
-      <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Risk Tolerance</div>
-        <div className="flex gap-3">
-          {["low", "medium", "high"].map((opt) => (
-            <OptionButton key={opt} label={opt.charAt(0).toUpperCase() + opt.slice(1)} selected={data.risk_tolerance === opt} onClick={() => set("risk_tolerance", opt)} />
-          ))}
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Budget Style</div>
-        <div className="flex gap-3">
-          {[
-            { label: "Strict", value: "strict" },
-            { label: "Flexible", value: "flexible" },
-            { label: "Optimize value", value: "optimize_value" },
-          ].map((opt) => (
-            <OptionButton key={opt.value} label={opt.label} selected={data.budget_style === opt.value} onClick={() => set("budget_style", opt.value)} />
-          ))}
-        </div>
-      </div>
-    </div>,
-
-    // STEP 4 — Value Sliders
-    <div className="space-y-8">
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: COLORS.electricCyan }}>Section 4 of 4</div>
-        <h2 className="text-2xl font-black text-white">What matters to you?</h2>
-        <p className="text-gray-400 text-sm mt-1">These sliders power your personalized value scores.</p>
-      </div>
-      <SliderInput label="Cost Sensitivity" question="How important is getting the lowest price?" value={data.value_priority_cost} onChange={(v) => set("value_priority_cost", v)} />
-      <SliderInput label="Quality Importance" question="How important is product quality to you?" value={data.value_priority_quality} onChange={(v) => set("value_priority_quality", v)} />
-      <SliderInput label="Sustainability" question="How important is sustainability / ethics in purchases?" value={data.value_priority_sustainability} onChange={(v) => set("value_priority_sustainability", v)} />
-      <SliderInput label="Research Habit" question="How much do you research before buying something?" value={data.self_report_research_habit ?? 50} onChange={(v) => set("self_report_research_habit", v)} />
-    </div>,
+    </StepSection>,
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-lg">
-        {/* Progress bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-black uppercase tracking-widest text-gray-600">
+    <div className="min-h-screen px-6 py-10 sm:py-14">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-2">
+            <StatusChip tone="info">
               {step === 0 ? "Welcome" : `Step ${step} of ${TOTAL_STEPS - 1}`}
-            </span>
-            <button onClick={handleSkip} className="text-xs font-black uppercase tracking-widest text-gray-600 hover:text-gray-400 transition-colors">
-              Skip for now
-            </button>
+            </StatusChip>
+            <p className="app-helper">
+              Set a baseline once. You can refine these preferences later.
+            </p>
           </div>
-          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ backgroundColor: COLORS.electricCyan }}
-              animate={{ width: `${(step / (TOTAL_STEPS - 1)) * 100}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
+          <AppButton type="button" variant="quiet" size="sm" onClick={handleSkip}>
+            Skip for now
+          </AppButton>
         </div>
 
-        {/* Card */}
-        <div
-          className="rounded-[2rem] border border-white/[0.06] p-8 overflow-hidden"
-          style={{ backgroundColor: "#101A2E", boxShadow: GLOWS.ambient() }}
-        >
+        <Surface variant="card" padding="sm" className="overflow-hidden">
+          <div className="h-2 rounded-full bg-[var(--app-color-border-subtle)]">
+            <motion.div
+              className="h-full rounded-full bg-[var(--app-accent-cyan-soft)]"
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : { width: `${(step / (TOTAL_STEPS - 1)) * 100}%` }
+              }
+              style={
+                shouldReduceMotion
+                  ? { width: `${(step / (TOTAL_STEPS - 1)) * 100}%` }
+                  : undefined
+              }
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+        </Surface>
+
+        <Surface variant="overlay" padding="xl" className="overflow-hidden">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={step}
               custom={direction}
-              initial={{ opacity: 0, x: direction * 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction * -40 }}
-              transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: direction * 28 }}
+              animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, x: direction * -28 }}
+              transition={{ duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
             >
               {steps[step]}
             </motion.div>
           </AnimatePresence>
-        </div>
+        </Surface>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-6">
-          <button
+        <div className="flex items-center justify-between gap-4">
+          <AppButton
+            type="button"
+            variant="quiet"
+            size="lg"
             onClick={goPrev}
             disabled={step === 0}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-gray-500 hover:text-white transition-colors disabled:opacity-0"
           >
-            <ChevronLeft size={16} /> Back
-          </button>
+            <ChevronLeft />
+            Back
+          </AppButton>
 
           {step < TOTAL_STEPS - 1 ? (
-            <button
-              onClick={goNext}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all hover:scale-105"
-              style={{ backgroundColor: COLORS.electricCyan, color: "#0B1220" }}
-            >
-              {step === 0 ? "Get Started" : "Continue"} <ChevronRight size={16} />
-            </button>
+            <AppButton type="button" variant="hero" size="lg" onClick={goNext}>
+              {step === 0 ? "Get started" : "Continue"}
+              <ChevronRight />
+            </AppButton>
           ) : (
-            <button
+            <AppButton
+              type="button"
+              variant="hero"
+              size="lg"
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all hover:scale-105 disabled:opacity-50"
-              style={{ backgroundColor: COLORS.electricCyan, color: "#0B1220" }}
             >
-              {submitting ? "Saving..." : "Finish Setup"} <ChevronRight size={16} />
-            </button>
+              {submitting ? "Saving..." : "Finish setup"}
+              <ChevronRight />
+            </AppButton>
           )}
         </div>
       </div>
     </div>
   );
 }
+

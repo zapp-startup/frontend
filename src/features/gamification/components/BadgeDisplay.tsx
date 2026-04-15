@@ -20,6 +20,7 @@ import type { LucideIcon } from "lucide-react";
 
 import type { Badge, UserBadge } from "@/api/gamification.api";
 import { COLORS, GLOWS } from "@/shared/theme";
+import { StatusChip, Surface } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
 
 type BadgeDisplayProps = {
@@ -84,9 +85,18 @@ function getBadgeIcon(badge: Badge) {
   return ICON_MAP[normalizeIconName(badge.icon)] ?? Award;
 }
 
+function formatBadgeDate(value: string) {
+  return new Date(value).toLocaleDateString();
+}
+
+function formatBadgeCategory(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export function BadgeDisplay({ badges, maxDisplay, size = "md" }: BadgeDisplayProps) {
   const displayBadges = maxDisplay ? badges.slice(0, maxDisplay) : badges;
   const remaining = maxDisplay && badges.length > maxDisplay ? badges.length - maxDisplay : 0;
+  const [activeBadgeId, setActiveBadgeId] = React.useState<number | null>(null);
 
   const sizeClasses = {
     sm: "h-10 w-10 rounded-2xl",
@@ -113,33 +123,52 @@ export function BadgeDisplay({ badges, maxDisplay, size = "md" }: BadgeDisplayPr
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: idx * 0.05, duration: 0.25 }}
-            className={cn(
-              "group relative flex items-center justify-center border-2",
-              sizeClasses[size],
-            )}
-            style={{
-              backgroundColor: `${color}12`,
-              borderColor: `${color}35`,
-              boxShadow: GLOWS.soft(color),
-            }}
+            className="relative"
           >
-            <Icon size={iconSizes[size]} style={{ color }} />
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 min-w-[220px] -translate-x-1/2 rounded-2xl border border-white/10 bg-[#101A2E] p-4 opacity-0 shadow-2xl transition-opacity group-hover:opacity-100">
-              <div className="mb-1 flex items-center gap-2">
-                <Icon size={14} style={{ color }} />
-                <span className="text-sm font-black text-white">{badge.name}</span>
-              </div>
-              <p className="text-xs leading-relaxed text-gray-400">{badge.description}</p>
-              <div className="mt-3 text-[9px] font-black uppercase tracking-[0.25em] text-gray-600">
-                Earned {new Date(userBadge.awarded_at).toLocaleDateString()}
-              </div>
+            <button
+              type="button"
+              aria-label={`${badge.name} badge details`}
+              aria-expanded={activeBadgeId === userBadge.id}
+              className={cn(
+                "peer flex items-center justify-center border-2 transition-transform hover:scale-105 focus-visible:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70",
+                sizeClasses[size],
+              )}
+              onMouseEnter={() => setActiveBadgeId(userBadge.id)}
+              onMouseLeave={() => setActiveBadgeId((current) => (current === userBadge.id ? null : current))}
+              onFocus={() => setActiveBadgeId(userBadge.id)}
+              onBlur={() => setActiveBadgeId((current) => (current === userBadge.id ? null : current))}
+              style={{
+                backgroundColor: `${color}12`,
+                borderColor: `${color}35`,
+                boxShadow: GLOWS.soft(color),
+              }}
+            >
+              <Icon size={iconSizes[size]} style={{ color }} />
+            </button>
+            <div
+              data-testid={`badge-tooltip-${userBadge.id}`}
+              className={cn(
+                "pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 min-w-[220px] -translate-x-1/2 transition-opacity",
+                activeBadgeId === userBadge.id ? "opacity-100" : "opacity-0"
+              )}
+            >
+              <Surface variant="overlay" padding="sm" className="space-y-3 rounded-2xl shadow-2xl" accentColor={color}>
+                <div className="flex items-center gap-2">
+                  <Icon size={14} style={{ color }} />
+                  <span className="text-sm font-black text-[var(--app-color-text-primary)]">{badge.name}</span>
+                </div>
+                <p className="text-xs leading-relaxed text-[var(--app-color-text-secondary)]">{badge.description}</p>
+                <div className="text-[9px] font-black uppercase tracking-[0.25em] text-[var(--app-color-text-tertiary)]">
+                  Earned {formatBadgeDate(userBadge.awarded_at)}
+                </div>
+              </Surface>
             </div>
           </motion.div>
         );
       })}
 
       {remaining > 0 && (
-        <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-white/10 bg-white/[0.04] text-xs font-black text-gray-500">
+        <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] text-xs font-black text-[var(--app-color-text-secondary)]">
           +{remaining}
         </div>
       )}
@@ -162,26 +191,30 @@ export function BadgeGrid({ badges }: { badges: UserBadge[] }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: idx * 0.03, duration: 0.35 }}
-            className="rounded-[2rem] border border-white/[0.05] bg-[#101A2E] p-6"
-            style={{ boxShadow: `${GLOWS.ambient(0.5)}, ${GLOWS.soft(color)}` }}
           >
-            <div
-              className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] border-2"
-              style={{
-                backgroundColor: `${color}12`,
-                borderColor: `${color}35`,
-              }}
+            <Surface
+              variant="card"
+              padding="md"
+              className="h-full rounded-[2rem]"
+              accentColor={color}
+              style={{ boxShadow: `${GLOWS.ambient(0.5)}, ${GLOWS.soft(color)}` }}
             >
-              <Icon size={28} style={{ color }} />
-            </div>
-            <h3 className="mb-2 text-lg font-black text-white">{badge.name}</h3>
-            <p className="min-h-12 text-sm leading-relaxed text-gray-400">{badge.description}</p>
-            <div className="mt-4 text-[10px] font-black uppercase tracking-[0.24em] text-gray-600">
-              {badge.category.replaceAll("_", " ")}
-            </div>
-            <div className="mt-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">
-              {new Date(userBadge.awarded_at).toLocaleDateString()}
-            </div>
+              <div
+                className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] border-2"
+                style={{
+                  backgroundColor: `${color}12`,
+                  borderColor: `${color}35`,
+                }}
+              >
+                <Icon size={28} style={{ color }} />
+              </div>
+              <h3 className="mb-2 text-lg font-black text-[var(--app-color-text-primary)]">{badge.name}</h3>
+              <p className="min-h-12 text-sm leading-relaxed text-[var(--app-color-text-secondary)]">{badge.description}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <StatusChip tone="neutral">{formatBadgeCategory(badge.category)}</StatusChip>
+                <StatusChip tone="info">{formatBadgeDate(userBadge.awarded_at)}</StatusChip>
+              </div>
+            </Surface>
           </motion.div>
         );
       })}

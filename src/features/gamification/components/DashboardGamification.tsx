@@ -1,12 +1,18 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Award, Calendar, Flame, Target, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Flame, Trophy, Users } from "lucide-react";
 
-import { GamificationAPI, type Group, type StreakData, type UserBadge } from "@/api/gamification.api";
+import {
+  GamificationAPI,
+  type Group,
+  type ReviewNudges,
+  type StreakData,
+  type UserBadge,
+} from "@/api/gamification.api";
 import { BadgeDisplay } from "@/features/gamification/components/BadgeDisplay";
 import { MonthlyTargetsWidget } from "@/features/gamification/components/MonthlyTargetsWidget";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { Button } from "@/shared/components/ui/button";
+import { AppButton, IconBadge, LoadingState, Surface } from "@/shared/components/system";
 import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 
@@ -15,27 +21,30 @@ export function DashboardGamification() {
   const [badges, setBadges] = React.useState<UserBadge[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [currentRank, setCurrentRank] = React.useState<number | null>(null);
+  const [reviewNudges, setReviewNudges] = React.useState<ReviewNudges | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [submittingReview, setSubmittingReview] = React.useState<"weekly" | "monthly" | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const loadData = React.useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(null);
-      const [streakResult, badgesResult, groupsResult] = await Promise.allSettled([
+      const [streakResult, badgesResult, groupsResult, nudgesResult] = await Promise.allSettled([
         GamificationAPI.getMyStreak(),
         GamificationAPI.getUserBadges(),
         GamificationAPI.getGroups(),
+        GamificationAPI.getReviewNudges(),
       ]);
 
       const streakData = streakResult.status === "fulfilled" ? streakResult.value : null;
       const badgeData = badgesResult.status === "fulfilled" ? badgesResult.value : [];
       const groupData = groupsResult.status === "fulfilled" ? groupsResult.value : [];
+      const nudgeData = nudgesResult.status === "fulfilled" ? nudgesResult.value : null;
 
       setStreak(streakData);
       setBadges(badgeData);
       setGroups(groupData);
+      setReviewNudges(nudgeData);
 
       if (!streakData) {
         setLoadError("Streak data is not loading from the backend yet.");
@@ -65,32 +74,9 @@ export function DashboardGamification() {
     void loadData();
   }, [loadData]);
 
-  const handleReview = async (kind: "weekly" | "monthly") => {
-    try {
-      setSubmittingReview(kind);
-      if (kind === "weekly") {
-        await GamificationAPI.completeWeeklyReview();
-        toast.success("Weekly review completed. +20 points");
-      } else {
-        await GamificationAPI.completeMonthlyReview();
-        toast.success("Monthly review completed. +35 points");
-      }
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      toast.error(`Failed to complete ${kind} review.`);
-    } finally {
-      setSubmittingReview(null);
-    }
-  };
-
   if (loading) {
     return (
-      <ElectricCard semanticColor={COLORS.electricCyan} elevation={1}>
-        <div className="py-10 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
-          Loading momentum systems...
-        </div>
-      </ElectricCard>
+      <LoadingState label="Loading momentum systems..." lines={3} />
     );
   }
 
@@ -98,11 +84,9 @@ export function DashboardGamification() {
     return (
       <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
         <div className="space-y-3 py-2">
-          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">
-            Gamification
-          </div>
-          <div className="text-2xl font-black text-white">Waiting on backend data</div>
-          <div className="text-sm text-gray-400">
+          <div className="app-eyebrow">Gamification</div>
+          <div className="app-section-title text-[1.75rem]">Waiting on backend data</div>
+          <div className="app-helper max-w-2xl">
             {loadError ?? "The dashboard could not fetch streak and level data yet."}
           </div>
         </div>
@@ -113,131 +97,142 @@ export function DashboardGamification() {
   const levelProgress = streak.next_level_points > streak.level_floor_points
     ? (streak.points_into_level / (streak.next_level_points - streak.level_floor_points)) * 100
     : 0;
+  const weeklyNudge = reviewNudges?.weekly ?? null;
+  const monthlyNudge = reviewNudges?.monthly ?? null;
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricCyan} elevation={2}>
+      <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricCyan} elevation={1} className="h-full">
           <div className="mb-5 flex items-start justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
-                <Flame size={18} className="text-orange-400" />
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Streak</div>
+                <IconBadge tone="yellow" size="sm">
+                  <Flame size={18} />
+                </IconBadge>
+                <div className="app-eyebrow">Streak</div>
               </div>
-              <div className="text-5xl font-black text-white">
+              <div className="text-5xl font-black text-[var(--app-color-text-primary)]">
                 {streak.current_streak_days}
-                <span className="ml-2 text-2xl text-gray-500">days</span>
+                <span className="ml-2 text-2xl text-[var(--app-color-text-tertiary)]">days</span>
               </div>
-              <div className="mt-2 text-xs font-bold text-gray-500">Best: {streak.best_streak_days} days</div>
+              <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
+                Best: {streak.best_streak_days} days
+              </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-black text-cyan-300">Lv {streak.level}</div>
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-600">Level</div>
+              <div className="text-3xl font-black text-[var(--app-accent-cyan-soft)]">Lv {streak.level}</div>
+              <div className="app-eyebrow">Level</div>
             </div>
           </div>
-          <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-400">
+          <div className="mb-2 flex items-center justify-between text-xs font-bold text-[var(--app-color-text-secondary)]">
             <span>Progress to next level</span>
-            <span className="text-white">{streak.points_into_level} / {streak.next_level_points - streak.level_floor_points}</span>
+            <span className="text-[var(--app-color-text-primary)]">
+              {streak.points_into_level} / {streak.next_level_points - streak.level_floor_points}
+            </span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.05]">
+          <div className="h-2 rounded-full bg-[var(--app-color-surface-inset)]">
             <div
-              className="h-full rounded-full bg-cyan-500"
+              className="h-full rounded-full bg-[var(--app-accent-cyan-soft)]"
               style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%` }}
             />
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full">
           <div className="mb-2 flex items-center gap-2">
-            <Trophy size={18} className="text-yellow-400" />
-            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Lifetime Points</div>
+            <IconBadge tone="yellow" size="sm">
+              <Trophy size={18} />
+            </IconBadge>
+            <div className="app-eyebrow">Lifetime Points</div>
           </div>
-          <div className="text-5xl font-black text-white">{streak.total_points_earned.toLocaleString()}</div>
-          <div className="mt-2 text-xs font-bold text-gray-500">Total points earned from meaningful actions</div>
+          <div className="text-5xl font-black text-[var(--app-color-text-primary)]">
+            {streak.total_points_earned.toLocaleString()}
+          </div>
+          <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
+            Total points earned from meaningful actions
+          </div>
         </ElectricCard>
 
-        <Link to="/circles">
+        <Link to="/circles" className="block h-full">
           <ElectricCard semanticColor={COLORS.electricPurple} elevation={1} className="h-full cursor-pointer">
             <div className="mb-2 flex items-center gap-2">
-              <Users size={18} className="text-purple-400" />
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Circles</div>
+              <IconBadge tone="purple" size="sm">
+                <Users size={18} />
+              </IconBadge>
+              <div className="app-eyebrow">Circles</div>
             </div>
-            <div className="text-3xl font-black text-white">
+            <div className="text-3xl font-black text-[var(--app-color-text-primary)]">
               {groups.length > 0 ? `${groups.length} joined` : "No circles"}
             </div>
-            <div className="mt-2 text-xs font-bold text-gray-500">
+            <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
               {currentRank ? `Current weekly rank: #${currentRank}` : "Join a circle to unlock leaderboards"}
             </div>
           </ElectricCard>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="xl:col-span-1">
-          <div className="mb-4 flex items-center gap-2">
-            <Calendar size={18} className="text-green-400" />
-            <h3 className="text-lg font-black text-white">Review Actions</h3>
+      <div className="grid grid-cols-1 items-stretch gap-8 xl:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="h-full xl:col-span-1">
+          <div className="mb-6 flex items-center gap-2">
+            <IconBadge tone="green" size="sm">
+              <Calendar size={18} />
+            </IconBadge>
+            <h3 className="app-card-title">Review Actions</h3>
           </div>
-          <p className="mb-6 text-sm leading-relaxed text-gray-400">
-            Lock in weekly and monthly reflection habits to keep momentum compounding.
-          </p>
-          <div className="space-y-3">
-            <Button
-              onClick={() => handleReview("weekly")}
-              disabled={submittingReview !== null}
-              className="w-full rounded-2xl bg-green-500 text-white hover:bg-green-400"
-            >
-              {submittingReview === "weekly" ? "Completing..." : "Complete Weekly Review"}
-            </Button>
-            <Button
-              onClick={() => handleReview("monthly")}
-              disabled={submittingReview !== null}
-              className="w-full rounded-2xl bg-blue-500 text-white hover:bg-blue-400"
-            >
-              {submittingReview === "monthly" ? "Completing..." : "Complete Monthly Review"}
-            </Button>
+          <div className="grid grid-cols-2 gap-3">
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="success" size="hero" className="w-full rounded-[1.5rem]">
+                  <Link to="/reviews/weekly">
+                    {weeklyNudge?.status === "completed" ? "View review" : "Start weekly"}
+                  </Link>
+                </AppButton>
+              </div>
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="info" size="hero" className="w-full rounded-[1.5rem]">
+                  <Link to="/reviews/monthly">
+                    {monthlyNudge?.status === "completed" ? "View review" : "Start monthly"}
+                  </Link>
+                </AppButton>
+              </div>
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="xl:col-span-2">
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full xl:col-span-2">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Award size={18} className="text-yellow-400" />
-              <h3 className="text-lg font-black text-white">Recent Badges</h3>
+              <IconBadge tone="yellow" size="sm">
+                <Award size={18} />
+              </IconBadge>
+              <h3 className="app-card-title">Recent Badges</h3>
             </div>
             <Link to="/badges">
-              <Button variant="outline" className="rounded-2xl border-white/10">
+              <AppButton variant="outline" size="sm">
                 View all
-              </Button>
+              </AppButton>
             </Link>
           </div>
           {badges.length > 0 ? (
             <BadgeDisplay badges={badges} maxDisplay={6} size="lg" />
           ) : (
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold text-gray-500">
-              No badges unlocked yet. Logging purchases and reflections will start the cabinet.
-            </div>
+            <Surface
+              variant="panel"
+              padding="md"
+              className="flex min-h-[7.5rem] flex-col items-center justify-center rounded-[2.5rem] px-6 py-5 text-center"
+            >
+              <div className="mb-2 flex justify-center text-[var(--app-color-text-tertiary)]">
+                <Award size={24} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="app-card-title">No badges unlocked yet.</h4>
+                <p className="app-helper mx-auto max-w-2xl">Logging purchases and reflections will start the cabinet.</p>
+              </div>
+            </Surface>
           )}
         </ElectricCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-        <MonthlyTargetsWidget compact />
-        <ElectricCard semanticColor={COLORS.electricBlue} elevation={1}>
-          <div className="mb-3 flex items-center gap-2">
-            <Target size={18} className="text-blue-400" />
-            <h3 className="text-lg font-black text-white">Monthly Focus</h3>
-          </div>
-          <p className="text-sm leading-relaxed text-gray-400">
-            Use monthly targets to set the habit you want to reinforce most this cycle.
-          </p>
-          <Link to="/targets" className="mt-5 inline-flex">
-            <Button variant="outline" className="rounded-2xl border-white/10">
-              Open targets
-            </Button>
-          </Link>
-        </ElectricCard>
-      </div>
+      <MonthlyTargetsWidget compact />
     </div>
   );
 }

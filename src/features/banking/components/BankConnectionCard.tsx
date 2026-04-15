@@ -2,8 +2,7 @@ import * as React from "react";
 import { Loader2, RefreshCw, Landmark } from "lucide-react";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { COLORS } from "@/shared/theme";
-import { motion } from "motion/react";
-import { cn } from "@/shared/components/ui/utils";
+import { AppButton, IconBadge } from "@/shared/components/system";
 import type { BankConnection } from "@/api/banking.api";
 
 type BankConnectionCardProps = {
@@ -39,26 +38,19 @@ export function BankConnectionCard({ connection, onSync, isSyncing = false }: Ba
     <ElectricCard className="p-5" semanticColor={COLORS.electricTeal} elevation={1}>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-teal-500/20">
-            <Landmark size={22} className="text-teal-400" />
-          </div>
+          <IconBadge tone="cyan" size="md">
+            <Landmark size={22} />
+          </IconBadge>
           <div>
-            <h4 className="font-black text-white text-base">{name}</h4>
-            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-              Last synced: {formatLastSynced(lastSynced)}
-            </div>
+            <h4 className="app-card-title">{name}</h4>
+            <div className="app-mini-label">Last synced: {formatLastSynced(lastSynced)}</div>
           </div>
         </div>
-        <motion.button
-          whileHover={{ scale: isSyncing ? 1 : 1.05 }}
-          whileTap={{ scale: isSyncing ? 1 : 0.95 }}
+        <AppButton
           onClick={onSync}
           disabled={isSyncing}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest",
-            "bg-white/5 border border-white/10 hover:bg-teal-500/20 hover:border-teal-500/40",
-            "text-gray-400 hover:text-teal-400 transition-all disabled:opacity-60"
-          )}
+          variant="secondary"
+          size="sm"
         >
           {isSyncing ? (
             <Loader2 size={14} className="animate-spin" />
@@ -66,7 +58,7 @@ export function BankConnectionCard({ connection, onSync, isSyncing = false }: Ba
             <RefreshCw size={14} />
           )}
           Sync now
-        </motion.button>
+        </AppButton>
       </div>
     </ElectricCard>
   );

@@ -2,11 +2,15 @@ import { apiRequest } from "./client";
 import type { TransactionFeedbackPayload } from "./transactions.api";
 
 export type BankConnection = {
-  id: string;
+  id: string | number;
+  plaid_item_id?: string;
+  institution_id?: string;
   institution_name?: string;
   institution?: string;
   status?: string;
   last_synced_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type BankAccount = {
@@ -31,6 +35,15 @@ export type BankTransaction = {
   description_raw?: string;
   direction?: string;
   category?: string;
+  personal_value_score?: number | null;
+  value_score_confidence?: number | null;
+  value_score_model_version?: string | null;
+  value_score_computed_at?: string | null;
+};
+
+export type ExchangePublicTokenResponse = {
+  success: boolean;
+  connection: BankConnection;
 };
 
 export const BankingAPI = {
@@ -40,20 +53,36 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.link_token.create",
+        action: "create_link_token",
+        resourceType: "bank_connection",
+      },
     }),
 
   exchangePublicToken: (publicToken: string) =>
-    apiRequest<{ ok?: boolean }>("/api/banking/exchange-token/", {
+    apiRequest<ExchangePublicTokenResponse>("/api/banking/exchange-token/", {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ public_token: publicToken }),
+      audit: {
+        eventName: "bank.connection.link",
+        action: "exchange_public_token",
+        resourceType: "bank_connection",
+      },
     }),
 
   getConnections: () =>
-    apiRequest<BankConnection[]>("/api/banking/connections/", { requireAuth: true }),
+    apiRequest<BankConnection[]>("/api/banking/connections/", {
+      requireAuth: true,
+      audit: { eventName: "bank.connections.read", action: "read", resourceType: "bank_connection" },
+    }),
 
   getAccounts: () =>
-    apiRequest<BankAccount[]>("/api/banking/accounts/", { requireAuth: true }),
+    apiRequest<BankAccount[]>("/api/banking/accounts/", {
+      requireAuth: true,
+      audit: { eventName: "bank.accounts.read", action: "read", resourceType: "bank_account" },
+    }),
 
   getTransactions: (params?: {
     limit?: number;
@@ -71,7 +100,10 @@ export const BankingAPI = {
     const qs = query.toString();
     return apiRequest<BankTransaction[]>(
       `/api/banking/transactions/${qs ? `?${qs}` : ""}`,
-      { requireAuth: true }
+      {
+        requireAuth: true,
+        audit: { eventName: "bank.transactions.read", action: "read", resourceType: "bank_transaction" },
+      }
     );
   },
 
@@ -80,6 +112,12 @@ export const BankingAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.connection.sync",
+        action: "sync",
+        resourceType: "bank_connection",
+        resourceId: connectionId,
+      },
     }),
 
   /** Submit feedback for a bank-synced transaction. Uses same payload shape as manual transactions. */
@@ -88,5 +126,23 @@ export const BankingAPI = {
       requireAuth: true,
       method: "PATCH",
       body: JSON.stringify(payload),
+      audit: {
+        eventName: "bank.transaction.feedback",
+        action: "update_feedback",
+        resourceType: "bank_transaction",
+        resourceId: plaidTransactionId,
+      },
+    }),
+  score: (transactionId: string | number) =>
+    apiRequest<BankTransaction>(`/api/banking/transactions/${transactionId}/score/`, {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({}),
+      audit: {
+        eventName: "bank.transaction.score",
+        action: "score",
+        resourceType: "bank_transaction",
+        resourceId: transactionId,
+      },
     }),
 };

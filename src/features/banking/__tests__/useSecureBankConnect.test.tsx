@@ -38,11 +38,18 @@ vi.mock("@/api/compliance.api", () => ({
 }));
 
 vi.mock("@/config/privacy", () => ({
-  getPrivacyPolicyMeta: () => ({
-    version: "1.0",
-    effectiveDate: "2026-03-01",
+  usePrivacyPolicyMeta: () => ({
+    version: "1.0.0",
+    effectiveDate: "2026-01-01",
     supportEmail: "support@example.com",
     privacyEmail: "privacy@example.com",
+    url: "/privacy",
+  }),
+  getFinancialConsentDisclosure: () => ({
+    intro: "intro",
+    policyReference: "policy",
+    checkboxLabel: "checkbox",
+    auditText: "consent-audit-text",
   }),
 }));
 
@@ -59,7 +66,10 @@ describe("useSecureBankConnect", () => {
       gate: { can: true, reason: null },
       mfaSnapshot: snap,
     });
-    complianceMocks.fetchConsentStatus.mockResolvedValue({ financial_data_access: false });
+    complianceMocks.fetchConsentStatus.mockResolvedValue({
+      has_valid_financial_consent: false,
+      required_policy_version: "1.0.0",
+    });
     complianceMocks.recordFinancialDataConsent.mockResolvedValue(undefined);
   });
 
@@ -86,7 +96,10 @@ describe("useSecureBankConnect", () => {
         gate: { can: false, reason: "mfa_required" },
         mfaSnapshot: snap,
       });
-    complianceMocks.fetchConsentStatus.mockResolvedValue({ financial_data_access: true });
+    complianceMocks.fetchConsentStatus.mockResolvedValue({
+      has_valid_financial_consent: true,
+      required_policy_version: "1.0.0",
+    });
     const { result } = renderHook(() => useSecureBankConnect());
     await act(async () => {
       await result.current.requestConnect();
@@ -96,7 +109,10 @@ describe("useSecureBankConnect", () => {
   });
 
   it("with existing consent and passing re-check, reaches Plaid preparation (startConnect)", async () => {
-    complianceMocks.fetchConsentStatus.mockResolvedValue({ financial_data_access: true });
+    complianceMocks.fetchConsentStatus.mockResolvedValue({
+      has_valid_financial_consent: true,
+      required_policy_version: "1.0.0",
+    });
     const { result } = renderHook(() => useSecureBankConnect());
     await act(async () => {
       await result.current.requestConnect();
@@ -114,7 +130,7 @@ describe("useSecureBankConnect", () => {
     await act(async () => {
       await result.current.onConsentConfirm();
     });
-    expect(complianceMocks.recordFinancialDataConsent).toHaveBeenCalledWith("1.0");
+    expect(complianceMocks.recordFinancialDataConsent).toHaveBeenCalledWith("consent-audit-text");
     expect(plaidMocks.startConnect).not.toHaveBeenCalled();
     expect(authMocks.refreshMfa).toHaveBeenCalled();
   });

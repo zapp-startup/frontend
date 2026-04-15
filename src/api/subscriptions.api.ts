@@ -30,7 +30,10 @@ type BackendSubscription = {
   status: string;
   started_on?: string | null;
   notes?: string | null;
+  /** Legacy / NLP feedback pipeline (0–1); prefer latest_value_score for UI when set. */
   feedback_value_score?: number | null;
+  /** Latest value-score model output (0–150) from SubscriptionValuation. */
+  latest_value_score?: number | null;
 };
 
 type BackendSubscriptionPayload = {
@@ -50,6 +53,7 @@ function normalizeStartedAt(value?: string | null) {
 }
 
 function normalizeSubscription(data: BackendSubscription): Subscription {
+  const fromModel = data.latest_value_score;
   return {
     id: data.id,
     merchant: data.merchant ?? null,
@@ -58,7 +62,7 @@ function normalizeSubscription(data: BackendSubscription): Subscription {
     status: data.status,
     started_at: normalizeStartedAt(data.started_on),
     notes: data.notes,
-    value_score: data.feedback_value_score,
+    value_score: fromModel != null ? fromModel : data.feedback_value_score,
   };
 }
 
@@ -92,6 +96,7 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "POST",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.create", action: "create", resourceType: "subscription" },
     });
     return normalizeSubscription(created);
   },
@@ -100,6 +105,7 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "PUT",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.update", action: "update", resourceType: "subscription", resourceId: id },
     });
     return normalizeSubscription(updated);
   },
@@ -108,9 +114,14 @@ export const SubscriptionsAPI = {
       ...auth,
       method: "PATCH",
       body: JSON.stringify(serializeSubscriptionInput(data)),
+      audit: { eventName: "subscription.update", action: "update", resourceType: "subscription", resourceId: id },
     });
     return normalizeSubscription(updated);
   },
   remove: (id: number) =>
-    apiRequest<null>(`/api/subscriptions/${id}/`, { ...auth, method: "DELETE" }),
+    apiRequest<null>(`/api/subscriptions/${id}/`, {
+      ...auth,
+      method: "DELETE",
+      audit: { eventName: "subscription.delete", action: "delete", resourceType: "subscription", resourceId: id },
+    }),
 };

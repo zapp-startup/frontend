@@ -2,6 +2,8 @@ import { apiRequest } from "./client";
 
 const auth = { requireAuth: true as const };
 
+export type ValuationJson = Record<string, unknown>;
+
 export type ValuationModelVersion = {
   id: number;
   [key: string]: unknown;
@@ -10,19 +12,27 @@ export type ValuationModelVersion = {
 export type SubscriptionValuation = {
   id: number;
   subscription?: number;
+  personal_value_score?: number | null;
   recommendation?: string;
-  confidence?: number;
-  evidence?: string;
+  confidence?: number | null;
+  evidence_json?: ValuationJson;
+  explanation_json?: ValuationJson;
   [key: string]: unknown;
 };
 
 export type ItemValuation = {
   id: number;
   description?: string;
+  item_name?: string;
+  item_category?: string;
   amount?: string | number;
+  observed_price?: string | number | null;
+  estimated_fair_price?: string | number | null;
+  personal_value_score?: number | null;
   recommendation?: string;
-  confidence?: number;
-  evidence?: string;
+  confidence?: number | null;
+  evidence_json?: ValuationJson;
+  reasoning_json?: ValuationJson;
   [key: string]: unknown;
 };
 
@@ -52,6 +62,26 @@ export const ValuationModelVersionsAPI = {
     apiRequest<null>(`/api/valuation-model-versions/${id}/`, {
       ...auth,
       method: "DELETE",
+    }),
+};
+
+/** Value-score pipeline (platform_bundle model → SubscriptionValuation). */
+export const ValueScoresAPI = {
+  me: (params?: { subscription?: number }) => {
+    const qs =
+      params?.subscription != null ? `?subscription=${params.subscription}` : "";
+    return apiRequest<SubscriptionValuation[]>(`/api/value-scores/me/${qs}`, auth);
+  },
+  recompute: (body?: { subscription_ids?: number[] }) =>
+    apiRequest<{
+      ok: boolean;
+      valuations?: SubscriptionValuation[];
+      model_version?: string;
+      message?: string;
+    }>("/api/value-scores/recompute/", {
+      ...auth,
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
     }),
 };
 

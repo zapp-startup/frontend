@@ -63,6 +63,7 @@ export function FeedbackPromptFlow() {
     Set<string | number>
   >(() => new Set());
   const hasFetchedCandidates = React.useRef(false);
+  const ignoreNextCloseRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!isOnHome || hasFetchedCandidates.current) return;
@@ -87,6 +88,10 @@ export function FeedbackPromptFlow() {
 
   const handleClose = (open: boolean) => {
     if (!open) {
+      if (ignoreNextCloseRef.current) {
+        ignoreNextCloseRef.current = false;
+        return;
+      }
       advanceToNext();
     }
   };
@@ -95,6 +100,7 @@ export function FeedbackPromptFlow() {
     if (currentTransaction) {
       setAnsweredThisSession((prev) => new Set(prev).add(currentTransaction.id));
     }
+    ignoreNextCloseRef.current = true;
     advanceToNext();
   };
 
