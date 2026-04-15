@@ -8,4 +8,5 @@ export * from "./valuations.api";
 export * from "./ai.api";
 export * from "./onboarding.api";
 export * from "./banking.api";
+export * from "./waitlist.api";
 export * from "./spotifyIntegration.api";
