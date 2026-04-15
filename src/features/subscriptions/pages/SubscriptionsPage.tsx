@@ -381,13 +381,19 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
           <div className="min-w-[240px] shrink-0 text-right">
             {valueScore != null ? (
-              <div className="space-y-2.5">
-                <div className="flex items-baseline justify-end text-right">
-                  <div className="text-lg font-black tracking-tight text-[var(--app-color-text-primary)]">
-                    Value: {value.displayScoreText}
-                  </div>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
+                  <span className="text-lg font-bold tabular-nums tracking-tight text-[var(--app-color-text-secondary)]">
+                    Value
+                  </span>
+                  <span
+                    className="text-lg font-black tabular-nums tracking-tight"
+                    style={{ color: value.accentColor }}
+                  >
+                    {value.displayScoreText}
+                  </span>
                 </div>
-                <ValueScoreMeter score={valueScore} />
+                <ValueScoreMeter score={valueScore} accentColor={value.accentColor} />
               </div>
             ) : (
               <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
@@ -442,8 +448,16 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                     <div>
                       <div className={UI_PATTERNS.eyebrow}>Value score</div>
                       {valueScore != null ? (
-                        <div className="mt-2 text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">
-                          Value: {value.displayScoreText}
+                        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+                          <span className="text-lg font-bold tabular-nums tracking-tight text-[var(--app-color-text-secondary)]">
+                            Value
+                          </span>
+                          <span
+                            className="text-lg font-black tabular-nums tracking-tight"
+                            style={{ color: value.accentColor }}
+                          >
+                            {value.displayScoreText}
+                          </span>
                         </div>
                       ) : (
                         <div className="mt-2 text-sm font-bold text-[var(--app-color-text-secondary)]">
@@ -464,7 +478,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                     </StatusChip>
                   </div>
 
-                  {valueScore != null ? <ValueScoreMeter score={valueScore} /> : null}
+                  {valueScore != null ? <ValueScoreMeter score={valueScore} accentColor={value.accentColor} /> : null}
 
                   <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">
                     {value.tone}

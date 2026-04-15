@@ -32,11 +32,14 @@ import { getValuePresentation } from "@/shared/valuation";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { cn } from "@/shared/components/ui/utils";
+import { ApiError } from "@/api/client";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
 import { BankingAPI } from "@/api/banking.api";
 import { BankingSection } from "@/features/banking";
 import { useMergedTransactions } from "../hooks/useMergedTransactions";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
+import { resolveStatedMonthlyIncome } from "../utils/statedMonthlyIncome";
+import { RawExplicitAPI } from "@/api/users.api";
 import { TransactionFeedbackModal } from "../components/TransactionFeedbackModal";
 import {
   AppButton,
@@ -103,6 +106,12 @@ const EMPTY_FILTERS: Filters = {
   date_from: "",
   date_to: "",
 };
+
+function transactionMatchesToolbarFilters(tx: DisplayTransaction, filters: Filters): boolean {
+  if (filters.category && tx.category !== filters.category) return false;
+  if (filters.direction && tx.direction !== filters.direction) return false;
+  return true;
+}
 
 type TransactionRowViewModel = {
   tx: DisplayTransaction;
@@ -918,17 +927,26 @@ const TransactionStats = React.memo(function TransactionStats({
   totalSpend,
   totalIncome,
   net,
+  incomeLabel,
+  incomeDetail,
 }: {
   count: number;
   totalSpend: number;
   totalIncome: number;
   net: number;
+  incomeLabel: string;
+  incomeDetail?: string;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <MetricCard label="Total Transactions" value={count} className="app-surface-card" />
       <MetricCard label="Total Spent" value={`$${totalSpend.toFixed(2)}`} className="app-surface-card" />
-      <MetricCard label="Total Income" value={`$${totalIncome.toFixed(2)}`} className="app-surface-card" />
+      <MetricCard
+        label={incomeLabel}
+        value={`$${totalIncome.toFixed(2)}`}
+        detail={incomeDetail}
+        className="app-surface-card"
+      />
       <MetricCard
         label="Net"
         value={<span className={cn(net >= 0 ? "text-emerald-400" : "text-red-400")}>{net >= 0 ? "+" : ""}${net.toFixed(2)}</span>}
@@ -1077,7 +1095,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
                         key={`${row.tx.source}-${row.tx.id}`}
                         variant="inset"
                         padding="md"
-                        className="group/tx flex items-center justify-between rounded-[1.75rem] transition-all hover:border-[var(--app-color-border-strong)]"
+                        className="group/tx flex items-start justify-between gap-4 rounded-[1.75rem] transition-all hover:border-[var(--app-color-border-strong)]"
                       >
                         <div
                           className={cn("flex items-center gap-5 flex-1", isManual && "cursor-pointer")}
@@ -1106,28 +1124,39 @@ const TransactionGroups = React.memo(function TransactionGroups({
                           </div>
                         </div>
 
-                         <div className="flex items-center gap-4">
-                           <div className="w-[240px] shrink-0 text-right">
-                             <div className={cn("text-xl font-black", row.isIncome ? "text-emerald-400" : "text-[var(--app-color-text-primary)]")}>
+                         <div className="flex shrink-0 items-start gap-3">
+                           <div className="flex w-full min-w-[12rem] max-w-[min(100%,30rem)] flex-col items-end gap-2 text-right">
+                             <div
+                               className={cn(
+                                 "text-xl font-black tabular-nums",
+                                 row.isIncome ? "text-emerald-400" : "text-[var(--app-color-text-primary)]"
+                               )}
+                             >
                                {row.amountText}
                              </div>
                               {row.valueScore != null ? (
-                                <div className="mt-2 space-y-2.5">
-                                  <div className="flex items-baseline justify-end text-right">
-                                    <div className="text-lg font-black tracking-tight text-[var(--app-color-text-primary)]">
-                                      Value: {row.valueDisplayScoreText}
-                                    </div>
+                                <div className="w-full space-y-2">
+                                  <div className="flex w-full flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
+                                    <span className="text-lg font-bold tabular-nums tracking-tight text-[var(--app-color-text-secondary)]">
+                                      Value
+                                    </span>
+                                    <span
+                                      className="text-lg font-black tabular-nums tracking-tight"
+                                      style={{ color: row.valueColor }}
+                                    >
+                                      {row.valueDisplayScoreText}
+                                    </span>
                                   </div>
-                                  <ValueScoreMeter score={row.valueScore} />
+                                  <ValueScoreMeter score={row.valueScore} accentColor={row.valueColor} />
                                 </div>
                               ) : (
-                                <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
                                   Run score to save value score
                                 </div>
                               )}
                             </div>
 
-                            <div className="text-right">
+                            <div className="flex shrink-0 items-center gap-0.5 pt-0.5">
                             <AppButton
                               onClick={(e) => onScore(row.tx, e)}
                               variant="quiet"
@@ -1215,10 +1244,24 @@ export const TransactionsPage = () => {
   const [scoringTransactionId, setScoringTransactionId] = React.useState<string | number | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
+  const [profileMonthlyIncome, setProfileMonthlyIncome] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    RawExplicitAPI.list()
+      .then((rows) => {
+        if (cancelled || !rows.length) return;
+        setProfileMonthlyIncome(resolveStatedMonthlyIncome(rows[0]));
+      })
+      .catch(() => {
+        if (!cancelled) setProfileMonthlyIncome(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const { transactions, loading, error, refetch } = useMergedTransactions({
-    category: filters.category || undefined,
-    direction: filters.direction || undefined,
     date_from: filters.date_from || undefined,
     date_to: filters.date_to || undefined,
   });
@@ -1264,15 +1307,15 @@ export const TransactionsPage = () => {
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
-  const filteredTransactions = React.useMemo(
-    () =>
-      normalizedSearch
-        ? transactions.filter((tx) =>
-            [tx.description_raw, tx.category].join(" ").toLowerCase().includes(normalizedSearch)
-          )
-        : transactions,
-    [transactions, normalizedSearch]
-  );
+  const filteredTransactions = React.useMemo(() => {
+    let list = transactions.filter((tx) => transactionMatchesToolbarFilters(tx, filters));
+    if (normalizedSearch) {
+      list = list.filter((tx) =>
+        [tx.description_raw, tx.category].join(" ").toLowerCase().includes(normalizedSearch)
+      );
+    }
+    return list;
+  }, [transactions, filters, normalizedSearch]);
 
   const transactionGroups = React.useMemo<TransactionGroupViewModel[]>(
     () =>
@@ -1369,8 +1412,14 @@ export const TransactionsPage = () => {
         }
         await refetchTransactions();
         toast.success("Value score updated.");
-      } catch {
-        toast.error("Failed to compute value score.");
+      } catch (err) {
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to compute value score.";
+        toast.error(msg);
       } finally {
         setScoringTransactionId((current) => (current === scoreKey ? null : current));
       }
@@ -1378,21 +1427,26 @@ export const TransactionsPage = () => {
     [refetchTransactions]
   );
 
-  const { totalSpend, totalIncome, net } = React.useMemo(() => {
+  const { totalSpend, totalIncome, net, incomeLabel, incomeDetail } = React.useMemo(() => {
     const totalSpendMemo = transactions
       .filter((t) => t.direction === "spend")
       .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
-    const totalIncomeMemo = transactions
+    const incomeFromTransactions = transactions
       .filter((t) => t.direction === "income")
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+
+    const usesProfile = profileMonthlyIncome != null && profileMonthlyIncome > 0;
+    const totalIncomeMemo = usesProfile ? profileMonthlyIncome! : incomeFromTransactions;
 
     return {
       totalSpend: totalSpendMemo,
       totalIncome: totalIncomeMemo,
       net: totalIncomeMemo - totalSpendMemo,
+      incomeLabel: usesProfile ? "Monthly income" : "Total Income",
+      incomeDetail: usesProfile ? "From your onboarding" : undefined,
     };
-  }, [transactions]);
+  }, [transactions, profileMonthlyIncome]);
 
   return (
     <div className="space-y-12 pb-40 relative z-10">
@@ -1403,6 +1457,8 @@ export const TransactionsPage = () => {
         totalSpend={totalSpend}
         totalIncome={totalIncome}
         net={net}
+        incomeLabel={incomeLabel}
+        incomeDetail={incomeDetail}
       />
 
       <div className="space-y-4">

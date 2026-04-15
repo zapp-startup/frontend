@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ProfilePage } from "../pages/ProfilePage";
 import * as api from "@/api";
 import { toast } from "sonner";
+import { DEFAULT_PLAN_LABEL } from "@/shared/subscriptionTier";
 
 const mockNavigate = vi.fn();
 const mockLogout = vi.fn();
@@ -30,17 +31,21 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const authState = {
+  user: {
+    id: 1,
+    supabaseUid: "sb-1",
+    name: "Test User",
+    email: "test@example.com",
+    tier: "Intentional Tier" as string | undefined,
+    username: "test",
+    createdAt: "",
+  },
+};
+
 vi.mock("@/features/auth", () => ({
   useAuth: () => ({
-    user: {
-      id: 1,
-      supabaseUid: "sb-1",
-      name: "Test User",
-      email: "test@example.com",
-      tier: "Intentional Tier",
-      username: "test",
-      createdAt: "",
-    },
+    user: authState.user,
     logout: mockLogout,
     updateProfile: mockUpdateProfile,
   }),
@@ -49,6 +54,15 @@ vi.mock("@/features/auth", () => ({
 describe("ProfilePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authState.user = {
+      id: 1,
+      supabaseUid: "sb-1",
+      name: "Test User",
+      email: "test@example.com",
+      tier: "Intentional Tier",
+      username: "test",
+      createdAt: "",
+    };
     vi.mocked(api.RawExplicitAPI.list).mockResolvedValue([]);
     vi.mocked(api.PreferencesAPI.list).mockResolvedValue([]);
     mockUpdateProfile.mockResolvedValue({ ok: true });
@@ -68,8 +82,24 @@ describe("ProfilePage", () => {
     });
 
     expect(screen.getByDisplayValue("Test User")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Financial Profile/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Preferences/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /financial context/i })).toBeInTheDocument();
+    expect(screen.getByText(/App preferences \(key \/ value\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Intentional Tier")).toBeInTheDocument();
+  });
+
+  it("shows default plan label when user has no tier", async () => {
+    authState.user = {
+      ...authState.user,
+      tier: undefined,
+    };
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(api.RawExplicitAPI.list).toHaveBeenCalled());
+    expect(screen.getByText(DEFAULT_PLAN_LABEL)).toBeInTheDocument();
   });
 
   it("shows success toast only after successful profile save", async () => {
@@ -87,7 +117,7 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: /Save changes/i }));
 
     await waitFor(() => {
-      expect(mockUpdateProfile).toHaveBeenCalled();
+      expect(mockUpdateProfile).toHaveBeenCalledWith({ name: "Test User" });
       expect(toast.success).toHaveBeenCalledWith("Profile updated");
     });
     expect(toast.error).not.toHaveBeenCalled();

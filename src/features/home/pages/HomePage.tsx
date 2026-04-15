@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { TrendingUp, AlertCircle, Sparkles, TrendingDown, ChevronRight } from "lucide-react";
 import { useMergedTransactions } from "@/features/transactions/hooks/useMergedTransactions";
@@ -11,26 +12,18 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { toast } from "sonner";
 import { AppButton, EmptyState, IconBadge, LoadingState, StatusChip } from "@/shared/components/system";
 import { cn } from "@/shared/components/ui/utils";
 import { formatLocalDateYYYYMMDD, getLocalDateKey, parseDateForDisplay } from "@/shared/date";
 import { deriveTransactionValueScore } from "@/shared/transaction-valuation";
 import { getValuePresentation } from "@/shared/valuation";
-import { ElectricCard, ReflectionPulse } from "../components/ElectricCard";
+import { ElectricCard } from "../components/ElectricCard";
 import { DashboardGamification } from "@/features/gamification";
 import { COLORS, GLOWS } from "@/shared/theme";
+import { useDashboardFeedback } from "@/features/dashboard/context/DashboardFeedbackContext";
 
 export function HomePage() {
-  const [activePulseId, setActivePulseId] = React.useState<string | number | null>(null);
-
-  const triggerPulse = (transactionId: string | number) => {
-    setActivePulseId(transactionId);
-    setTimeout(() => setActivePulseId((current) => (current === transactionId ? null : current)), 1200);
-    toast.success("Reflection complete. Streak maintained!", {
-      style: { background: COLORS.bgCard, color: COLORS.electricGreen, border: `1px solid ${COLORS.electricGreen}33` },
-    });
-  };
+  const { openFeedback } = useDashboardFeedback();
 
   const { transactions, loading: txLoading } = useMergedTransactions({ limit: 6 });
 
@@ -220,8 +213,8 @@ export function HomePage() {
         <ElectricCard className="lg:col-span-8 overflow-hidden" semanticColor={COLORS.electricGreen} elevation={1}>
           <div className="flex items-center justify-between mb-10">
             <h3 className="app-card-title text-xl">Recent Spending History</h3>
-            <AppButton variant="quietAccent" size="sm" className="px-0">
-              View Timeline
+            <AppButton variant="quietAccent" size="sm" className="px-0" asChild>
+              <Link to="/transactions">View Timeline</Link>
             </AppButton>
           </div>
           <div className="space-y-4">
@@ -265,10 +258,17 @@ export function HomePage() {
   return (
     <div
       key={item.id}
-      onClick={() => triggerPulse(item.id)}
+      role="button"
+      tabIndex={0}
+      onClick={() => openFeedback(item, "manual")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openFeedback(item, "manual");
+        }
+      }}
       className="relative flex cursor-pointer items-center justify-between rounded-[2.5rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-6 transition-all"
     >
-      <ReflectionPulse active={activePulseId === item.id} />
       <div className="flex items-center gap-8">
         <div
           className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center border transition-all"
