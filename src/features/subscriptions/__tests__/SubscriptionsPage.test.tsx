@@ -11,7 +11,22 @@ vi.mock("@/api", () => ({
   SubscriptionValuationsAPI: { list: vi.fn() },
 }));
 
-function renderPage() {
+vi.mock("@/api/spotifyIntegration.api", () => ({
+  SpotifyIntegrationAPI: {
+    getStatus: vi.fn().mockResolvedValue({ connected: false }),
+    getInsights: vi.fn().mockResolvedValue(null),
+    connect: vi.fn(),
+    sync: vi.fn(),
+    disconnect: vi.fn(),
+    resolveAuthorizationUrl: vi.fn(),
+  },
+}));
+
+vi.mock("@/config/spotifyIntegration", () => ({
+  getSpotifyOAuthReturnUrl: () => "http://localhost/integrations/spotify/callback",
+}));
+
+function renderSubscriptions() {
   return render(
     <MemoryRouter>
       <PanelProvider>
@@ -32,13 +47,14 @@ describe("SubscriptionsPage", () => {
   });
 
   it("loads and displays empty state when no subscriptions", async () => {
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(api.SubscriptionsAPI.list).toHaveBeenCalled();
       expect(api.MerchantsAPI.list).toHaveBeenCalled();
     });
 
+    expect(screen.getByRole("heading", { name: /spotify/i })).toBeInTheDocument();
     expect(screen.getByText(/No subscriptions yet/i)).toBeInTheDocument();
   });
 
@@ -55,7 +71,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();
@@ -78,7 +94,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Value: 100")).toBeInTheDocument();
@@ -99,7 +115,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Value: 82")).toBeInTheDocument();
@@ -128,7 +144,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Value: 120")).toBeInTheDocument();
@@ -149,7 +165,7 @@ describe("SubscriptionsPage", () => {
     ]);
     vi.mocked(api.SubscriptionValuationsAPI.list).mockRejectedValue(new Error("valuations unavailable"));
 
-    renderPage();
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();

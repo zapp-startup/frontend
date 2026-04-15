@@ -2,6 +2,8 @@ import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, Calendar, Loader2, Plus, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SpotifyIntegrationSection } from "../components/SpotifyIntegrationSection";
+import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, UI_PATTERNS } from "@/shared/theme";
 import { getValuePresentation } from "@/shared/valuation";
@@ -39,6 +41,16 @@ import {
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
+
+function formatConfidencePercent(confidence?: number | null) {
+  if (confidence == null) return null;
+  return Math.round(Math.min(1, Math.max(0, confidence)) * 100);
+}
+
+function formatValuationJson(value?: Record<string, unknown>) {
+  if (!value || Object.keys(value).length === 0) return null;
+  return JSON.stringify(value, null, 2);
+}
 
 function getStatusColor(status: string) {
   const s = (status || "").toLowerCase();
@@ -502,7 +514,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       </div>
                     )}
 
-                    {valuation.confidence != null && (
+                    {formatConfidencePercent(valuation.confidence) != null && (
                       <div className="mb-4">
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
@@ -512,26 +524,48 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
-                                width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
-                                backgroundColor: "var(--app-accent-cyan)",
+                                width: `${formatConfidencePercent(valuation.confidence)}%`,
+                                backgroundColor: COLORS.electricCyan,
                               }}
                             />
                           </div>
-                          <span className="text-sm font-black text-[var(--app-color-text-primary)]">
-                            {Math.round(valuation.confidence)}%
+                          <span className="text-sm font-black text-white">
+                            {formatConfidencePercent(valuation.confidence)}%
                           </span>
                         </div>
                       </div>
                     )}
 
-                    {valuation.evidence && (
+                    {valuation.personal_value_score != null && (
+                      <div className="mb-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Personal Value Score
+                        </div>
+                        <p className="text-sm font-bold text-white">
+                          {valuation.personal_value_score}/150
+                        </p>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined) && (
                       <div>
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
-                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
-                          {valuation.evidence}
-                        </p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined) && (
+                      <div className="mt-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Explanation
+                        </div>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined)}
+                        </pre>
                       </div>
                     )}
                   </Surface>
@@ -714,26 +748,27 @@ export function SubscriptionsPage() {
     );
   }, [subscriptionCards.length]);
 
-  if (loading) {
-    return <LoadingState label="Loading subscriptions..." lines={4} />;
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        title="Subscriptions failed to load"
-        description={error}
-        action={
-          <AppButton variant="outline" onClick={() => window.location.reload()}>
-            Retry
-          </AppButton>
-        }
-      />
-    );
-  }
-
   return (
-    <div className="relative z-10 space-y-12 pb-32">
+    <div className="space-y-12 pb-32 relative z-10">
+      <SpotifyIntegrationSection />
+
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={48} className="animate-spin text-cyan-400" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="text-center py-16 space-y-4">
+          <div className="text-red-400 font-bold">{error}</div>
+          <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">
@@ -828,6 +863,8 @@ export function SubscriptionsPage() {
           <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }

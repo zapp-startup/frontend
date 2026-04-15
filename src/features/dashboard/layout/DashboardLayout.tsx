@@ -50,6 +50,9 @@ const WeeklyReviewPage = React.lazy(() =>
 const MonthlyReviewPage = React.lazy(() =>
   import("@/features/gamification").then((module) => ({ default: module.MonthlyReviewPage }))
 );
+const SpotifyCallbackPage = React.lazy(() =>
+  import("@/features/integrations/pages/SpotifyCallbackPage").then((m) => ({ default: m.SpotifyCallbackPage }))
+);
 
 type PageId =
   | "home"
@@ -84,6 +87,7 @@ function getInitials(name: string | null | undefined) {
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
   if (pathname.startsWith("/profile")) return "profile";
+  if (pathname.startsWith("/integrations")) return "subscriptions";
   if (pathname.startsWith("/valuations")) return "analytics";
   if (pathname.startsWith("/reviews")) return "home";
 
@@ -112,6 +116,11 @@ const ROUTES: { path: string; match?: (pathname: string) => boolean; element: Re
   },
   { path: "/analytics", element: <AnalyticsPage /> },
   { path: "/search", element: <SearchPage /> },
+  {
+    path: "/integrations/spotify/callback",
+    match: (pathname) => pathname.startsWith("/integrations/spotify"),
+    element: <SpotifyCallbackPage />,
+  },
   { path: "/profile", match: (pathname) => pathname.startsWith("/profile"), element: <ProfilePage /> },
 ];
 
