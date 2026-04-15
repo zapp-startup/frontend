@@ -15,6 +15,11 @@ export type Transaction = {
   usage_frequency?: number | null;
   reflection_text?: string | null;
   considered_at?: string | null;
+  feedback_value_score?: number | null;
+  feedback_confidence?: number | null;
+  value_score?: number | null;
+  value_score_source?: string | null;
+  value_score_confidence?: number | null;
 };
 
 export type NewTransaction = {

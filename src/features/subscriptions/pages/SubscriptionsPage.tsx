@@ -41,6 +41,16 @@ import {
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
 
+function formatConfidencePercent(confidence?: number | null) {
+  if (confidence == null) return null;
+  return Math.round(Math.min(1, Math.max(0, confidence)) * 100);
+}
+
+function formatValuationJson(value?: Record<string, unknown>) {
+  if (!value || Object.keys(value).length === 0) return null;
+  return JSON.stringify(value, null, 2);
+}
+
 function getStatusColor(status: string) {
   const s = (status || "").toLowerCase();
   if (s.includes("active") || s.includes("optimal")) return COLORS.electricGreen;
@@ -503,7 +513,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       </div>
                     )}
 
-                    {valuation.confidence != null && (
+                    {formatConfidencePercent(valuation.confidence) != null && (
                       <div className="mb-4">
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
@@ -513,26 +523,48 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
-                                width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
-                                backgroundColor: "var(--app-accent-cyan)",
+                                width: `${formatConfidencePercent(valuation.confidence)}%`,
+                                backgroundColor: COLORS.electricCyan,
                               }}
                             />
                           </div>
-                          <span className="text-sm font-black text-[var(--app-color-text-primary)]">
-                            {Math.round(valuation.confidence)}%
+                          <span className="text-sm font-black text-white">
+                            {formatConfidencePercent(valuation.confidence)}%
                           </span>
                         </div>
                       </div>
                     )}
 
-                    {valuation.evidence && (
+                    {valuation.personal_value_score != null && (
+                      <div className="mb-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Personal Value Score
+                        </div>
+                        <p className="text-sm font-bold text-white">
+                          {valuation.personal_value_score}/150
+                        </p>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined) && (
                       <div>
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
-                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
-                          {valuation.evidence}
-                        </p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined) && (
+                      <div className="mt-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Explanation
+                        </div>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined)}
+                        </pre>
                       </div>
                     )}
                   </Surface>
