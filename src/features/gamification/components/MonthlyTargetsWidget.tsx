@@ -4,20 +4,26 @@ import { CheckCircle2, Clock3, Plus, Target } from "lucide-react";
 
 import { GamificationAPI, type MonthlyTarget } from "@/api/gamification.api";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { Button } from "@/shared/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { COLORS } from "@/shared/theme";
+import { COLORS, UI_PATTERNS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import { toast } from "sonner";
+import {
+  AppButton,
+  AppDialog,
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogDescription,
+  AppDialogFooter,
+  AppDialogHeader,
+  AppDialogTitle,
+  AppInput,
+  EmptyState,
+  FormField,
+  IconBadge,
+  LoadingState,
+  StatusChip,
+  Surface,
+} from "@/shared/components/system";
 
 type MonthlyTargetsWidgetProps = {
   compact?: boolean;
@@ -63,31 +69,31 @@ export function MonthlyTargetsWidget({ compact = false }: MonthlyTargetsWidgetPr
       >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Target size={18} className="text-purple-400" />
-            <h3 className={compact ? "text-lg font-black text-white" : "text-2xl font-black text-white"}>
+            <IconBadge tone="purple" size="sm">
+              <Target size={18} />
+            </IconBadge>
+            <h3 className={compact ? "app-card-title text-lg" : "app-section-title text-[1.75rem]"}>
               Monthly Targets
             </h3>
           </div>
-          <Button
+          <AppButton
             onClick={() => setIsCreateOpen(true)}
-            className="rounded-2xl bg-purple-500/15 px-4 text-purple-300 hover:bg-purple-500/25"
+            variant="accent"
+            size="sm"
           >
             <Plus size={14} />
             New
-          </Button>
+          </AppButton>
         </div>
 
-        {loading && (
-          <div className="py-10 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
-            Loading targets...
-          </div>
-        )}
+        {loading && <LoadingState label="Loading targets" lines={compact ? 2 : 3} compact={compact} />}
 
         {!loading && targetList.length === 0 && (
-          <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-8 text-center">
-            <Target size={28} className="mx-auto mb-3 text-gray-700" />
-            <div className="text-sm font-bold text-gray-400">No monthly targets yet.</div>
-          </div>
+          <EmptyState
+            icon={<Target size={28} />}
+            title="No monthly targets yet."
+            description="Set a goal tied to the habit you want to reinforce this month."
+          />
         )}
 
         {!loading && targetList.length > 0 && (
@@ -147,7 +153,7 @@ function MonthlyTargetCard({
   };
 
   return (
-    <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5">
+    <Surface variant="panel" padding="md">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <div className="mb-1 flex items-center gap-2">
@@ -156,55 +162,51 @@ function MonthlyTargetCard({
             ) : (
               <Clock3 size={16} className="text-purple-400" />
             )}
-            <h4 className="text-base font-black text-white">{target.title}</h4>
+            <h4 className="app-card-title">{target.title}</h4>
           </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+          <div className={UI_PATTERNS.eyebrow}>
             {target.target_type.replaceAll("_", " ")}
           </div>
         </div>
-        <div
-          className={cn(
-            "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em]",
-            completed ? "bg-green-500/15 text-green-400" : "bg-purple-500/15 text-purple-300",
-          )}
-        >
+        <StatusChip tone={completed ? "success" : "accent"}>
           {completed ? "Completed" : "Active"}
-        </div>
+        </StatusChip>
       </div>
 
-      <div className="mb-2 flex items-center justify-between text-sm font-bold text-gray-400">
+      <div className="mb-2 flex items-center justify-between text-sm font-bold text-[var(--app-color-text-secondary)]">
         <span>{target.current_value} / {target.target_value}</span>
-        <span className="text-white">{Math.round(progress)}%</span>
+        <span className="text-[var(--app-color-text-primary)]">{Math.round(progress)}%</span>
       </div>
-      <div className="mb-5 h-2 rounded-full bg-white/[0.04]">
+      <div className="mb-5 h-2 rounded-full bg-[var(--app-color-surface-inset)]">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5 }}
-          className={completed ? "h-full rounded-full bg-green-500" : "h-full rounded-full bg-purple-500"}
+          className="h-full rounded-full"
+          style={{ backgroundColor: completed ? "var(--app-accent-green)" : "var(--app-accent-purple)" }}
         />
       </div>
 
       {!completed && !compact && (
         <div className="flex items-center gap-3">
-          <Input
+          <AppInput
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             type="number"
             min="1"
             disabled={submittingProgress}
-            className="h-11 rounded-2xl border-white/10 bg-[#0B1220] text-white"
+            size="sm"
           />
-          <Button
+          <AppButton
             onClick={handleProgress}
             disabled={submittingProgress}
-            className="rounded-2xl bg-purple-500 text-white hover:bg-purple-400"
+            variant="accent"
           >
-            {submittingProgress ? "Updating..." : "Log Progress"}
-          </Button>
+            {submittingProgress ? "Updating..." : "Log progress"}
+          </AppButton>
         </div>
       )}
-    </div>
+    </Surface>
   );
 }
 
@@ -255,69 +257,63 @@ function CreateTargetDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-[2rem] border-white/10 bg-[#101A2E] text-white">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black">Create Monthly Target</DialogTitle>
-          <DialogDescription className="text-gray-400">
+    <AppDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AppDialogContent className="max-w-2xl">
+        <AppDialogHeader>
+          <AppDialogTitle>Create Monthly Target</AppDialogTitle>
+          <AppDialogDescription>
             Set a goal tied to the habits you want to reinforce this month.
-          </DialogDescription>
-        </DialogHeader>
+          </AppDialogDescription>
+        </AppDialogHeader>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Target Type</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {TARGET_TYPES.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setTargetType(type.value)}
-                  className={cn(
-                    "rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.18em] transition-all",
-                    targetType === type.value
-                      ? "border-purple-400 bg-purple-500/15 text-purple-200"
-                      : "border-white/10 bg-[#0B1220] text-gray-400 hover:border-white/20 hover:text-white",
-                  )}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        <AppDialogBody>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <FormField label="Target Type">
+              <div className="grid grid-cols-2 gap-2">
+                {TARGET_TYPES.map((type) => (
+                  <AppButton
+                    key={type.value}
+                    type="button"
+                    variant={targetType === type.value ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setTargetType(type.value)}
+                    className={cn(targetType !== type.value && "text-[var(--app-color-text-secondary)]")}
+                  >
+                    {type.label}
+                  </AppButton>
+                ))}
+              </div>
+            </FormField>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Title</Label>
-            <Input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Reflect on 8 purchases"
-              className="h-12 rounded-2xl border-white/10 bg-[#0B1220] text-white"
-            />
-          </div>
+            <FormField label="Title">
+              <AppInput
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Reflect on 8 purchases"
+              />
+            </FormField>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Target Value</Label>
-            <Input
-              value={targetValue}
-              onChange={(event) => setTargetValue(event.target.value)}
-              type="number"
-              min="1"
-              className="h-12 rounded-2xl border-white/10 bg-[#0B1220] text-white"
-            />
-          </div>
+            <FormField label="Target Value">
+              <AppInput
+                value={targetValue}
+                onChange={(event) => setTargetValue(event.target.value)}
+                type="number"
+                min="1"
+              />
+            </FormField>
 
-          <DialogFooter>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="rounded-2xl bg-purple-500 text-white hover:bg-purple-400"
-            >
-              {submitting ? "Creating..." : "Create Target"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <AppDialogFooter className="px-0 pb-0">
+              <AppButton
+                type="submit"
+                disabled={submitting}
+                variant="accent"
+              >
+                {submitting ? "Creating..." : "Create Target"}
+              </AppButton>
+            </AppDialogFooter>
+          </form>
+        </AppDialogBody>
+      </AppDialogContent>
+    </AppDialog>
   );
 }

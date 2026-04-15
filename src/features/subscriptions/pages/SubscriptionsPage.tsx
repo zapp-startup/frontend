@@ -1,11 +1,12 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, X, Calendar, Loader2, Plus } from "lucide-react";
+import { CreditCard, Calendar, Loader2, Plus, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SpotifyIntegrationSection } from "../components/SpotifyIntegrationSection";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
-import { COLORS, GLOWS } from "@/shared/theme";
-import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
+import { COLORS, UI_PATTERNS } from "@/shared/theme";
+import { getValuePresentation } from "@/shared/valuation";
 import {
   SubscriptionsAPI,
   MerchantsAPI,
@@ -17,6 +18,25 @@ import {
 import { ApiError } from "@/api/client";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
+import {
+  AppButton,
+  AppInput,
+  AppSheet,
+  AppSheetBody,
+  AppSheetContent,
+  AppSheetDescription,
+  AppSheetFooter,
+  AppSheetHeader,
+  AppSheetTitle,
+  AppSelect,
+  AppTextarea,
+  EmptyState,
+  FormField,
+  LoadingState,
+  StatusChip,
+  Surface,
+  ValueScoreMeter,
+} from "@/shared/components/system";
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
@@ -78,6 +98,31 @@ function createEmptySubscriptionForm(): AddSubscriptionForm {
     started_at: `${y}-${m}-${day}`,
     notes: "",
   };
+}
+
+function clampSubscriptionValueScore(score: number) {
+  return Math.max(0, Math.min(150, Math.round(score)));
+}
+
+function deriveSubscriptionDisplayValueScore(
+  sub: Subscription,
+  valuations: SubscriptionValuation[]
+) {
+  const valuationScore = valuations.find(
+    (valuation) =>
+      typeof valuation.personal_value_score === "number" &&
+      Number.isFinite(valuation.personal_value_score)
+  )?.personal_value_score;
+
+  if (typeof valuationScore === "number" && Number.isFinite(valuationScore)) {
+    return clampSubscriptionValueScore(valuationScore);
+  }
+
+  if (typeof sub.value_score !== "number" || !Number.isFinite(sub.value_score)) {
+    return null;
+  }
+
+  return clampSubscriptionValueScore(sub.value_score <= 1 ? sub.value_score * 100 : sub.value_score);
 }
 
 function AddPanel({
@@ -149,131 +194,98 @@ function AddPanel({
   };
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-[#0B1220]/80 backdrop-blur-md z-[110]"
-      />
-      <motion.div
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[#101A2E] border-l border-white/5 z-[120] p-12 shadow-2xl flex flex-col"
-        style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.5)" }}
-      >
-        <div className="flex items-center justify-between mb-10">
+    <AppSheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <AppSheetContent className="flex w-full max-w-lg flex-col rounded-none border-l shadow-2xl">
+        <AppSheetHeader className="gap-2 border-b border-[var(--app-color-border-subtle)]">
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter">
-              Add Subscription
-            </h2>
-            <div className="text-[10px] uppercase tracking-[0.4em] text-cyan-400 font-black mt-1">
+            <AppSheetTitle>Add Subscription</AppSheetTitle>
+            <AppSheetDescription>
+              Create a manual subscription entry from the merchant catalog and recurring billing details.
+            </AppSheetDescription>
+            <div className="app-eyebrow mt-3 text-[var(--app-accent-cyan)]">
               Manual Entry
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
-            <X size={24} className="text-gray-500" />
-          </button>
-        </div>
+        </AppSheetHeader>
 
-        <div className="flex-1 space-y-8 overflow-y-auto pr-2">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Merchant
-            </label>
-            <input
+        <AppSheetBody className="space-y-7 pt-6">
+          <FormField label="Merchant" helperText="Pick an existing merchant from the catalog.">
+            <AppInput
               type="text"
               placeholder="e.g. Netflix, Spotify"
               value={form.merchantName}
               onChange={(e) => set("merchantName", e.target.value)}
               list="merchant-options"
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all placeholder:text-gray-600"
             />
             <datalist id="merchant-options">
               {merchants.map((m) => (
                 <option key={m.id} value={m.name} />
               ))}
             </datalist>
-          </div>
+          </FormField>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                Amount ($)
-              </label>
-              <input
+          <div className="grid gap-6 sm:grid-cols-2">
+            <FormField label="Amount ($)">
+              <AppInput
                 type="number"
                 min="0"
                 step="0.01"
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
               />
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                Billing Cycle
-              </label>
-              <select
+            </FormField>
+
+            <FormField label="Billing Cycle">
+              <AppSelect
                 value={form.billing_cycle}
-                onChange={(e) => set("billing_cycle", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
-              >
-                {BILLING_CYCLES.map((c) => (
-                  <option key={c} value={c}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                onValueChange={(value) => set("billing_cycle", value)}
+                options={BILLING_CYCLES.map((c) => ({
+                  value: c,
+                  label: c.charAt(0).toUpperCase() + c.slice(1),
+                }))}
+              />
+            </FormField>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Start Date
-            </label>
-            <div className="relative">
-              <Calendar
-                size={18}
-                className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500"
-              />
-              <input
-                type="date"
-                value={form.started_at}
-                onChange={(e) => set("started_at", e.target.value)}
-                className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 pl-16 pr-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all"
-              />
-            </div>
-          </div>
+          <FormField label="Start Date">
+            <AppInput
+              type="date"
+              value={form.started_at}
+              onChange={(e) => set("started_at", e.target.value)}
+              startAdornment={<Calendar size={18} />}
+            />
+          </FormField>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-              Notes <span className="text-gray-600">(optional)</span>
-            </label>
-            <textarea
+          <FormField
+            label={
+              <>
+                Notes <span className="text-[var(--app-color-text-tertiary)]">(optional)</span>
+              </>
+            }
+          >
+            <AppTextarea
               placeholder="e.g. Premium plan, shared with family"
               value={form.notes || ""}
               onChange={(e) => set("notes", e.target.value)}
-              className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-cyan-500/50 transition-all h-24 resize-none placeholder:text-gray-700"
+              className="resize-none"
             />
-          </div>
-        </div>
+          </FormField>
+        </AppSheetBody>
 
-        <div className="pt-8 mt-auto">
-          <Button
+        <AppSheetFooter className="mt-auto border-t border-[var(--app-color-border-subtle)]">
+          <AppButton
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-cyan-500 hover:bg-cyan-600 text-[#0B1220] rounded-[2rem] py-10 text-xl font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-50"
+            variant="hero"
+            size="hero"
+            className="w-full text-sm"
           >
             {submitting ? "Saving..." : "Add Subscription"}
-          </Button>
-        </div>
-      </motion.div>
-    </>
+          </AppButton>
+        </AppSheetFooter>
+      </AppSheetContent>
+    </AppSheet>
   );
 }
 
@@ -296,9 +308,14 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 }) {
   const cost = Number(sub.amount) || 0;
   const statusColor = getStatusColor(sub.status);
-  const value = getValuePresentation(sub.value_score);
-  const meterWidth = getValueMeterWidth(sub.value_score);
-  const primaryValuation = valuations[0];
+  const valuationWithScore = valuations.find(
+    (valuation) =>
+      typeof valuation.personal_value_score === "number" &&
+      Number.isFinite(valuation.personal_value_score)
+  );
+  const valueScore = deriveSubscriptionDisplayValueScore(sub, valuations);
+  const value = getValuePresentation(valueScore);
+  const primaryValuation = valuationWithScore ?? valuations[0];
   const recommendation = primaryValuation?.recommendation?.trim() || value.tone;
 
   return (
@@ -314,22 +331,22 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
       )}
       style={expanded ? undefined : { zIndex: 10 - (index % 10) }}
     >
-      <div
-        className="bg-[#101A2E] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between gap-6"
-        style={{
-          boxShadow: `${GLOWS.ambient(0.4)}, ${GLOWS.inner}, ${GLOWS.soft(statusColor)}`,
-          borderColor: `${statusColor}20`,
-        }}
+      <Surface
+        variant="card"
+        padding="lg"
+        className="flex items-center justify-between gap-6 rounded-[2rem] shadow-2xl"
+        accentColor={statusColor}
       >
         <div className="flex min-w-0 flex-1 items-center gap-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/[0.02] border border-white/5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)]">
             <CreditCard size={32} style={{ color: statusColor }} />
           </div>
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h4 className="text-2xl font-black text-white">{name}</h4>
-              <span
-                className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em]"
+              <h4 className="text-2xl font-black text-[var(--app-color-text-primary)]">{name}</h4>
+              <StatusChip
+                tone="neutral"
                 style={{
                   color: value.accentColor,
                   borderColor: `${value.accentColor}40`,
@@ -337,15 +354,17 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                 }}
               >
                 {value.label}
-              </span>
+              </StatusChip>
             </div>
+
             <span
               className="text-[10px] font-black uppercase tracking-widest"
               style={{ color: statusColor }}
             >
               {sub.status || "Active"}
             </span>
-            <p className="mt-3 max-w-xl truncate text-sm font-medium text-gray-400">
+
+            <p className="mt-3 max-w-xl truncate text-sm font-medium text-[var(--app-color-text-secondary)]">
               {recommendation}
             </p>
           </div>
@@ -353,50 +372,40 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
         <div className="flex items-center gap-10">
           <div className="text-center">
-            <div className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-              Cost
-            </div>
-            <div className="text-2xl font-black text-white">${cost.toFixed(2)}</div>
-          </div>
-
-          <div className="min-w-[170px]">
-            <div className="mb-2 flex items-center justify-between gap-4">
-              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                Value
-              </div>
-              <div
-                className="text-3xl font-black"
-                style={{
-                  color: value.accentColor,
-                  filter: `drop-shadow(0 0 8px ${value.accentColor}60)`,
-                }}
-              >
-                {value.scoreText}
-              </div>
-            </div>
-            <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
-              />
-            </div>
-            <div
-              className="mt-2 text-right text-[10px] font-black uppercase tracking-widest"
-              style={{ color: value.accentColor }}
-            >
-              {value.label}
+            <div className={cn(UI_PATTERNS.eyebrow, "mb-1 text-xs")}>Cost</div>
+            <div className="text-2xl font-black text-[var(--app-color-text-primary)]">
+              ${cost.toFixed(2)}
             </div>
           </div>
 
-          <button
+          <div className="min-w-[240px] shrink-0 text-right">
+            {valueScore != null ? (
+              <div className="space-y-2.5">
+                <div className="flex items-baseline justify-end text-right">
+                  <div className="text-lg font-black tracking-tight text-[var(--app-color-text-primary)]">
+                    Value: {value.displayScoreText}
+                  </div>
+                </div>
+                <ValueScoreMeter score={valueScore} />
+              </div>
+            ) : (
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
+                No score yet
+              </div>
+            )}
+          </div>
+
+          <AppButton
             onClick={(e) => onDelete(sub, e)}
-            className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-400 transition-colors"
+            variant="quietDanger"
+            size="icon"
+            className="rounded-xl"
             aria-label={`Delete ${name}`}
           >
             <X size={20} />
-          </button>
+          </AppButton>
         </div>
-      </div>
+      </Surface>
 
       <AnimatePresence initial={false}>
         {expanded && (
@@ -404,50 +413,46 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mt-4 bg-white/[0.02] border border-white/5 rounded-[2rem] p-8"
+            className="mt-4 overflow-hidden rounded-[2rem]"
           >
-            <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Surface variant="panel" padding="lg" className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>
                     Billing
                   </div>
-                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">
                     {sub.billing_cycle} · Started{" "}
                     {sub.started_at ? new Date(sub.started_at).toLocaleDateString("en-US") : "—"}
                   </p>
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4">
+                  <div className={cn(UI_PATTERNS.eyebrow, "mb-4 text-[10px] text-[var(--app-color-text-tertiary)]")}>
                     Notes
                   </div>
-                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                  <p className="text-sm font-medium leading-relaxed text-[var(--app-color-text-secondary)]">
                     {sub.notes || "—"}
                   </p>
                 </div>
 
-                <div className="md:col-span-2 rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6">
+                <Surface variant="inset" padding="md" className="rounded-[1.5rem] md:col-span-2">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                        Value score
-                      </div>
-                      <div className="mt-2 flex items-end gap-3">
-                        <div
-                          className="text-4xl font-black"
-                          style={{
-                            color: value.accentColor,
-                            filter: `drop-shadow(0 0 12px ${value.accentColor}50)`,
-                          }}
-                        >
-                          {value.scoreText}
+                      <div className={UI_PATTERNS.eyebrow}>Value score</div>
+                      {valueScore != null ? (
+                        <div className="mt-2 text-2xl font-black tracking-tight text-[var(--app-color-text-primary)]">
+                          Value: {value.displayScoreText}
                         </div>
-                        <div className="pb-1 text-sm font-bold text-gray-400">out of 150</div>
-                      </div>
+                      ) : (
+                        <div className="mt-2 text-sm font-bold text-[var(--app-color-text-secondary)]">
+                          No score yet
+                        </div>
+                      )}
                     </div>
-                    <span
-                      className="inline-flex items-center rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.24em]"
+
+                    <StatusChip
+                      tone="neutral"
                       style={{
                         color: value.accentColor,
                         borderColor: `${value.accentColor}40`,
@@ -455,49 +460,54 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       }}
                     >
                       {value.label}
-                    </span>
+                    </StatusChip>
                   </div>
 
-                  <div className="h-3 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${meterWidth}%`, backgroundColor: value.accentColor }}
-                    />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-gray-400">{value.tone}</p>
-                </div>
+                  {valueScore != null ? <ValueScoreMeter score={valueScore} /> : null}
+
+                  <p className="mt-3 text-sm font-medium text-[var(--app-color-text-secondary)]">
+                    {value.tone}
+                  </p>
+                </Surface>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                  <div className={cn(UI_PATTERNS.eyebrow, "text-[var(--app-color-text-tertiary)]")}>
                     Recommendation & Evidence
                   </div>
-                  <Button
+                  <AppButton
+                    variant="danger"
+                    size="sm"
                     onClick={(e) => onDelete(sub, e)}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest"
                   >
                     Cancel Service
-                  </Button>
+                  </AppButton>
                 </div>
 
                 {valuations.length === 0 && (
-                  <div className="rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6 text-sm text-gray-500">
+                  <Surface
+                    variant="inset"
+                    padding="md"
+                    className="rounded-[1.5rem] text-sm text-[var(--app-color-text-tertiary)]"
+                  >
                     No valuation evidence yet for this subscription.
-                  </div>
+                  </Surface>
                 )}
 
                 {valuations.map((valuation) => (
-                  <div
+                  <Surface
                     key={valuation.id}
-                    className="rounded-[1.5rem] border border-white/5 bg-[#0B1220]/70 p-6"
+                    variant="inset"
+                    padding="md"
+                    className="rounded-[1.5rem]"
                   >
                     {valuation.recommendation && (
                       <div className="mb-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Recommendation
                         </div>
-                        <p className="text-sm font-bold text-white">
+                        <p className="text-sm font-bold text-[var(--app-color-text-primary)]">
                           {valuation.recommendation}
                         </p>
                       </div>
@@ -505,11 +515,11 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
                     {formatConfidencePercent(valuation.confidence) != null && (
                       <div className="mb-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)]">
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
@@ -538,7 +548,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
 
                     {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined) && (
                       <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
                         <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
@@ -557,10 +567,10 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                         </pre>
                       </div>
                     )}
-                  </div>
+                  </Surface>
                 ))}
               </div>
-            </div>
+            </Surface>
           </motion.div>
         )}
       </AnimatePresence>
@@ -710,33 +720,35 @@ export function SubscriptionsPage() {
     );
   }, [subscriptionCards.length]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 size={48} className="animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-16 space-y-4">
-        <div className="text-red-400 font-bold">{error}</div>
-        <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-12 pb-32 relative z-10">
+      <SpotifyIntegrationSection />
+
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={48} className="animate-spin text-cyan-400" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="text-center py-16 space-y-4">
+          <div className="text-red-400 font-bold">{error}</div>
+          <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tight">Active Subscriptions</h2>
-          <div className="text-gray-500 font-bold uppercase text-xs tracking-widest flex items-center gap-2">
+          <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">
+            Active Subscriptions
+          </h2>
+          <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
             <div
-              className="w-2 h-2 rounded-full"
+              className="h-2 w-2 rounded-full"
               style={{
                 backgroundColor: COLORS.electricGreen,
                 boxShadow: `0 0 8px ${COLORS.electricGreen}`,
@@ -746,35 +758,27 @@ export function SubscriptionsPage() {
           </div>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsAddPanelOpen(true)}
-          className="flex h-12 flex-shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
-        >
-          <Plus size={18} strokeWidth={3} />
-          <span>Add Subscription</span>
-        </motion.button>
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
+          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+            <Plus size={18} strokeWidth={3} />
+            <span>Add Subscription</span>
+          </AppButton>
+        </motion.div>
       </div>
 
       {subscriptions.length === 0 && (
-        <div className="text-center py-24 space-y-4">
-          <div className="text-gray-500 font-bold uppercase text-sm tracking-widest">
-            No subscriptions yet
-          </div>
-          <p className="text-gray-600 text-sm max-w-md mx-auto">
-            Add your first subscription to track recurring costs and value scores.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05, boxShadow: GLOWS.strong(COLORS.electricCyan) }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsAddPanelOpen(true)}
-            className="mx-auto flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-[10px] font-black uppercase tracking-[0.22em] text-[#0B1220] shadow-[0_0_20px_rgba(34,240,255,0.3)]"
-          >
-            <Plus size={18} strokeWidth={3} />
-            <span>Add Subscription</span>
-          </motion.button>
-        </div>
+        <motion.div>
+          <EmptyState
+            title="No subscriptions yet"
+            description="Add your first subscription to track recurring costs and value scores."
+            action={
+              <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+                <Plus size={18} strokeWidth={3} />
+                <span>Add Subscription</span>
+              </AppButton>
+            }
+          />
+        </motion.div>
       )}
 
       <div className="relative perspective-[2000px] py-10">
@@ -782,7 +786,7 @@ export function SubscriptionsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24, ease: "easeOut" }}
-          className="relative max-w-5xl mx-auto space-y-[-40px]"
+          className="relative mx-auto max-w-5xl space-y-[-40px]"
         >
           {subscriptionCards.slice(0, visibleCount).map(({ sub, name, valuations }, index) => (
             <SubscriptionCard
@@ -801,17 +805,16 @@ export function SubscriptionsPage() {
 
       {visibleCount < subscriptionCards.length && (
         <div className="flex justify-center">
-          <Button
+          <AppButton
             variant="outline"
             onClick={() =>
               setVisibleCount((prev) =>
                 Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length)
               )
             }
-            className="rounded-2xl border-white/10"
           >
             Load More Subscriptions
-          </Button>
+          </AppButton>
         </div>
       )}
 
@@ -820,6 +823,8 @@ export function SubscriptionsPage() {
           <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }

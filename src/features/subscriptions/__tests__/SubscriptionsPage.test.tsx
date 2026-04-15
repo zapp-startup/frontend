@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { SubscriptionsPage } from "../pages/SubscriptionsPage";
 import { PanelProvider } from "@/features/dashboard/context/PanelContext";
 import * as api from "@/api";
@@ -10,6 +10,31 @@ vi.mock("@/api", () => ({
   MerchantsAPI: { list: vi.fn() },
   SubscriptionValuationsAPI: { list: vi.fn() },
 }));
+
+vi.mock("@/api/spotifyIntegration.api", () => ({
+  SpotifyIntegrationAPI: {
+    getStatus: vi.fn().mockResolvedValue({ connected: false }),
+    getInsights: vi.fn().mockResolvedValue(null),
+    connect: vi.fn(),
+    sync: vi.fn(),
+    disconnect: vi.fn(),
+    resolveAuthorizationUrl: vi.fn(),
+  },
+}));
+
+vi.mock("@/config/spotifyIntegration", () => ({
+  getSpotifyOAuthReturnUrl: () => "http://localhost/integrations/spotify/callback",
+}));
+
+function renderSubscriptions() {
+  return render(
+    <MemoryRouter>
+      <PanelProvider>
+        <SubscriptionsPage />
+      </PanelProvider>
+    </MemoryRouter>
+  );
+}
 
 describe("SubscriptionsPage", () => {
   beforeEach(() => {
@@ -22,17 +47,14 @@ describe("SubscriptionsPage", () => {
   });
 
   it("loads and displays empty state when no subscriptions", async () => {
-    render(
-      <PanelProvider>
-        <SubscriptionsPage />
-      </PanelProvider>
-    );
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(api.SubscriptionsAPI.list).toHaveBeenCalled();
       expect(api.MerchantsAPI.list).toHaveBeenCalled();
     });
 
+    expect(screen.getByRole("heading", { name: /spotify/i })).toBeInTheDocument();
     expect(screen.getByText(/No subscriptions yet/i)).toBeInTheDocument();
   });
 
@@ -49,11 +71,7 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    render(
-      <PanelProvider>
-        <SubscriptionsPage />
-      </PanelProvider>
-    );
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();
@@ -62,7 +80,7 @@ describe("SubscriptionsPage", () => {
     expect(screen.getByText("$15.99")).toBeInTheDocument();
   });
 
-  it("uses the 0-150 value scale labels on subscription cards", async () => {
+  it("renders subscription value scores with the transaction-style display", async () => {
     vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
       {
         id: 1,
@@ -76,14 +94,60 @@ describe("SubscriptionsPage", () => {
       },
     ]);
 
-    render(
-      <PanelProvider>
-        <SubscriptionsPage />
-      </PanelProvider>
-    );
+    renderSubscriptions();
 
     await waitFor(() => {
-      expect(screen.getAllByText("Decent").length).toBeGreaterThan(0);
+      expect(screen.getByText("Value: 100")).toBeInTheDocument();
+    });
+  });
+
+  it("normalizes fractional subscription feedback scores before display", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 0.82,
+      },
+    ]);
+
+    renderSubscriptions();
+
+    await waitFor(() => {
+      expect(screen.getByText("Value: 82")).toBeInTheDocument();
+    });
+  });
+
+  it("prefers subscription valuation scores when available", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockResolvedValue([
+      {
+        id: 1,
+        merchant: 1,
+        merchant_name: "Netflix",
+        amount: 15.99,
+        billing_cycle: "monthly",
+        status: "active",
+        started_at: "2025-01-01",
+        value_score: 0.82,
+      },
+    ]);
+    vi.mocked(api.SubscriptionValuationsAPI.list).mockResolvedValue([
+      {
+        id: 10,
+        subscription: 1,
+        personal_value_score: 120,
+        recommendation: "Keep it",
+      },
+    ]);
+
+    renderSubscriptions();
+
+    await waitFor(() => {
+      expect(screen.getByText("Value: 120")).toBeInTheDocument();
     });
   });
 
@@ -101,11 +165,7 @@ describe("SubscriptionsPage", () => {
     ]);
     vi.mocked(api.SubscriptionValuationsAPI.list).mockRejectedValue(new Error("valuations unavailable"));
 
-    render(
-      <PanelProvider>
-        <SubscriptionsPage />
-      </PanelProvider>
-    );
+    renderSubscriptions();
 
     await waitFor(() => {
       expect(screen.getByText("Netflix")).toBeInTheDocument();

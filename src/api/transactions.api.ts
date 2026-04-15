@@ -66,18 +66,21 @@ export const TransactionsAPI = {
       requireAuth: true,
       method: "POST",
       body: JSON.stringify({ ...data, currency: "USD", payment_channel: "card" }),
+      audit: { eventName: "transaction.create", action: "create", resourceType: "transaction" },
     }),
   update: (id: number, data: Partial<NewTransaction>) =>
     apiRequest<Transaction>(`/api/transactions/${id}/`, {
       requireAuth: true,
       method: "PUT",
       body: JSON.stringify(data),
+      audit: { eventName: "transaction.update", action: "update", resourceType: "transaction", resourceId: id },
     }),
   patch: (id: number, data: Partial<NewTransaction> | Partial<TransactionFeedbackPayload>) =>
     apiRequest<Transaction>(`/api/transactions/${id}/`, {
       requireAuth: true,
       method: "PATCH",
       body: JSON.stringify(data),
+      audit: { eventName: "transaction.update", action: "update", resourceType: "transaction", resourceId: id },
     }),
   /** Submit transaction-level feedback for ML pipeline. Uses PATCH. */
   submitFeedback: (id: number, payload: TransactionFeedbackPayload) =>
@@ -85,10 +88,12 @@ export const TransactionsAPI = {
       requireAuth: true,
       method: "PATCH",
       body: JSON.stringify(payload),
+      audit: { eventName: "transaction.feedback", action: "update_feedback", resourceType: "transaction", resourceId: id },
     }),
   remove: (id: number) =>
     apiRequest<null>(`/api/transactions/${id}/`, {
       requireAuth: true,
       method: "DELETE",
+      audit: { eventName: "transaction.delete", action: "delete", resourceType: "transaction", resourceId: id },
     }),
 };

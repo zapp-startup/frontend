@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Award, Calendar, Flame, Target, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Flame, Trophy, Users } from "lucide-react";
 
 import {
   GamificationAPI,
@@ -12,7 +12,7 @@ import {
 import { BadgeDisplay } from "@/features/gamification/components/BadgeDisplay";
 import { MonthlyTargetsWidget } from "@/features/gamification/components/MonthlyTargetsWidget";
 import { ElectricCard } from "@/features/home/components/ElectricCard";
-import { Button } from "@/shared/components/ui/button";
+import { AppButton, IconBadge, LoadingState, Surface } from "@/shared/components/system";
 import { COLORS } from "@/shared/theme";
 import { toast } from "sonner";
 
@@ -76,11 +76,7 @@ export function DashboardGamification() {
 
   if (loading) {
     return (
-      <ElectricCard semanticColor={COLORS.electricCyan} elevation={1}>
-        <div className="py-10 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
-          Loading momentum systems...
-        </div>
-      </ElectricCard>
+      <LoadingState label="Loading momentum systems..." lines={3} />
     );
   }
 
@@ -88,11 +84,9 @@ export function DashboardGamification() {
     return (
       <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
         <div className="space-y-3 py-2">
-          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">
-            Gamification
-          </div>
-          <div className="text-2xl font-black text-white">Waiting on backend data</div>
-          <div className="text-sm text-gray-400">
+          <div className="app-eyebrow">Gamification</div>
+          <div className="app-section-title text-[1.75rem]">Waiting on backend data</div>
+          <div className="app-helper max-w-2xl">
             {loadError ?? "The dashboard could not fetch streak and level data yet."}
           </div>
         </div>
@@ -108,154 +102,137 @@ export function DashboardGamification() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricCyan} elevation={2}>
+      <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricCyan} elevation={1} className="h-full">
           <div className="mb-5 flex items-start justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
-                <Flame size={18} className="text-orange-400" />
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Streak</div>
+                <IconBadge tone="yellow" size="sm">
+                  <Flame size={18} />
+                </IconBadge>
+                <div className="app-eyebrow">Streak</div>
               </div>
-              <div className="text-5xl font-black text-white">
+              <div className="text-5xl font-black text-[var(--app-color-text-primary)]">
                 {streak.current_streak_days}
-                <span className="ml-2 text-2xl text-gray-500">days</span>
+                <span className="ml-2 text-2xl text-[var(--app-color-text-tertiary)]">days</span>
               </div>
-              <div className="mt-2 text-xs font-bold text-gray-500">Best: {streak.best_streak_days} days</div>
+              <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
+                Best: {streak.best_streak_days} days
+              </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-black text-cyan-300">Lv {streak.level}</div>
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-600">Level</div>
+              <div className="text-3xl font-black text-[var(--app-accent-cyan-soft)]">Lv {streak.level}</div>
+              <div className="app-eyebrow">Level</div>
             </div>
           </div>
-          <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-400">
+          <div className="mb-2 flex items-center justify-between text-xs font-bold text-[var(--app-color-text-secondary)]">
             <span>Progress to next level</span>
-            <span className="text-white">{streak.points_into_level} / {streak.next_level_points - streak.level_floor_points}</span>
+            <span className="text-[var(--app-color-text-primary)]">
+              {streak.points_into_level} / {streak.next_level_points - streak.level_floor_points}
+            </span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.05]">
+          <div className="h-2 rounded-full bg-[var(--app-color-surface-inset)]">
             <div
-              className="h-full rounded-full bg-cyan-500"
+              className="h-full rounded-full bg-[var(--app-accent-cyan-soft)]"
               style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%` }}
             />
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full">
           <div className="mb-2 flex items-center gap-2">
-            <Trophy size={18} className="text-yellow-400" />
-            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Lifetime Points</div>
+            <IconBadge tone="yellow" size="sm">
+              <Trophy size={18} />
+            </IconBadge>
+            <div className="app-eyebrow">Lifetime Points</div>
           </div>
-          <div className="text-5xl font-black text-white">{streak.total_points_earned.toLocaleString()}</div>
-          <div className="mt-2 text-xs font-bold text-gray-500">Total points earned from meaningful actions</div>
+          <div className="text-5xl font-black text-[var(--app-color-text-primary)]">
+            {streak.total_points_earned.toLocaleString()}
+          </div>
+          <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
+            Total points earned from meaningful actions
+          </div>
         </ElectricCard>
 
-        <Link to="/circles">
+        <Link to="/circles" className="block h-full">
           <ElectricCard semanticColor={COLORS.electricPurple} elevation={1} className="h-full cursor-pointer">
             <div className="mb-2 flex items-center gap-2">
-              <Users size={18} className="text-purple-400" />
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">Circles</div>
+              <IconBadge tone="purple" size="sm">
+                <Users size={18} />
+              </IconBadge>
+              <div className="app-eyebrow">Circles</div>
             </div>
-            <div className="text-3xl font-black text-white">
+            <div className="text-3xl font-black text-[var(--app-color-text-primary)]">
               {groups.length > 0 ? `${groups.length} joined` : "No circles"}
             </div>
-            <div className="mt-2 text-xs font-bold text-gray-500">
+            <div className="mt-2 text-xs font-bold text-[var(--app-color-text-tertiary)]">
               {currentRank ? `Current weekly rank: #${currentRank}` : "Join a circle to unlock leaderboards"}
             </div>
           </ElectricCard>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="xl:col-span-1">
-          <div className="mb-4 flex items-center gap-2">
-            <Calendar size={18} className="text-green-400" />
-            <h3 className="text-lg font-black text-white">Review Actions</h3>
+      <div className="grid grid-cols-1 items-stretch gap-8 xl:grid-cols-3">
+        <ElectricCard semanticColor={COLORS.electricGreen} elevation={1} className="h-full xl:col-span-1">
+          <div className="mb-6 flex items-center gap-2">
+            <IconBadge tone="green" size="sm">
+              <Calendar size={18} />
+            </IconBadge>
+            <h3 className="app-card-title">Review Actions</h3>
           </div>
-          <p className="mb-6 text-sm leading-relaxed text-gray-400">
-            Weekly and monthly reviews now open guided flows that collect purchase feedback before points are awarded.
-          </p>
-          <div className="space-y-3">
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-white">Weekly review</div>
-                  <div className="mt-1 text-xs font-bold text-gray-500">
-                    {weeklyNudge
-                      ? `${weeklyNudge.reviewed_transaction_count} reviewed · ${weeklyNudge.pending_transaction_feedback_count} still worth revisiting`
-                      : "Review last week’s purchases and reflections."}
-                  </div>
-                </div>
-                <Link to="/reviews/weekly">
-                  <Button className="rounded-2xl bg-green-500 text-white hover:bg-green-400">
+          <div className="grid grid-cols-2 gap-3">
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="success" size="hero" className="w-full rounded-[1.5rem]">
+                  <Link to="/reviews/weekly">
                     {weeklyNudge?.status === "completed" ? "View review" : "Start weekly"}
-                  </Button>
-                </Link>
+                  </Link>
+                </AppButton>
               </div>
-            </div>
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-white">Monthly review</div>
-                  <div className="mt-1 text-xs font-bold text-gray-500">
-                    {monthlyNudge
-                      ? `${monthlyNudge.reviewed_transaction_count} reviewed · ${monthlyNudge.upcoming_subscription_renewals_count ?? 0} renewals to inspect`
-                      : "Review bigger purchases, subscriptions, and next-month focus."}
-                  </div>
-                </div>
-                <Link to="/reviews/monthly">
-                  <Button className="rounded-2xl bg-blue-500 text-white hover:bg-blue-400">
+              <div className="flex min-h-[5.5rem] items-center">
+                <AppButton asChild variant="info" size="hero" className="w-full rounded-[1.5rem]">
+                  <Link to="/reviews/monthly">
                     {monthlyNudge?.status === "completed" ? "View review" : "Start monthly"}
-                  </Button>
-                </Link>
+                  </Link>
+                </AppButton>
               </div>
-            </div>
           </div>
         </ElectricCard>
 
-        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="xl:col-span-2">
+        <ElectricCard semanticColor={COLORS.electricYellow} elevation={1} className="h-full xl:col-span-2">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Award size={18} className="text-yellow-400" />
-              <h3 className="text-lg font-black text-white">Recent Badges</h3>
+              <IconBadge tone="yellow" size="sm">
+                <Award size={18} />
+              </IconBadge>
+              <h3 className="app-card-title">Recent Badges</h3>
             </div>
             <Link to="/badges">
-              <Button variant="outline" className="rounded-2xl border-white/10">
+              <AppButton variant="outline" size="sm">
                 View all
-              </Button>
+              </AppButton>
             </Link>
           </div>
           {badges.length > 0 ? (
             <BadgeDisplay badges={badges} maxDisplay={6} size="lg" />
           ) : (
-            <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold text-gray-500">
-              No badges unlocked yet. Logging purchases and reflections will start the cabinet.
-            </div>
+            <Surface
+              variant="panel"
+              padding="md"
+              className="flex min-h-[7.5rem] flex-col items-center justify-center rounded-[2.5rem] px-6 py-5 text-center"
+            >
+              <div className="mb-2 flex justify-center text-[var(--app-color-text-tertiary)]">
+                <Award size={24} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="app-card-title">No badges unlocked yet.</h4>
+                <p className="app-helper mx-auto max-w-2xl">Logging purchases and reflections will start the cabinet.</p>
+              </div>
+            </Surface>
           )}
         </ElectricCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-        <MonthlyTargetsWidget compact />
-        <ElectricCard semanticColor={COLORS.electricBlue} elevation={1}>
-          <div className="mb-3 flex items-center gap-2">
-            <Target size={18} className="text-blue-400" />
-            <h3 className="text-lg font-black text-white">Monthly Focus</h3>
-          </div>
-          <p className="text-sm leading-relaxed text-gray-400">
-            Use monthly targets to set the habit you want to reinforce most this cycle.
-          </p>
-          {monthlyNudge ? (
-            <div className="mt-4 rounded-[1.5rem] border border-white/[0.05] bg-white/[0.02] p-4 text-xs font-bold text-gray-500">
-              {monthlyNudge.low_value_subscriptions_count ?? 0} low-value subscriptions and{" "}
-              {monthlyNudge.pending_transaction_feedback_count} pending transaction reviews are feeding this month’s reflection flow.
-            </div>
-          ) : null}
-          <Link to="/targets" className="mt-5 inline-flex">
-            <Button variant="outline" className="rounded-2xl border-white/10">
-              Open targets
-            </Button>
-          </Link>
-        </ElectricCard>
-      </div>
+      <MonthlyTargetsWidget compact />
     </div>
   );
 }
