@@ -33,6 +33,7 @@ import { ElectricCard } from "@/features/home/components/ElectricCard";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { cn } from "@/shared/components/ui/utils";
 import { TransactionsAPI, type Transaction, type NewTransaction } from "@/api/transactions.api";
+import { BankingAPI } from "@/api/banking.api";
 import { BankingSection } from "@/features/banking";
 import { useMergedTransactions } from "../hooks/useMergedTransactions";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
@@ -988,12 +989,16 @@ const TransactionGroups = React.memo(function TransactionGroups({
   onEdit,
   onDelete,
   onFeedback,
+  onScore,
+  scoringTransactionId,
 }: {
   groups: TransactionGroupViewModel[];
   loading: boolean;
   onEdit: (tx: DisplayTransaction) => void;
   onDelete: (tx: DisplayTransaction, e: React.MouseEvent) => void;
   onFeedback: (tx: DisplayTransaction) => void;
+  onScore: (tx: DisplayTransaction, e: React.MouseEvent) => void;
+  scoringTransactionId: string | number | null;
 }) {
   const [expandedState, setExpandedState] = React.useState<Record<string, boolean>>({});
   const [visibleGroupCount, setVisibleGroupCount] = React.useState(INITIAL_VISIBLE_GROUPS);
@@ -1065,6 +1070,7 @@ const TransactionGroups = React.memo(function TransactionGroups({
                   {group.rows.map((row) => {
                     const Icon = row.categoryIcon;
                     const isManual = row.tx.source === "manual";
+                    const isScoring = scoringTransactionId === `${row.tx.source}-${row.tx.id}`;
 
                     return (
                       <Surface
@@ -1116,16 +1122,26 @@ const TransactionGroups = React.memo(function TransactionGroups({
                                 </div>
                               ) : (
                                 <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-color-text-tertiary)]">
-                                  No score yet
-                               </div>
-                             )}
-                           </div>
+                                  Run score to save value score
+                                </div>
+                              )}
+                            </div>
 
-                           <div className="text-right">
+                            <div className="text-right">
                             <AppButton
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               onFeedback(row.tx);
+                              onClick={(e) => onScore(row.tx, e)}
+                              variant="quiet"
+                              size="sm"
+                              disabled={isScoring}
+                              className="h-10 w-10 rounded-xl px-0 text-[var(--app-color-text-tertiary)] hover:text-[var(--app-accent-cyan-soft)]"
+                              title={row.valueScore == null ? "Run value score" : "Refresh value score"}
+                            >
+                              <Sparkles size={18} className={cn(isScoring && "animate-pulse")} />
+                            </AppButton>
+                            <AppButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onFeedback(row.tx);
                             }}
                             variant="quiet"
                             size="sm"
@@ -1196,6 +1212,7 @@ export const TransactionsPage = () => {
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [editingTransaction, setEditingTransaction] = React.useState<DisplayTransaction | null>(null);
   const [feedbackTransaction, setFeedbackTransaction] = React.useState<DisplayTransaction | null>(null);
+  const [scoringTransactionId, setScoringTransactionId] = React.useState<string | number | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [filters, setFilters] = React.useState<Filters>(EMPTY_FILTERS);
 
@@ -1339,6 +1356,28 @@ export const TransactionsPage = () => {
     [refetchTransactions]
   );
 
+  const handleScore = React.useCallback(
+    async (tx: DisplayTransaction, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const scoreKey = `${tx.source}-${tx.id}`;
+      setScoringTransactionId(scoreKey);
+      try {
+        if (tx.source === "manual" && typeof tx.id === "number") {
+          await TransactionsAPI.score(tx.id);
+        } else {
+          await BankingAPI.score(tx.id);
+        }
+        await refetchTransactions();
+        toast.success("Value score updated.");
+      } catch {
+        toast.error("Failed to compute value score.");
+      } finally {
+        setScoringTransactionId((current) => (current === scoreKey ? null : current));
+      }
+    },
+    [refetchTransactions]
+  );
+
   const { totalSpend, totalIncome, net } = React.useMemo(() => {
     const totalSpendMemo = transactions
       .filter((t) => t.direction === "spend")
@@ -1394,6 +1433,8 @@ export const TransactionsPage = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onFeedback={setFeedbackTransaction}
+        onScore={handleScore}
+        scoringTransactionId={scoringTransactionId}
       />
 
       <AnimatePresence>

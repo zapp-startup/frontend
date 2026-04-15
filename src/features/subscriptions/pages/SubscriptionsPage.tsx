@@ -11,6 +11,7 @@ import {
   SubscriptionsAPI,
   MerchantsAPI,
   SubscriptionValuationsAPI,
+  ValueScoresAPI,
   type Subscription,
   type Merchant,
   type SubscriptionValuation,
@@ -40,6 +41,16 @@ import {
 
 const BILLING_CYCLES = ["weekly", "monthly", "yearly", "other"];
 const INITIAL_VISIBLE_SUBSCRIPTIONS = 12;
+
+function formatConfidencePercent(confidence?: number | null) {
+  if (confidence == null) return null;
+  return Math.round(Math.min(1, Math.max(0, confidence)) * 100);
+}
+
+function formatValuationJson(value?: Record<string, unknown>) {
+  if (!value || Object.keys(value).length === 0) return null;
+  return JSON.stringify(value, null, 2);
+}
 
 function getStatusColor(status: string) {
   const s = (status || "").toLowerCase();
@@ -503,7 +514,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                       </div>
                     )}
 
-                    {valuation.confidence != null && (
+                    {formatConfidencePercent(valuation.confidence) != null && (
                       <div className="mb-4">
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Confidence
@@ -513,26 +524,48 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
-                                width: `${Math.min(100, Math.max(0, valuation.confidence))}%`,
-                                backgroundColor: "var(--app-accent-cyan)",
+                                width: `${formatConfidencePercent(valuation.confidence)}%`,
+                                backgroundColor: COLORS.electricCyan,
                               }}
                             />
                           </div>
-                          <span className="text-sm font-black text-[var(--app-color-text-primary)]">
-                            {Math.round(valuation.confidence)}%
+                          <span className="text-sm font-black text-white">
+                            {formatConfidencePercent(valuation.confidence)}%
                           </span>
                         </div>
                       </div>
                     )}
 
-                    {valuation.evidence && (
+                    {valuation.personal_value_score != null && (
+                      <div className="mb-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Personal Value Score
+                        </div>
+                        <p className="text-sm font-bold text-white">
+                          {valuation.personal_value_score}/150
+                        </p>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined) && (
                       <div>
                         <div className={cn(UI_PATTERNS.eyebrow, "mb-2")}>
                           Evidence
                         </div>
-                        <p className="text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
-                          {valuation.evidence}
-                        </p>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.evidence_json as Record<string, unknown> | undefined)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined) && (
+                      <div className="mt-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                          Explanation
+                        </div>
+                        <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+                          {formatValuationJson(valuation.explanation_json as Record<string, unknown> | undefined)}
+                        </pre>
                       </div>
                     )}
                   </Surface>
@@ -561,6 +594,33 @@ export function SubscriptionsPage() {
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_SUBSCRIPTIONS);
+  const [scoring, setScoring] = React.useState(false);
+
+  const refreshScoresAndSubscriptions = React.useCallback(async () => {
+    const [subs, valuations] = await Promise.all([
+      SubscriptionsAPI.list(),
+      SubscriptionValuationsAPI.list().catch(() => [] as SubscriptionValuation[]),
+    ]);
+    setSubscriptions(subs);
+    setSubscriptionValuations(valuations);
+  }, []);
+
+  const handleRecomputeValueScores = React.useCallback(async () => {
+    setScoring(true);
+    try {
+      await ValueScoresAPI.recompute();
+      await refreshScoresAndSubscriptions();
+      toast.success("Value scores updated.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        toast.error("Value score model is not available on the server (add trained checkpoint).");
+      } else {
+        toast.error("Could not update value scores.");
+      }
+    } finally {
+      setScoring(false);
+    }
+  }, [refreshScoresAndSubscriptions]);
 
   React.useEffect(() => {
     setRightPanelOpen(isAddPanelOpen);
@@ -726,12 +786,24 @@ export function SubscriptionsPage() {
           </div>
         </div>
 
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
-          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
-            <Plus size={18} strokeWidth={3} />
-            <span>Add Subscription</span>
+        <div className="flex flex-shrink-0 items-center gap-3">
+          <AppButton
+            variant="outline"
+            size="sm"
+            disabled={scoring || subscriptions.length === 0}
+            onClick={() => void handleRecomputeValueScores()}
+          >
+            {scoring ? <Loader2 size={16} className="animate-spin" /> : null}
+            <span>{scoring ? "Updating..." : "Update Value Scores"}</span>
           </AppButton>
-        </motion.div>
+
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
+            <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+              <Plus size={18} strokeWidth={3} />
+              <span>Add Subscription</span>
+            </AppButton>
+          </motion.div>
+        </div>
       </div>
 
       {subscriptions.length === 0 && (

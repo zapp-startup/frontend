@@ -158,7 +158,11 @@ export function DashboardLayout() {
   const userInitials = getInitials(user?.name);
 
   if (!isAuthReady) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B1220] text-xs font-black uppercase tracking-widest text-gray-500">
+        Loading…
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
