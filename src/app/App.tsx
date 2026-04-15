@@ -5,6 +5,7 @@ import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/au
 import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
 import { OnboardingPage } from "@/features/onboarding";
 import { PrivacyPolicyPage } from "@/features/legal/PrivacyPolicyPage";
+import LandingPage from "@/LandingPage";
 
 /**
  * App root: providers, global shell, and top-level routes.
@@ -17,6 +18,7 @@ export default function App() {
         <Toaster position="top-center" theme="dark" richColors />
         <AmbientEnergyLines />
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
