@@ -90,6 +90,13 @@ export const TransactionsAPI = {
       body: JSON.stringify(payload),
       audit: { eventName: "transaction.feedback", action: "update_feedback", resourceType: "transaction", resourceId: id },
     }),
+  score: (id: number) =>
+    apiRequest<Transaction>(`/api/transactions/${id}/score/`, {
+      requireAuth: true,
+      method: "POST",
+      body: JSON.stringify({}),
+      audit: { eventName: "transaction.score", action: "score", resourceType: "transaction", resourceId: id },
+    }),
   remove: (id: number) =>
     apiRequest<null>(`/api/transactions/${id}/`, {
       requireAuth: true,

@@ -39,6 +39,18 @@ function validateProductionHttpsUrl(raw: string | undefined, envName: string): s
   return null;
 }
 
+/** Strip wrapping quotes from .env (e.g. VITE_API_URL='http://...'). */
+function normalizeEnvUrl(raw: string | undefined, fallback: string): string {
+  let s = (raw ?? "").trim();
+  if (
+    (s.startsWith("'") && s.endsWith("'")) ||
+    (s.startsWith('"') && s.endsWith('"'))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s || fallback;
+}
+
 /**
  * Validates API base URL for production builds. Returns error message if invalid.
  */

@@ -11,6 +11,7 @@ import {
   SubscriptionsAPI,
   MerchantsAPI,
   SubscriptionValuationsAPI,
+  ValueScoresAPI,
   type Subscription,
   type Merchant,
   type SubscriptionValuation,
@@ -593,6 +594,33 @@ export function SubscriptionsPage() {
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
   const [isAddPanelOpen, setIsAddPanelOpen] = React.useState(false);
   const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_SUBSCRIPTIONS);
+  const [scoring, setScoring] = React.useState(false);
+
+  const refreshScoresAndSubscriptions = React.useCallback(async () => {
+    const [subs, valuations] = await Promise.all([
+      SubscriptionsAPI.list(),
+      SubscriptionValuationsAPI.list().catch(() => [] as SubscriptionValuation[]),
+    ]);
+    setSubscriptions(subs);
+    setSubscriptionValuations(valuations);
+  }, []);
+
+  const handleRecomputeValueScores = React.useCallback(async () => {
+    setScoring(true);
+    try {
+      await ValueScoresAPI.recompute();
+      await refreshScoresAndSubscriptions();
+      toast.success("Value scores updated.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        toast.error("Value score model is not available on the server (add trained checkpoint).");
+      } else {
+        toast.error("Could not update value scores.");
+      }
+    } finally {
+      setScoring(false);
+    }
+  }, [refreshScoresAndSubscriptions]);
 
   React.useEffect(() => {
     setRightPanelOpen(isAddPanelOpen);
@@ -758,12 +786,24 @@ export function SubscriptionsPage() {
           </div>
         </div>
 
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
-          <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
-            <Plus size={18} strokeWidth={3} />
-            <span>Add Subscription</span>
+        <div className="flex flex-shrink-0 items-center gap-3">
+          <AppButton
+            variant="outline"
+            size="sm"
+            disabled={scoring || subscriptions.length === 0}
+            onClick={() => void handleRecomputeValueScores()}
+          >
+            {scoring ? <Loader2 size={16} className="animate-spin" /> : null}
+            <span>{scoring ? "Updating..." : "Update Value Scores"}</span>
           </AppButton>
-        </motion.div>
+
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
+            <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+              <Plus size={18} strokeWidth={3} />
+              <span>Add Subscription</span>
+            </AppButton>
+          </motion.div>
+        </div>
       </div>
 
       {subscriptions.length === 0 && (
