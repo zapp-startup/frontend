@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Toaster } from "sonner";
 import { Routes, Route } from "react-router-dom";
-import { AuthProvider, LoginPage, SignUpPage, AuthCallback } from "@/features/auth";
+import { AuthProvider, LoginPage, SignUpPage, AuthCallback, useAuth } from "@/features/auth";
 import { DashboardLayout, AmbientEnergyLines } from "@/features/dashboard";
 import { OnboardingPage } from "@/features/onboarding";
 import { PrivacyPolicyPage } from "@/features/legal/PrivacyPolicyPage";
@@ -11,6 +11,16 @@ import LandingPage from "@/LandingPage";
  * App root: providers, global shell, and top-level routes.
  * Auth and dashboard layout live in feature modules.
  */
+function RootRoute() {
+  const { isAuthenticated, isAuthReady } = useAuth();
+
+  if (!isAuthReady) {
+    return null;
+  }
+
+  return isAuthenticated ? <DashboardLayout /> : <LandingPage />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -18,7 +28,8 @@ export default function App() {
         <Toaster position="top-center" theme="dark" richColors />
         <AmbientEnergyLines />
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<RootRoute />} />
+          <Route path="/waitlist" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
