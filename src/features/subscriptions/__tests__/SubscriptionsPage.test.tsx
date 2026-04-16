@@ -36,6 +36,18 @@ function renderSubscriptions() {
   );
 }
 
+async function expectValueScore(score: number) {
+  await waitFor(() => {
+    expect(screen.getByText(new RegExp(`^${score}$`))).toBeInTheDocument();
+  });
+
+  expect(
+    screen
+      .getAllByRole("progressbar")
+      .find((meter) => meter.getAttribute("aria-valuenow") === String(score))
+  ).toBeDefined();
+}
+
 describe("SubscriptionsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,9 +108,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await waitFor(() => {
-      expect(screen.getByText("Value: 100")).toBeInTheDocument();
-    });
+    await expectValueScore(100);
   });
 
   it("normalizes fractional subscription feedback scores before display", async () => {
@@ -117,9 +127,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await waitFor(() => {
-      expect(screen.getByText("Value: 82")).toBeInTheDocument();
-    });
+    await expectValueScore(82);
   });
 
   it("prefers subscription valuation scores when available", async () => {
@@ -146,9 +154,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await waitFor(() => {
-      expect(screen.getByText("Value: 120")).toBeInTheDocument();
-    });
+    await expectValueScore(120);
   });
 
   it("still shows subscriptions when valuations fail to load", async () => {

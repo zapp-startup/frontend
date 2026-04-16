@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
@@ -116,22 +116,18 @@ describe("ReviewPage", () => {
     expect(screen.getAllByText("Biggest miss")).toHaveLength(2);
     expect(screen.getAllByText("Next adjustment")).toHaveLength(2);
 
-    await user.type(
-      screen.getByPlaceholderText("Name one spending choice to keep."),
-      "Packed lunch twice.",
-    );
-    await user.type(
-      screen.getByPlaceholderText("Name one purchase or pattern to rethink."),
-      "Impulse coffee run.",
-    );
-    await user.type(
-      screen.getByPlaceholderText("Name one change for next week."),
-      "Set a weekday lunch budget.",
-    );
-    await user.type(
-      screen.getByPlaceholderText("Optional notes for this review."),
-      "Keep lunch prep on Sunday.",
-    );
+    fireEvent.change(screen.getByPlaceholderText("Name one spending choice to keep."), {
+      target: { value: "Packed lunch twice." },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Name one purchase or pattern to rethink."), {
+      target: { value: "Impulse coffee run." },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Name one change for next week."), {
+      target: { value: "Set a weekday lunch budget." },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Optional notes for this review."), {
+      target: { value: "Keep lunch prep on Sunday." },
+    });
 
     await user.click(screen.getByRole("button", { name: "Complete weekly review" }));
 
