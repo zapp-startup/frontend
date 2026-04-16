@@ -1,63 +1,131 @@
 import * as React from "react";
-import { motion } from "motion/react";
-import { ArrowRight, Camera, Upload } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { submitWaitlistSignup } from "@/api/waitlist.api";
-import { ElectricCard } from "@/features/home";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { COLORS, GLOWS } from "@/shared/theme";
+import "@/styles/landing.css";
 
-const demoScore = 34;
+const fallbackDemoVideoUrl =
+  "https://drive.google.com/file/d/1qQUz1jCqbmXztDwHBCopLaOQPJzMhOva/view?usp=sharing";
+const demoVideoUrl =
+  (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ?? fallbackDemoVideoUrl;
 
-function getScoreState(score: number) {
-  if (score < 40) {
-    return {
-      accent: "#FF7B7B",
-      soft: "rgba(255, 123, 123, 0.11)",
-      border: "rgba(255, 123, 123, 0.18)",
-      response: "Skip this purchase.",
-    };
+function toEmbedUrl(url: string): string | null {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.hostname.includes("youtube.com")) {
+      const id = parsed.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : url;
+    }
+
+    if (parsed.hostname === "youtu.be") {
+      const id = parsed.pathname.replace("/", "");
+      return id ? `https://www.youtube.com/embed/${id}` : url;
+    }
+
+    if (parsed.hostname.includes("vimeo.com") && !parsed.hostname.includes("player.")) {
+      const id = parsed.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : url;
+    }
+
+    if (parsed.hostname.includes("drive.google.com")) {
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const fileIndex = parts.indexOf("file");
+      const driveId =
+        fileIndex >= 0 && parts[fileIndex + 1] === "d" ? parts[fileIndex + 2] : null;
+
+      return driveId ? `https://drive.google.com/file/d/${driveId}/preview` : url;
+    }
+
+    return url;
+  } catch {
+    return null;
   }
+}
 
-  if (score <= 70) {
-    return {
-      accent: COLORS.electricBlue,
-      soft: "rgba(59, 130, 255, 0.12)",
-      border: "rgba(59, 130, 255, 0.18)",
-      response: "Think twice before buying.",
-    };
-  }
-
+function useMotionSafe() {
+  const reduced = useReducedMotion();
   return {
-    accent: COLORS.electricGreen,
-    soft: "rgba(60, 255, 158, 0.12)",
-    border: "rgba(60, 255, 158, 0.18)",
-    response: "High value for you.",
+    reduced: Boolean(reduced),
+    duration: reduced ? 0.01 : 0.45,
+    spring: reduced
+      ? { type: "tween" as const, duration: 0.01 }
+      : { type: "spring" as const, stiffness: 320, damping: 30 },
   };
 }
 
-function WaitlistForm() {
+function PageBackground() {
+  return (
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
+      <div
+        className="animate-zapp-aurora absolute -left-[20%] -top-[30%] h-[70vmin] w-[70vmin] rounded-full opacity-45 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle at 30% 30%, rgba(34,211,238,0.55), transparent 55%)",
+        }}
+      />
+      <div
+        className="animate-zapp-aurora-2 absolute -right-[15%] top-[10%] h-[60vmin] w-[60vmin] rounded-full opacity-40 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle at 60% 40%, rgba(168,85,247,0.45), transparent 55%)",
+        }}
+      />
+      <div
+        className="animate-zapp-aurora absolute bottom-[-20%] left-[20%] h-[55vmin] w-[55vmin] rounded-full opacity-35 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(74,222,128,0.28), transparent 60%)",
+        }}
+      />
+
+      <div
+        className="animate-zapp-grid absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(148,163,184,0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(148,163,184,0.08) 1px, transparent 1px)
+          `,
+          backgroundSize: "48px 48px",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent)",
+        }}
+      />
+
+      <div
+        className="absolute inset-0 opacity-[0.38] mix-blend-soft-light"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")",
+          backgroundSize: "220px 220px",
+        }}
+      />
+    </div>
+  );
+}
+
+function WaitlistCard() {
+  const { reduced } = useMotionSafe();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [status, setStatus] = React.useState<"idle" | "loading" | "success">("idle");
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!name.trim()) {
-      toast.error("Please add your name.");
-      return;
-    }
+    const next: Record<string, string> = {};
+    if (!name.trim()) next.name = "Name is required";
+    if (!email.trim()) next.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = "Enter a valid email";
 
-    if (!email.trim()) {
-      toast.error("Please add your email.");
-      return;
-    }
+    setErrors(next);
+    if (Object.keys(next).length) return;
 
-    setSubmitting(true);
+    setStatus("loading");
 
     try {
       const response = await submitWaitlistSignup({
@@ -69,142 +137,148 @@ function WaitlistForm() {
       toast.success(response.created ? "You're on the waitlist." : "You're already on the waitlist.");
       setName("");
       setEmail("");
+      setStatus("success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const message =
+        error instanceof Error ? error.message : "Something went wrong. Please try again in a moment.";
       toast.error(message);
-    } finally {
-      setSubmitting(false);
+      setStatus("idle");
     }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3.5 text-left">
-      <div className="space-y-2">
-        <Label className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
-          Name
-        </Label>
-        <Input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-          placeholder="Enter your name"
-          className="h-11 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-sm text-white placeholder:text-gray-600"
-        />
+    <motion.article
+      id="waitlist"
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="zapp-glass zapp-glow flex h-full flex-col rounded-[2rem] p-7 text-left md:p-8"
+    >
+      <div className="mb-6">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-300/90">
+          Waitlist open
+        </p>
+        <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
+          Get early access
+        </h2>
+        <p className="mt-3 max-w-lg text-base leading-7 text-[var(--z-fg-muted)]">
+          Join the list to try Zapp first and see how we score purchases before you spend.
+        </p>
+        <p className="mt-3 text-sm font-semibold leading-6 text-emerald-300">
+          The first 50 signups get Zapp Pro free.
+        </p>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">
-          Email
-        </Label>
-        <Input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-          placeholder="Enter your email"
-          className="h-11 rounded-2xl border-white/10 bg-white/[0.03] px-4 text-sm text-white placeholder:text-gray-600"
-        />
-      </div>
+      <form onSubmit={onSubmit} className="flex flex-1 flex-col justify-between gap-4" noValidate>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="wl-name" className="zapp-label">
+              Name
+            </label>
+            <input
+              id="wl-name"
+              name="name"
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="zapp-input"
+              placeholder="Enter your name"
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "err-name" : undefined}
+            />
+            {errors.name && (
+              <p id="err-name" className="mt-1.5 text-xs text-rose-400">
+                {errors.name}
+              </p>
+            )}
+          </div>
 
-      <Button
-        type="submit"
-        disabled={submitting}
-        className="mt-1 h-11 w-full rounded-2xl border-0 text-[11px] font-black uppercase tracking-[0.22em] text-[#08111E] transition-all duration-300 hover:scale-[1.01]"
-        style={{
-          backgroundColor: COLORS.electricCyan,
-          boxShadow: `0 0 0 1px rgba(34,240,255,0.1), ${GLOWS.soft(COLORS.electricCyan)}`,
-        }}
-      >
-        {submitting ? "Joining..." : "Join the Waitlist"}
-        <ArrowRight size={15} />
-      </Button>
-    </form>
+          <div>
+            <label htmlFor="wl-email" className="zapp-label">
+              Email
+            </label>
+            <input
+              id="wl-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="zapp-input"
+              placeholder="Enter your email"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "err-email" : undefined}
+            />
+            {errors.email && (
+              <p id="err-email" className="mt-1.5 text-xs text-rose-400">
+                {errors.email}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <motion.button
+          type="submit"
+          disabled={status === "loading"}
+          className="zapp-submit mt-2 inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+          whileTap={status === "loading" || reduced ? undefined : { scale: 0.985 }}
+        >
+          {status === "loading" ? "Joining..." : "Join the waitlist"}
+          <ArrowRight size={15} />
+        </motion.button>
+      </form>
+
+      {status === "success" && (
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-5 text-sm font-medium text-emerald-400/95"
+        >
+          Thanks — you&apos;re on the list. We&apos;ll be in touch soon.
+        </motion.p>
+      )}
+    </motion.article>
   );
 }
 
-function ProductDemoCard() {
-  const scoreState = getScoreState(demoScore);
+function DemoCard() {
+  const { reduced } = useMotionSafe();
+  const embedSrc = toEmbedUrl(demoVideoUrl);
 
   return (
-    <ElectricCard
-      semanticColor={scoreState.accent}
-      elevation={1}
-      className="w-full max-w-3xl border border-white/6 bg-[#101A2E]/92 p-5 text-left sm:p-6"
+    <motion.article
+      id="demo"
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: reduced ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
+      className="zapp-glass zapp-glow-subtle flex h-full flex-col rounded-[2rem] p-7 text-left md:p-8"
     >
-      <div className="space-y-4">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100/58">
-            Product Demo
-          </p>
-          <h2 className="mt-1 text-[1.4rem] font-black tracking-[-0.04em] text-white sm:text-[1.55rem]">
-            Check before you buy.
-          </h2>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-[1.02fr_0.98fr]">
-          <div className="rounded-[1.5rem] border border-white/6 bg-[#0B1220] px-4 py-4">
-            <div className="flex items-start gap-3">
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/6"
-                style={{ backgroundColor: `${COLORS.electricBlue}14` }}
-              >
-                <Camera size={18} style={{ color: COLORS.electricBlue }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                  User Input
-                </p>
-                <p className="mt-1 text-sm font-medium leading-6 text-gray-200">
-                  Snap the item or ask Zapp if it&apos;s worth it.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-gray-300">
-                  <Upload size={13} />
-                  Upload a product image
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="rounded-[1.5rem] border px-4 py-4"
-            style={{
-              borderColor: scoreState.border,
-              background: `linear-gradient(180deg, ${scoreState.soft}, rgba(11,18,32,0.92))`,
-            }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p
-                  className="text-[10px] font-black uppercase tracking-[0.22em]"
-                  style={{ color: scoreState.accent }}
-                >
-                  Result
-                </p>
-                <p className="mt-1 text-lg font-black tracking-[-0.03em] text-white">
-                  {scoreState.response}
-                </p>
-              </div>
-
-              <div
-                className="rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em]"
-                style={{
-                  borderColor: scoreState.border,
-                  backgroundColor: scoreState.soft,
-                  color: scoreState.accent,
-                }}
-              >
-                Zapp Score
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-end gap-3">
-              <p className="text-5xl font-black tracking-[-0.07em] text-white">{demoScore}</p>
-              <p className="pb-1 text-sm text-gray-300">out of 100</p>
-            </div>
-          </div>
-        </div>
+      <div className="mb-5">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
+          Demo
+        </p>
+        <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
+          See Zapp in action
+        </h2>
       </div>
-    </ElectricCard>
+
+      <motion.div
+        className="overflow-hidden rounded-[1.5rem] border border-[var(--z-border)] bg-black/30 shadow-inner"
+        initial={false}
+        whileHover={reduced ? undefined : { scale: 1.01 }}
+        transition={{ duration: 0.35 }}
+      >
+        <div className="aspect-video w-full min-h-[360px]">
+          <iframe
+            title="Product demo video"
+            src={embedSrc ?? toEmbedUrl(fallbackDemoVideoUrl) ?? undefined}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      </motion.div>
+    </motion.article>
   );
 }
 
@@ -224,83 +298,80 @@ const features = [
 ];
 
 export default function LandingPage() {
+  const { reduced, duration } = useMotionSafe();
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0B1220] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute left-[-8%] top-[-12%] h-[28rem] w-[28rem] rounded-full blur-3xl"
-          style={{ backgroundColor: `${COLORS.electricBlue}16` }}
-        />
-        <div
-          className="absolute right-[-10%] top-[0%] h-[24rem] w-[24rem] rounded-full blur-3xl"
-          style={{ backgroundColor: `${COLORS.electricCyan}12` }}
-        />
-        <div
-          className="absolute bottom-[-12%] left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full blur-3xl"
-          style={{ backgroundColor: `${COLORS.electricPurple}10` }}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_56%)]" />
-      </div>
+    <div className="zapp-landing-shell relative min-h-dvh font-sans antialiased" data-theme="dark">
+      <PageBackground />
 
-      <main className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center gap-6 px-5 py-14 text-center sm:px-8 sm:py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="space-y-3"
-        >
-          <h1 className="text-6xl font-black tracking-[-0.09em] text-white sm:text-7xl lg:text-[5.6rem]">
-            Zapp
-          </h1>
-          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100/60">
-            Waitlist Open
-          </p>
-        </motion.div>
+      <main className="px-5 pb-16 pt-10 md:px-8 md:pb-24 md:pt-14">
+        <section className="mx-auto max-w-6xl">
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto max-w-4xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--z-border)] bg-[var(--z-surface)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--z-fg-muted)]">
+              <Sparkles size={12} className="text-cyan-300" />
+              Waitlist open
+            </div>
 
-        <div className="space-y-4">
-          <h2 className="mx-auto max-w-4xl text-4xl font-black tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl">
-            We don&apos;t waste money.
-            <br />
-            We misjudge value.
-          </h2>
-          <p className="mx-auto max-w-2xl text-base font-medium leading-7 text-gray-300 sm:text-lg">
-            Zapp helps you judge whether something is actually worth buying before you spend.
-          </p>
-        </div>
+            <h1 className="text-balance text-[2.4rem] font-black leading-[1.02] tracking-tight text-[var(--z-fg)] sm:text-6xl md:text-7xl">
+              <span>Zapp - </span>
+              <span className="text-gradient-electric">Your Personal CFO</span>
+            </h1>
+          </motion.div>
 
-        <ElectricCard
-          semanticColor={COLORS.electricCyan}
-          elevation={1}
-          className="w-full max-w-md border border-white/6 bg-[#101A2E]/92 p-4 sm:p-5"
-        >
-          <WaitlistForm />
-        </ElectricCard>
+          <div className="mt-12 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+            <WaitlistCard />
+            <DemoCard />
+          </div>
 
-        <ProductDemoCard />
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-14 max-w-3xl text-center"
+          >
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--z-fg-muted)]">
+              Why this works
+            </p>
+            <h2 className="mt-3 text-balance text-3xl font-black tracking-tight text-[var(--z-fg)] md:text-4xl">
+              Make better buying decisions,
+              <br className="hidden md:block" /> before the charge hits.
+            </h2>
+          </motion.div>
 
-        <div className="grid w-full max-w-4xl gap-4 md:grid-cols-3">
-          {features.map((feature, index) => (
-            <ElectricCard
-              key={feature.title}
-              semanticColor={index === 0 ? COLORS.electricCyan : index === 1 ? COLORS.electricBlue : COLORS.electricPurple}
-              elevation={0}
-              className="flex min-h-[150px] h-full flex-col gap-3 border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(16,26,46,0.88))] p-5 text-left"
-            >
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/60">
-                {feature.title}
-              </p>
-              <p className="max-w-[18rem] text-sm leading-6 text-gray-300">{feature.body}</p>
-            </ElectricCard>
-          ))}
-        </div>
-
-        <footer className="pt-2 text-center text-sm text-gray-200">
-          <p>Zapp © 2026</p>
-          <p className="mt-1">
-            <span className="font-semibold text-white">Contact:</span> siddhantshankar@zappai.com
-          </p>
-        </footer>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {features.map((feature) => (
+              <motion.article
+                key={feature.title}
+                initial={reduced ? false : { opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+                className="zapp-glass rounded-[1.7rem] p-7 text-left"
+              >
+                <p className="text-[12px] font-black uppercase tracking-[0.22em] text-cyan-100/80">
+                  {feature.title}
+                </p>
+                <p className="mt-4 max-w-[18rem] text-lg font-medium leading-8 text-[var(--z-fg)]">
+                  {feature.body}
+                </p>
+              </motion.article>
+            ))}
+          </div>
+        </section>
       </main>
+
+      <footer className="border-t border-[var(--z-border)] px-5 py-10 text-center text-sm text-[var(--z-fg-muted)] md:px-8">
+        <p className="text-[var(--z-fg)]">Zapp © 2026</p>
+        <p className="mt-1">
+          <span className="font-semibold text-[var(--z-fg)]">Contact:</span> siddhantshankar@zappai.com
+        </p>
+      </footer>
     </div>
   );
 }
