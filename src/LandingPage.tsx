@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { submitWaitlistSignup } from "@/api/waitlist.api";
 import "@/styles/landing.css";
 
-const fallbackDemoVideoUrl = "https://www.youtube.com/watch?v=M7lc1UVf-VE";
+const fallbackDemoVideoUrl =
+  "https://drive.google.com/file/d/1qQUz1jCqbmXztDwHBCopLaOQPJzMhOva/view?usp=sharing";
 const demoVideoUrl =
   (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ?? fallbackDemoVideoUrl;
 
@@ -29,6 +30,15 @@ function toEmbedUrl(url: string): string | null {
     if (parsed.hostname.includes("vimeo.com") && !parsed.hostname.includes("player.")) {
       const id = parsed.pathname.split("/").filter(Boolean).pop();
       return id ? `https://player.vimeo.com/video/${id}` : url;
+    }
+
+    if (parsed.hostname.includes("drive.google.com")) {
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const fileIndex = parts.indexOf("file");
+      const driveId =
+        fileIndex >= 0 && parts[fileIndex + 1] === "d" ? parts[fileIndex + 2] : null;
+
+      return driveId ? `https://drive.google.com/file/d/${driveId}/preview` : url;
     }
 
     return url;
