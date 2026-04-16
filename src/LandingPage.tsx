@@ -151,7 +151,7 @@ function WaitlistCard() {
         <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
           Get early access
         </h2>
-        <p className="mt-3 max-w-md text-sm leading-6 text-[var(--z-fg-muted)]">
+        <p className="mt-3 max-w-lg text-base leading-7 text-[var(--z-fg-muted)]">
           Join the list to try Zapp first and see how we score purchases before you spend.
         </p>
         <p className="mt-3 text-sm font-semibold leading-6 text-emerald-300">
@@ -161,50 +161,50 @@ function WaitlistCard() {
 
       <form onSubmit={onSubmit} className="flex flex-1 flex-col justify-between gap-4" noValidate>
         <div className="space-y-4">
-        <div>
-          <label htmlFor="wl-name" className="zapp-label">
-            Name
-          </label>
-          <input
-            id="wl-name"
-            name="name"
-            autoComplete="name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="zapp-input"
-            placeholder="Enter your name"
-            aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? "err-name" : undefined}
-          />
-          {errors.name && (
-            <p id="err-name" className="mt-1.5 text-xs text-rose-400">
-              {errors.name}
-            </p>
-          )}
-        </div>
+          <div>
+            <label htmlFor="wl-name" className="zapp-label">
+              Name
+            </label>
+            <input
+              id="wl-name"
+              name="name"
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="zapp-input"
+              placeholder="Enter your name"
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "err-name" : undefined}
+            />
+            {errors.name && (
+              <p id="err-name" className="mt-1.5 text-xs text-rose-400">
+                {errors.name}
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label htmlFor="wl-email" className="zapp-label">
-            Email
-          </label>
-          <input
-            id="wl-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="zapp-input"
-            placeholder="Enter your email"
-            aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? "err-email" : undefined}
-          />
-          {errors.email && (
-            <p id="err-email" className="mt-1.5 text-xs text-rose-400">
-              {errors.email}
-            </p>
-          )}
-        </div>
+          <div>
+            <label htmlFor="wl-email" className="zapp-label">
+              Email
+            </label>
+            <input
+              id="wl-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="zapp-input"
+              placeholder="Enter your email"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "err-email" : undefined}
+            />
+            {errors.email && (
+              <p id="err-email" className="mt-1.5 text-xs text-rose-400">
+                {errors.email}
+              </p>
+            )}
+          </div>
         </div>
 
         <motion.button
@@ -243,7 +243,7 @@ function DemoCard() {
       transition={{ duration: 0.45, delay: reduced ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
       className="zapp-glass zapp-glow-subtle flex h-full flex-col rounded-[2rem] p-7 text-left md:p-8"
     >
-      <div className="mb-6">
+      <div className="mb-5">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
           Demo
         </p>
@@ -258,7 +258,7 @@ function DemoCard() {
         whileHover={reduced ? undefined : { scale: 1.01 }}
         transition={{ duration: 0.35 }}
       >
-        <div className="aspect-video w-full min-h-[420px]">
+        <div className="aspect-video w-full min-h-[360px]">
           <iframe
             title="Product demo video"
             src={embedSrc ?? toEmbedUrl(fallbackDemoVideoUrl) ?? undefined}
@@ -267,7 +267,7 @@ function DemoCard() {
             allowFullScreen
           />
         </div>
-      </div>
+      </motion.div>
     </motion.article>
   );
 }
@@ -311,14 +311,9 @@ export default function LandingPage() {
               <span>Zapp - </span>
               <span className="text-gradient-electric">Your Personal CFO</span>
             </h1>
-
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--z-fg-muted)]">
-              <span className="block">Humans don&apos;t waste money,</span>
-              <span className="block">we misjudge value.</span>
-            </p>
           </motion.div>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="mt-12 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
             <WaitlistCard />
             <DemoCard />
           </div>
