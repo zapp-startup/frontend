@@ -78,14 +78,17 @@ describe("TransactionFeedbackModal", () => {
 
     expect(screen.getByText("Purchase reflection")).toBeInTheDocument();
     expect(
-      screen.getByText("Add a rating for full feedback, or leave a note for a quick reflection."),
+      screen.getByText("Add a rating for full feedback, or leave a note."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add rating or note" })).toBeInTheDocument();
+    expect(screen.getByText("Add a rating or note.")).toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("What stood out?"), "Worth the price.");
     expect(screen.getByRole("button", { name: "Save reflection" })).toBeInTheDocument();
+    expect(screen.getByText("Only the note will be saved.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "8" }));
+    expect(screen.getByText("Rating and note save together.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save feedback" }));
 
     await waitFor(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getValueMeterWidth, getValuePresentation } from "@/shared/valuation";
+import { getValueMeterWidth, getValuePresentation, normalizeModelValueScore } from "@/shared/valuation";
 
 describe("value presentation", () => {
   it("caps the primary score display at 100 and exposes overflow separately", () => {
@@ -17,5 +17,11 @@ describe("value presentation", () => {
     expect(getValueMeterWidth(150)).toBe(100);
     expect(getValueMeterWidth(75)).toBe(50);
     expect(getValueMeterWidth(140)).toBeCloseTo((140 / 150) * 100, 10);
+  });
+
+  it("scales model scores by 1.5 and rounds to the 0-150 display scale", () => {
+    expect(normalizeModelValueScore(80)).toBe(120);
+    expect(normalizeModelValueScore(0.82)).toBe(123);
+    expect(normalizeModelValueScore(120)).toBe(150);
   });
 });

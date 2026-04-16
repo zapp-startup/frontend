@@ -461,6 +461,7 @@ export function ProfilePage() {
       className="mx-auto max-w-4xl space-y-6"
     >
       <SectionHeader
+        level={1}
         eyebrow="Account"
         title="Profile"
         titleClassName="app-page-title"

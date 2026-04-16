@@ -24,6 +24,16 @@ function clampScore(score: number) {
   return Math.min(OVERFLOW_SCORE_MAX, Math.max(MIN_SCORE, Math.round(score)));
 }
 
+/**
+ * Normalize model-backed value scores into the app's 0-150 display scale.
+ * Fractional legacy scores are treated as 0-1 and scaled up before rounding.
+ */
+export function normalizeModelValueScore(score: number | null | undefined) {
+  if (score == null || Number.isNaN(score)) return null;
+  const scaled = score <= 1 ? score * OVERFLOW_SCORE_MAX : score * 1.5;
+  return clampScore(scaled);
+}
+
 export function getValuePresentation(score: number | null | undefined): ValuePresentation {
   if (score == null || Number.isNaN(score)) {
     return {

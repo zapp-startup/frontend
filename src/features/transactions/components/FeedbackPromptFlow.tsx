@@ -10,21 +10,31 @@ const MAX_PROMPTS_PER_SESSION = 2;
 const TRANSACTION_POOL_LIMIT = 300;
 
 const DAILY_STORAGE_PREFIX = "zapp-feedback-daily-prompt";
+const SESSION_STORAGE_PREFIX = "zapp-feedback-session-prompt";
 
 function dailyPromptKey(userId: string | number | undefined): string | null {
   if (userId == null) return null;
   return `${DAILY_STORAGE_PREFIX}-${userId}`;
 }
 
+function sessionPromptKey(userId: string | number | undefined): string | null {
+  if (userId == null) return null;
+  return `${SESSION_STORAGE_PREFIX}-${userId}`;
+}
+
 function getTodayLocal(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 function hasFeedback(tx: DisplayTransaction): boolean {
   return (
     tx.satisfaction_rating != null ||
     tx.considered_at != null ||
-    (tx.regret_rating != null && tx.repurchase_likelihood != null)
+    (tx.regret_rating != null && tx.repurchase_likelihood != null) ||
+    (tx.reflection_text?.trim().length ?? 0) > 0
   );
 }
 
@@ -61,7 +71,8 @@ function matchTransaction(
 /**
  * Fetches feedback candidates on the dashboard home route and opens the shared
  * dashboard feedback modal at most once per local day for the first prompt
- * (per user); further prompts in the same visit are not blocked by the daily key.
+ * (per user). The first prompt is also suppressed after a reload within the same
+ * tab session; further prompts in the same live visit are not blocked by storage.
  */
 export function FeedbackPromptFlow() {
   const { pathname } = useLocation();
@@ -150,9 +161,13 @@ export function FeedbackPromptFlow() {
     if (queue.length === 0 || currentIndex >= queue.length) return;
 
     const key = dailyPromptKey(user.id);
+    const sessionKey = sessionPromptKey(user.id);
     const today = getTodayLocal();
 
     if (!openedPromptInSessionRef.current) {
+      if (sessionKey && typeof sessionStorage !== "undefined" && sessionStorage.getItem(sessionKey) === today) {
+        return;
+      }
       if (key && typeof localStorage !== "undefined" && localStorage.getItem(key) === today) {
         return;
       }
@@ -164,8 +179,13 @@ export function FeedbackPromptFlow() {
     if (!tx) return;
 
     openedPromptForIndexRef.current = currentIndex;
-    if (!openedPromptInSessionRef.current && key && typeof localStorage !== "undefined") {
-      localStorage.setItem(key, today);
+    if (!openedPromptInSessionRef.current) {
+      if (sessionKey && typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(sessionKey, today);
+      }
+      if (key && typeof localStorage !== "undefined") {
+        localStorage.setItem(key, today);
+      }
     }
     openedPromptInSessionRef.current = true;
 

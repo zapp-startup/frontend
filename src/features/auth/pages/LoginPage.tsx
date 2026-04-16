@@ -121,6 +121,7 @@ export function LoginPage() {
           </div>
 
           <SectionHeader
+            level={1}
             align="center"
             eyebrow="Welcome back"
             title="Sign in"

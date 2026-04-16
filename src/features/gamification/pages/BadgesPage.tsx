@@ -33,6 +33,7 @@ export function BadgesPage() {
   return (
     <div className="space-y-8 pb-32">
       <SectionHeader
+        level={1}
         eyebrow="Gamification"
         title="Badge Cabinet"
         titleClassName="app-page-title"

@@ -2,12 +2,13 @@ import * as React from "react";
 import { Search, Zap, TrendingDown } from "lucide-react";
 import { ElectricCard } from "@/features/home";
 import { COLORS } from "@/shared/theme";
-import { AppButton, AppInput, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
+import { AppButton, AppInput, AppPage, IconBadge, SectionHeader, Surface } from "@/shared/components/system";
 
 export function SearchPage() {
   return (
-    <div className="mx-auto max-w-5xl space-y-16 py-10">
+    <AppPage width="default" spacing="relaxed" className="pt-10">
       <SectionHeader
+        level={1}
         align="center"
         eyebrow="Decision support"
         title="Decision Engine"
@@ -77,6 +78,6 @@ export function SearchPage() {
           </div>
         </ElectricCard>
       </div>
-    </div>
+    </AppPage>
   );
 }

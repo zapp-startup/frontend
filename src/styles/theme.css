@@ -370,6 +370,17 @@
     text-transform: uppercase;
   }
 
+  .app-page-shell {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .app-inline-notice {
+    overflow: hidden;
+  }
+
   .app-button {
     border-radius: var(--app-radius-control);
     font-weight: 800;

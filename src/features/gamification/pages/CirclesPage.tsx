@@ -237,6 +237,7 @@ export function CirclesPage() {
   return (
     <div className="space-y-10 pb-32">
       <SectionHeader
+        level={1}
         eyebrow="Gamification"
         title="Circles"
         titleClassName="app-page-title"

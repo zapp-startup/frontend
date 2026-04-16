@@ -164,6 +164,7 @@ export function PrivacyPolicyPage() {
           <article className="min-w-0">
             <header className="space-y-6">
               <SectionHeader
+                level={1}
                 eyebrow="Legal"
                 title={<span id="privacy-policy-title">Privacy Policy</span>}
                 description="How Zapp collects, uses, shares, and protects information when you use the product."

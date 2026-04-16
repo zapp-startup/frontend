@@ -50,6 +50,7 @@ export function SignUpPage() {
             <AppLogo size={104} />
           </div>
           <SectionHeader
+            level={1}
             align="center"
             eyebrow="Create your account"
             title="Join Zapp"

@@ -42,6 +42,7 @@ import { resolveStatedMonthlyIncome } from "../utils/statedMonthlyIncome";
 import { RawExplicitAPI } from "@/api/users.api";
 import { TransactionFeedbackModal } from "../components/TransactionFeedbackModal";
 import {
+  AppPage,
   AppButton,
   AppInput,
   AppSheet,
@@ -55,6 +56,7 @@ import {
   FormField,
   LoadingState,
   MetricCard,
+  SectionHeader,
   StatusChip,
   Surface,
   ValueScoreMeter,
@@ -962,18 +964,16 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
   filters,
   onFiltersChange,
   onClearFilters,
-  onOpenAdd,
 }: {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   onClearFilters: () => void;
-  onOpenAdd: () => void;
 }) {
   return (
-    <div className="flex flex-row gap-4 items-center">
-      <div className="relative w-80 flex-shrink-0 group">
+    <Surface variant="panel" padding="md" className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="group relative w-full xl:max-w-sm">
         <AppInput
           type="text"
           placeholder="Search transactions..."
@@ -983,21 +983,10 @@ const TransactionToolbar = React.memo(function TransactionToolbar({
         />
       </div>
 
-      <div className="flex items-center gap-3 flex-1">
+      <div className="flex flex-1 flex-wrap items-center gap-3">
         <FilterBar filters={filters} onChange={onFiltersChange} onClear={onClearFilters} />
       </div>
-
-      <AppButton
-        type="button"
-        onClick={onOpenAdd}
-        aria-label="Add transaction"
-        variant="info"
-        size="icon"
-        className="size-14 rounded-full"
-      >
-        <Plus size={22} strokeWidth={3} />
-      </AppButton>
-    </div>
+    </Surface>
   );
 });
 
@@ -1449,7 +1438,21 @@ export const TransactionsPage = () => {
   }, [transactions, profileMonthlyIncome]);
 
   return (
-    <div className="space-y-12 pb-40 relative z-10">
+    <AppPage width="full" className="pb-40">
+      <SectionHeader
+        level={1}
+        eyebrow="Spending intelligence"
+        title="Transactions"
+        titleClassName="app-page-title"
+        description="Review synced bank activity, add manual entries, and score transaction value from one timeline."
+        action={
+          <AppButton type="button" onClick={openAddPanel} variant="info" size="md" className="w-full sm:w-auto">
+            <Plus size={18} strokeWidth={3} />
+            <span>Add Transaction</span>
+          </AppButton>
+        }
+      />
+
       <BankingSection onTransactionsRefetch={refetchTransactions} />
 
       <TransactionStats
@@ -1480,7 +1483,6 @@ export const TransactionsPage = () => {
         filters={filters}
         onFiltersChange={setFilters}
         onClearFilters={() => setFilters(EMPTY_FILTERS)}
-        onOpenAdd={openAddPanel}
       />
 
       <TransactionGroups
@@ -1512,6 +1514,6 @@ export const TransactionsPage = () => {
         }}
         onSubmitted={refetchTransactions}
       />
-    </div>
+    </AppPage>
   );
 };

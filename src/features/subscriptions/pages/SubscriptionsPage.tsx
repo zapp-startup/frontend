@@ -1,12 +1,11 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CreditCard, Calendar, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, CreditCard, Calendar, Loader2, Plus, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SpotifyIntegrationSection } from "../components/SpotifyIntegrationSection";
-import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS, UI_PATTERNS } from "@/shared/theme";
-import { getValuePresentation } from "@/shared/valuation";
+import { getValuePresentation, normalizeModelValueScore } from "@/shared/valuation";
 import {
   SubscriptionsAPI,
   MerchantsAPI,
@@ -20,6 +19,7 @@ import { ApiError } from "@/api/client";
 import { usePanelActions } from "@/features/dashboard/context/PanelContext";
 import { toast } from "sonner";
 import {
+  AppPage,
   AppButton,
   AppInput,
   AppSheet,
@@ -33,7 +33,9 @@ import {
   AppTextarea,
   EmptyState,
   FormField,
+  InlineNotice,
   LoadingState,
+  SectionHeader,
   StatusChip,
   Surface,
   ValueScoreMeter,
@@ -101,10 +103,6 @@ function createEmptySubscriptionForm(): AddSubscriptionForm {
   };
 }
 
-function clampSubscriptionValueScore(score: number) {
-  return Math.max(0, Math.min(150, Math.round(score)));
-}
-
 function deriveSubscriptionDisplayValueScore(
   sub: Subscription,
   valuations: SubscriptionValuation[]
@@ -115,15 +113,15 @@ function deriveSubscriptionDisplayValueScore(
       Number.isFinite(valuation.personal_value_score)
   )?.personal_value_score;
 
-  if (typeof valuationScore === "number" && Number.isFinite(valuationScore)) {
-    return clampSubscriptionValueScore(valuationScore);
+  if (typeof valuationScore === "number") {
+    return normalizeModelValueScore(valuationScore);
   }
 
   if (typeof sub.value_score !== "number" || !Number.isFinite(sub.value_score)) {
     return null;
   }
 
-  return clampSubscriptionValueScore(sub.value_score <= 1 ? sub.value_score * 100 : sub.value_score);
+  return normalizeModelValueScore(sub.value_score);
 }
 
 function AddPanel({
@@ -556,7 +554,7 @@ const SubscriptionCard = React.memo(function SubscriptionCard({
                           Personal Value Score
                         </div>
                         <p className="text-sm font-bold text-white">
-                          {valuation.personal_value_score}/150
+                          {normalizeModelValueScore(valuation.personal_value_score) ?? "—"}/150
                         </p>
                       </div>
                     )}
@@ -763,122 +761,125 @@ export function SubscriptionsPage() {
   }, [subscriptionCards.length]);
 
   return (
-    <div className="space-y-12 pb-32 relative z-10">
+    <AppPage>
       <SpotifyIntegrationSection />
 
       {loading && (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={48} className="animate-spin text-cyan-400" />
-        </div>
+        <LoadingState label="Loading subscriptions..." lines={4} />
       )}
 
       {!loading && error && (
-        <div className="text-center py-16 space-y-4">
-          <div className="text-red-400 font-bold">{error}</div>
-          <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10">
-            Retry
-          </Button>
-        </div>
+        <InlineNotice
+          tone="danger"
+          icon={<AlertCircle size={18} />}
+          title="Couldn't load subscriptions."
+          description={error}
+          action={
+            <AppButton type="button" variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto">
+              Retry
+            </AppButton>
+          }
+        />
       )}
 
       {!loading && !error && (
         <>
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="app-page-title text-[clamp(2.5rem,5vw,3.25rem)]">
-            Active Subscriptions
-          </h2>
-          <div className={cn(UI_PATTERNS.eyebrow, "flex items-center gap-2 text-xs")}>
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{
-                backgroundColor: COLORS.electricGreen,
-                boxShadow: `0 0 8px ${COLORS.electricGreen}`,
-              }}
-            />
-            Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-
-        <div className="flex flex-shrink-0 items-center gap-3">
-          <AppButton
-            variant="outline"
-            size="sm"
-            disabled={scoring || subscriptions.length === 0}
-            onClick={() => void handleRecomputeValueScores()}
-          >
-            {scoring ? <Loader2 size={16} className="animate-spin" /> : null}
-            <span>{scoring ? "Updating..." : "Update Value Scores"}</span>
-          </AppButton>
-
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex">
-            <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
-              <Plus size={18} strokeWidth={3} />
-              <span>Add Subscription</span>
-            </AppButton>
-          </motion.div>
-        </div>
-      </div>
-
-      {subscriptions.length === 0 && (
-        <motion.div>
-          <EmptyState
-            title="No subscriptions yet"
-            description="Add your first subscription to track recurring costs and value scores."
+          <SectionHeader
+            level={1}
+            eyebrow="Recurring spend"
+            title="Active Subscriptions"
+            titleClassName="app-page-title"
+            description={
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    backgroundColor: COLORS.electricGreen,
+                    boxShadow: `0 0 8px ${COLORS.electricGreen}`,
+                  }}
+                />
+                Monitoring {subscriptions.length} active connection{subscriptions.length !== 1 ? "s" : ""}
+              </span>
+            }
             action={
-              <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
-                <Plus size={18} strokeWidth={3} />
-                <span>Add Subscription</span>
-              </AppButton>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  disabled={scoring || subscriptions.length === 0}
+                  onClick={() => void handleRecomputeValueScores()}
+                >
+                  {scoring ? <Loader2 size={16} className="animate-spin" /> : null}
+                  <span>{scoring ? "Updating..." : "Update Value Scores"}</span>
+                </AppButton>
+
+                <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+                  <Plus size={18} strokeWidth={3} />
+                  <span>Add Subscription</span>
+                </AppButton>
+              </div>
             }
           />
-        </motion.div>
-      )}
 
-      <div className="relative perspective-[2000px] py-10">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.24, ease: "easeOut" }}
-          className="relative mx-auto max-w-5xl space-y-[-40px]"
-        >
-          {subscriptionCards.slice(0, visibleCount).map(({ sub, name, valuations }, index) => (
-            <SubscriptionCard
-              key={sub.id}
-              sub={sub}
-              valuations={valuations}
-              index={index}
-              expanded={expandedId === sub.id}
-              name={name}
-              onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
-              onDelete={handleDelete}
-            />
-          ))}
-        </motion.div>
-      </div>
+          {subscriptions.length === 0 && (
+            <motion.div>
+              <EmptyState
+                title="No subscriptions yet"
+                description="Add your first subscription to track recurring costs and value scores."
+                action={
+                  <AppButton onClick={() => setIsAddPanelOpen(true)} variant="info" size="md">
+                    <Plus size={18} strokeWidth={3} />
+                    <span>Add Subscription</span>
+                  </AppButton>
+                }
+              />
+            </motion.div>
+          )}
 
-      {visibleCount < subscriptionCards.length && (
-        <div className="flex justify-center">
-          <AppButton
-            variant="outline"
-            onClick={() =>
-              setVisibleCount((prev) =>
-                Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length)
-              )
-            }
-          >
-            Load More Subscriptions
-          </AppButton>
-        </div>
-      )}
+          <div className="relative perspective-[2000px] py-6 md:py-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="relative mx-auto max-w-5xl space-y-[-40px]"
+            >
+              {subscriptionCards.slice(0, visibleCount).map(({ sub, name, valuations }, index) => (
+                <SubscriptionCard
+                  key={sub.id}
+                  sub={sub}
+                  valuations={valuations}
+                  index={index}
+                  expanded={expandedId === sub.id}
+                  name={name}
+                  onToggle={(id) => setExpandedId((current) => (current === id ? null : id))}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </motion.div>
+          </div>
 
-      <AnimatePresence>
-        {isAddPanelOpen && (
-          <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
-        )}
-      </AnimatePresence>
+          {visibleCount < subscriptionCards.length && (
+            <div className="flex justify-center">
+              <AppButton
+                variant="outline"
+                onClick={() =>
+                  setVisibleCount((prev) =>
+                    Math.min(prev + INITIAL_VISIBLE_SUBSCRIPTIONS, subscriptionCards.length)
+                  )
+                }
+              >
+                Load More Subscriptions
+              </AppButton>
+            </div>
+          )}
+
+          <AnimatePresence>
+            {isAddPanelOpen && (
+              <AddPanel onClose={closeAddPanel} onAdded={handleAdded} merchants={merchants} />
+            )}
+          </AnimatePresence>
         </>
       )}
-    </div>
+    </AppPage>
   );
 }

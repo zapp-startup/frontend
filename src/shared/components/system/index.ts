@@ -1,3 +1,4 @@
+export { AppPage } from "./app-page";
 export { AppButton, appButtonVariants } from "./app-button";
 export { AppDialog, AppDialogBody, AppDialogContent, AppDialogDescription, AppDialogFooter, AppDialogHeader, AppDialogTitle, AppDialogTrigger } from "./app-dialog";
 export { AppInput } from "./app-input";
@@ -8,6 +9,7 @@ export { AppTextarea } from "./app-textarea";
 export { EmptyState } from "./empty-state";
 export { FormField } from "./form-field";
 export { IconBadge } from "./icon-badge";
+export { InlineNotice } from "./inline-notice";
 export { ListRow } from "./list-row";
 export { LoadingState } from "./loading-state";
 export { MetricCard } from "./metric-card";

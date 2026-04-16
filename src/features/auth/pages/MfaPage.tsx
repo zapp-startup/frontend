@@ -66,6 +66,7 @@ function MfaShell({
           </div>
 
           <SectionHeader
+            level={1}
             align="center"
             eyebrow="Security check"
             title={title}
