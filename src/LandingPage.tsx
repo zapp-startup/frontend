@@ -1,16 +1,13 @@
 import * as React from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Moon, Play, Sun } from "lucide-react";
+import { ArrowRight, Camera, Play, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { submitWaitlistSignup } from "@/api/waitlist.api";
 import "@/styles/landing.css";
 
-const deckPdfUrl = "/presentation/Zapp_Team358.pdf";
-const deckPptxUrl = "/presentation/Zapp_Team358.pptx";
 const demoVideoUrl = (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ?? "";
-
-type Theme = "dark" | "light";
+const demoScore = 34;
 
 function toEmbedUrl(url: string): string | null {
   if (!url) return null;
@@ -43,11 +40,10 @@ function useMotionSafe() {
   const reduced = useReducedMotion();
   return {
     reduced: Boolean(reduced),
-    stagger: reduced ? 0 : 0.08,
     duration: reduced ? 0.01 : 0.45,
     spring: reduced
       ? { type: "tween" as const, duration: 0.01 }
-      : { type: "spring" as const, stiffness: 360, damping: 30 },
+      : { type: "spring" as const, stiffness: 320, damping: 30 },
   };
 }
 
@@ -65,14 +61,14 @@ function PageBackground() {
         className="animate-zapp-aurora-2 absolute -right-[15%] top-[10%] h-[60vmin] w-[60vmin] rounded-full opacity-40 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle at 60% 40%, rgba(168,85,247,0.5), transparent 55%)",
+            "radial-gradient(circle at 60% 40%, rgba(168,85,247,0.45), transparent 55%)",
         }}
       />
       <div
         className="animate-zapp-aurora absolute bottom-[-20%] left-[20%] h-[55vmin] w-[55vmin] rounded-full opacity-35 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, rgba(74,222,128,0.35), transparent 60%)",
+            "radial-gradient(circle at 50% 50%, rgba(74,222,128,0.28), transparent 60%)",
         }}
       />
 
@@ -89,7 +85,7 @@ function PageBackground() {
       />
 
       <div
-        className="absolute inset-0 opacity-[0.4] mix-blend-soft-light"
+        className="absolute inset-0 opacity-[0.38] mix-blend-soft-light"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")",
@@ -100,288 +96,41 @@ function PageBackground() {
   );
 }
 
-function Navbar({
-  theme,
-  onThemeChange,
-}: {
-  theme: Theme;
-  onThemeChange: (next: Theme) => void;
-}) {
-  const { reduced, duration } = useMotionSafe();
-
+function DemoScoreCard() {
   return (
-    <motion.header
-      initial={reduced ? false : { y: -16, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
-      className="sticky top-0 z-50 border-b border-[var(--z-border)] bg-[color-mix(in_oklab,var(--z-canvas)_82%,transparent)] backdrop-blur-xl"
-    >
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-8">
-        <a href="#top" className="flex items-center gap-3 self-start">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--z-border)] bg-[var(--z-surface)] shadow-[0_0_24px_-4px_rgba(34,211,238,0.35)]">
-            <span className="text-sm font-black tracking-tight text-gradient-electric">Z</span>
-          </span>
-          <div>
-            <p className="text-lg font-extrabold tracking-tight text-[var(--z-fg)]">Zapp</p>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--z-fg-muted)]">
-              Product preview
-            </p>
-          </div>
-        </a>
-
-        <nav className="flex flex-wrap items-center justify-center gap-1 sm:justify-end md:flex-1">
-          <a className="zapp-nav-link" href="#waitlist">
-            Join waitlist
-          </a>
-          <a className="zapp-nav-link" href="#deck">
-            View deck
-          </a>
-          <a className="zapp-nav-link" href="#demo">
-            Watch demo
-          </a>
-        </nav>
-
-        <button
-          type="button"
-          onClick={() => onThemeChange(theme === "dark" ? "light" : "dark")}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--z-border)] bg-[var(--z-surface)] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--z-fg-muted)] transition hover:border-[var(--z-border-strong)] hover:text-[var(--z-fg)] md:self-auto"
-          aria-pressed={theme === "light"}
-        >
-          {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-          {theme === "dark" ? "Light" : "Dark"}
-        </button>
-      </div>
-    </motion.header>
-  );
-}
-
-function Hero() {
-  const { reduced, stagger, spring } = useMotionSafe();
-
-  const container = {
-    hidden: { opacity: reduced ? 1 : 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: stagger, delayChildren: reduced ? 0 : 0.06 },
-    },
-  };
-
-  const item = {
-    hidden: reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: spring,
-    },
-  };
-
-  return (
-    <section id="top" className="relative px-5 pb-16 pt-12 md:px-8 md:pb-24 md:pt-16">
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="mx-auto max-w-4xl text-center"
-      >
-        <motion.p
-          variants={item}
-          className="mb-5 text-[11px] font-semibold uppercase tracking-[0.32em] text-[var(--z-fg-muted)]"
-        >
-          Product preview
-        </motion.p>
-
-        <motion.h1
-          variants={item}
-          className="mb-6 text-balance text-[2rem] font-black leading-[1.08] tracking-tight text-[var(--z-fg)] sm:text-5xl md:text-6xl md:leading-[1.05]"
-        >
-          <span className="block sm:inline">Zapp</span>
-          <span className="text-[var(--z-fg-muted)] sm:mx-1">—</span>{" "}
-          <span className="text-gradient-electric">Your personal CFO</span>
-        </motion.h1>
-
-        <motion.p
-          variants={item}
-          className="mx-auto mb-10 max-w-2xl text-pretty text-base leading-relaxed text-[var(--z-fg-muted)] md:text-lg"
-        >
-          Take the guesswork out of money management. See the full picture, get plain-English
-          guidance, and make better spending decisions before the money leaves your account.
-        </motion.p>
-
-        <motion.div variants={item} className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
-          <a href="#waitlist" className="zapp-btn-primary">
-            Join waitlist
-          </a>
-          <a href="#demo" className="zapp-btn-ghost">
-            Watch demo
-          </a>
-          <a href="#deck" className="zapp-btn-ghost">
-            View deck
-          </a>
-        </motion.div>
-      </motion.div>
-    </section>
-  );
-}
-
-function MediaSection() {
-  const { reduced, stagger, spring } = useMotionSafe();
-  const embedSrc = toEmbedUrl(demoVideoUrl);
-
-  const container = {
-    hidden: { opacity: reduced ? 1 : 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: stagger },
-    },
-  };
-
-  const card = {
-    hidden: reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 },
-    show: { opacity: 1, y: 0, transition: spring },
-  };
-
-  return (
-    <section id="media" className="scroll-mt-24 px-5 pb-20 md:px-8" aria-labelledby="media-heading">
-      <div className="mx-auto max-w-6xl">
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-10 text-center"
-        >
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--z-fg-muted)]">
-            Demo display
+    <div className="rounded-[1.4rem] border border-rose-400/18 bg-[linear-gradient(180deg,rgba(127,29,29,0.18),rgba(11,18,32,0.88))] p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-300/80">
+            Zapp score
           </p>
-          <h2 id="media-heading" className="text-3xl font-extrabold tracking-tight text-[var(--z-fg)] md:text-4xl">
-            Deck & video
-          </h2>
-        </motion.div>
-
-        <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="grid gap-6 lg:grid-cols-2"
-        >
-          <motion.article
-            variants={card}
-            id="deck"
-            className="zapp-glass zapp-glow-subtle scroll-mt-28 relative rounded-[2rem] p-8 md:p-10"
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-400/90">
-                  Deck
-                </p>
-                <h3 className="text-xl font-bold text-[var(--z-fg)]">View deck</h3>
-                <p className="mt-2 text-sm text-[var(--z-fg-muted)]">
-                  Review the current Zapp deck in-page or open the source files directly.
-                </p>
-              </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[var(--z-border)] bg-[var(--z-input-bg)] text-cyan-300 shadow-[0_0_28px_-6px_rgba(34,211,238,0.45)]">
-                <span className="text-xs font-black uppercase tracking-[0.16em]">PDF</span>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-[var(--z-border)] bg-[var(--z-input-bg)] shadow-inner">
-              <iframe
-                title="Presentation deck (PDF)"
-                src={deckPdfUrl}
-                className="h-[min(58vh,560px)] w-full border-0 bg-white/5"
-              />
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
-              <a href={deckPdfUrl} target="_blank" rel="noopener noreferrer" className="zapp-link-secondary">
-                Open PDF in new tab
-              </a>
-              <a href={deckPptxUrl} target="_blank" rel="noopener noreferrer" className="zapp-link-secondary">
-                Download PowerPoint
-              </a>
-            </div>
-          </motion.article>
-
-          <motion.article
-            variants={card}
-            id="demo"
-            className="zapp-glass zapp-glow scroll-mt-28 relative overflow-hidden rounded-[2rem] p-8 md:p-10"
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
-                  Video
-                </p>
-                <h3 className="text-xl font-bold text-[var(--z-fg)]">Watch demo</h3>
-                <p className="mt-2 text-sm text-[var(--z-fg-muted)]">
-                  Quick walkthrough of how Zapp helps users make clearer financial decisions.
-                </p>
-              </div>
-              <span className="rounded-full border border-[var(--z-border)] bg-[var(--z-input-bg)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--z-fg-muted)]">
-                ~1 min
-              </span>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-[var(--z-border)] bg-black/30 shadow-inner">
-              {embedSrc ? (
-                <div className="aspect-video w-full">
-                  <iframe
-                    title="Product demo video"
-                    src={embedSrc}
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <motion.div
-                  className="relative flex aspect-video w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-slate-900/90 via-slate-950 to-slate-900/80 px-6 text-center"
-                  initial={false}
-                  whileHover={reduced ? undefined : { scale: 1.01 }}
-                  transition={{ duration: 0.35 }}
-                >
-                  <div className="absolute inset-0 opacity-30">
-                    <div className="absolute left-1/4 top-1/4 h-40 w-40 rounded-full bg-cyan-500/30 blur-3xl" />
-                    <div className="absolute bottom-1/4 right-1/4 h-36 w-36 rounded-full bg-violet-500/30 blur-3xl" />
-                  </div>
-                  <Play className="relative z-10 h-14 w-14 text-cyan-300 drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]" />
-                  <p className="relative z-10 text-sm font-semibold text-[var(--z-fg)]">
-                    Demo video placeholder
-                  </p>
-                  <p className="relative z-10 max-w-xs text-xs text-[var(--z-fg-muted)]">
-                    Add <code className="rounded bg-white/5 px-1.5 py-0.5 text-[11px]">VITE_DEMO_VIDEO_URL</code> to
-                    embed the latest walkthrough here.
-                  </p>
-                </motion.div>
-              )}
-            </div>
-          </motion.article>
-        </motion.div>
+          <p className="mt-2 text-lg font-black tracking-[-0.04em] text-white">
+            Not worth it right now.
+          </p>
+        </div>
+        <span className="rounded-full border border-rose-300/18 bg-rose-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-200">
+          Low value
+        </span>
       </div>
-    </section>
+
+      <div className="mt-5 flex items-end gap-3">
+        <p className="text-5xl font-black tracking-[-0.08em] text-white">{demoScore}</p>
+        <p className="pb-1 text-sm text-slate-300">out of 100</p>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-slate-300">
+        Lower scores mean lower value. Higher scores mean better value for you.
+      </p>
+    </div>
   );
 }
 
-function WaitlistSection() {
-  const { reduced, stagger, spring } = useMotionSafe();
+function WaitlistCard() {
+  const { reduced } = useMotionSafe();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<"idle" | "loading" | "success">("idle");
-
-  const container = {
-    hidden: { opacity: reduced ? 1 : 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: stagger },
-    },
-  };
-
-  const row = {
-    hidden: reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: spring },
-  };
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -402,6 +151,7 @@ function WaitlistSection() {
         email: email.trim(),
         source: "landing_page",
       });
+
       toast.success(response.created ? "You're on the waitlist." : "You're already on the waitlist.");
       setName("");
       setEmail("");
@@ -415,124 +165,281 @@ function WaitlistSection() {
   }
 
   return (
-    <section id="waitlist" className="scroll-mt-24 px-5 pb-24 md:px-8" aria-labelledby="waitlist-heading">
-      <div className="mx-auto max-w-3xl">
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-8 text-center"
-        >
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--z-fg-muted)]">
-            Early access
-          </p>
-          <h2 id="waitlist-heading" className="text-3xl font-extrabold tracking-tight text-[var(--z-fg)] md:text-4xl">
-            Join the waitlist
-          </h2>
-          <p className="mt-3 text-[var(--z-fg-muted)]">
-            We&apos;ll reach out when spots open. No spam.
-          </p>
-        </motion.div>
-
-        <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-40px" }}
-          className="zapp-glass zapp-glow-subtle rounded-[2rem] p-8 md:p-10"
-        >
-          <form onSubmit={onSubmit} className="space-y-5" noValidate>
-            <motion.div variants={row}>
-              <label htmlFor="wl-name" className="zapp-label">
-                Full name
-              </label>
-              <input
-                id="wl-name"
-                name="name"
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="zapp-input"
-                placeholder="Alex Rivera"
-                aria-invalid={Boolean(errors.name)}
-                aria-describedby={errors.name ? "err-name" : undefined}
-              />
-              {errors.name && (
-                <p id="err-name" className="mt-1.5 text-xs text-rose-400">
-                  {errors.name}
-                </p>
-              )}
-            </motion.div>
-
-            <motion.div variants={row}>
-              <label htmlFor="wl-email" className="zapp-label">
-                Email
-              </label>
-              <input
-                id="wl-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="zapp-input"
-                placeholder="you@company.com"
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? "err-email" : undefined}
-              />
-              {errors.email && (
-                <p id="err-email" className="mt-1.5 text-xs text-rose-400">
-                  {errors.email}
-                </p>
-              )}
-            </motion.div>
-
-            <motion.div variants={row} className="pt-2">
-              <motion.button
-                type="submit"
-                disabled={status === "loading"}
-                className="zapp-submit w-full disabled:cursor-not-allowed disabled:opacity-60"
-                whileTap={status === "loading" || reduced ? undefined : { scale: 0.985 }}
-              >
-                {status === "loading" ? "Sending…" : "Request access"}
-              </motion.button>
-            </motion.div>
-          </form>
-
-          {status === "success" && (
-            <motion.p
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 text-center text-sm font-medium text-emerald-400/95"
-            >
-              Thanks — you&apos;re on the list. We&apos;ll be in touch soon.
-            </motion.p>
-          )}
-        </motion.div>
+    <motion.article
+      id="waitlist"
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="zapp-glass zapp-glow rounded-[2rem] p-7 text-left md:p-8"
+    >
+      <div className="mb-6">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-300/90">
+          Waitlist open
+        </p>
+        <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
+          Get early access
+        </h2>
+        <p className="mt-3 max-w-md text-sm leading-6 text-[var(--z-fg-muted)]">
+          Join the list to try Zapp first and see how we score purchases before you spend.
+        </p>
       </div>
-    </section>
+
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <div>
+          <label htmlFor="wl-name" className="zapp-label">
+            Name
+          </label>
+          <input
+            id="wl-name"
+            name="name"
+            autoComplete="name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="zapp-input"
+            placeholder="Enter your name"
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "err-name" : undefined}
+          />
+          {errors.name && (
+            <p id="err-name" className="mt-1.5 text-xs text-rose-400">
+              {errors.name}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="wl-email" className="zapp-label">
+            Email
+          </label>
+          <input
+            id="wl-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="zapp-input"
+            placeholder="Enter your email"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "err-email" : undefined}
+          />
+          {errors.email && (
+            <p id="err-email" className="mt-1.5 text-xs text-rose-400">
+              {errors.email}
+            </p>
+          )}
+        </div>
+
+        <motion.button
+          type="submit"
+          disabled={status === "loading"}
+          className="zapp-submit mt-2 inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+          whileTap={status === "loading" || reduced ? undefined : { scale: 0.985 }}
+        >
+          {status === "loading" ? "Joining..." : "Join the waitlist"}
+          <ArrowRight size={15} />
+        </motion.button>
+      </form>
+
+      {status === "success" && (
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-5 text-sm font-medium text-emerald-400/95"
+        >
+          Thanks — you&apos;re on the list. We&apos;ll be in touch soon.
+        </motion.p>
+      )}
+    </motion.article>
   );
 }
 
-export default function LandingPage() {
-  const [theme, setTheme] = React.useState<Theme>("dark");
-
-  React.useEffect(() => {
-    document.documentElement.style.colorScheme = theme;
-  }, [theme]);
+function DemoCard() {
+  const { reduced } = useMotionSafe();
+  const embedSrc = toEmbedUrl(demoVideoUrl);
 
   return (
-    <div className="zapp-landing-shell relative min-h-dvh font-sans antialiased" data-theme={theme}>
+    <motion.article
+      id="demo"
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: reduced ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
+      className="zapp-glass zapp-glow-subtle rounded-[2rem] p-7 text-left md:p-8"
+    >
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
+            Demo
+          </p>
+          <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
+            See Zapp in action
+          </h2>
+          <p className="mt-3 max-w-md text-sm leading-6 text-[var(--z-fg-muted)]">
+            Snap the item, ask Zapp, and get a simple value score before the purchase becomes regret.
+          </p>
+        </div>
+        <span className="rounded-full border border-[var(--z-border)] bg-[var(--z-input-bg)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--z-fg-muted)]">
+          Live concept
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--z-border)] bg-black/30 shadow-inner">
+        {embedSrc ? (
+          <div className="aspect-video w-full">
+            <iframe
+              title="Product demo video"
+              src={embedSrc}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <motion.div
+            className="relative flex aspect-video w-full flex-col justify-between bg-gradient-to-br from-slate-900/90 via-slate-950 to-slate-900/80 p-6"
+            initial={false}
+            whileHover={reduced ? undefined : { scale: 1.01 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="absolute inset-0 opacity-30">
+              <div className="absolute left-1/4 top-1/4 h-40 w-40 rounded-full bg-cyan-500/30 blur-3xl" />
+              <div className="absolute bottom-1/4 right-1/4 h-36 w-36 rounded-full bg-violet-500/30 blur-3xl" />
+            </div>
+
+            <div className="relative z-10 flex items-center justify-between">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">
+                Product demo
+              </span>
+              <Play className="h-8 w-8 text-cyan-300 drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]" />
+            </div>
+
+            <div className="relative z-10 grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-[1.35rem] border border-white/8 bg-white/[0.04] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-cyan-400/10 text-cyan-300">
+                    <Camera size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                      User input
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-200">
+                      Snap the item or ask Zapp if it&apos;s worth it.
+                    </p>
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                      <Upload size={13} />
+                      Upload a product image
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <DemoScoreCard />
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </motion.article>
+  );
+}
+
+const features = [
+  {
+    title: "ASK BEFORE YOU BUY",
+    body: "Get a value score before you spend.",
+  },
+  {
+    title: "SNAP AND DECIDE",
+    body: "Take a picture and let Zapp judge it.",
+  },
+  {
+    title: "KEEP IT SIMPLE",
+    body: "Lower score = lower value. Higher score = better value.",
+  },
+];
+
+export default function LandingPage() {
+  const { reduced, duration } = useMotionSafe();
+
+  return (
+    <div className="zapp-landing-shell relative min-h-dvh font-sans antialiased" data-theme="dark">
       <PageBackground />
-      <Navbar theme={theme} onThemeChange={setTheme} />
-      <main>
-        <Hero />
-        <MediaSection />
-        <WaitlistSection />
+
+      <main className="px-5 pb-16 pt-10 md:px-8 md:pb-24 md:pt-14">
+        <section className="mx-auto max-w-6xl">
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto max-w-4xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--z-border)] bg-[var(--z-surface)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--z-fg-muted)]">
+              <Sparkles size={12} className="text-cyan-300" />
+              Waitlist open
+            </div>
+
+            <h1 className="text-balance text-[2.4rem] font-black leading-[1.02] tracking-tight text-[var(--z-fg)] sm:text-6xl md:text-7xl">
+              <span className="block">Your personal CFO</span>
+              <span className="mt-2 block text-gradient-electric">for smarter spending.</span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--z-fg-muted)]">
+              We don&apos;t waste money. We misjudge value. Zapp helps you judge whether something
+              is actually worth buying before you spend.
+            </p>
+          </motion.div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <WaitlistCard />
+            <DemoCard />
+          </div>
+
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-14 max-w-3xl text-center"
+          >
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--z-fg-muted)]">
+              Why this works
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[var(--z-fg)] md:text-4xl">
+              Better buying decisions, before the charge hits.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-[var(--z-fg-muted)]">
+              Zapp turns vague purchase anxiety into a clear recommendation you can actually use in
+              the moment.
+            </p>
+          </motion.div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {features.map((feature) => (
+              <motion.article
+                key={feature.title}
+                initial={reduced ? false : { opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
+                className="zapp-glass rounded-[1.7rem] p-6 text-left"
+              >
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/60">
+                  {feature.title}
+                </p>
+                <p className="mt-3 max-w-[17rem] text-sm leading-6 text-[var(--z-fg-muted)]">
+                  {feature.body}
+                </p>
+              </motion.article>
+            ))}
+          </div>
+        </section>
       </main>
-      <footer className="border-t border-[var(--z-border)] px-5 py-10 text-center text-xs text-[var(--z-fg-muted)] md:px-8">
-        <p className="font-medium uppercase tracking-[0.2em]">Zapp · Demo display</p>
+
+      <footer className="border-t border-[var(--z-border)] px-5 py-10 text-center text-sm text-[var(--z-fg-muted)] md:px-8">
+        <p className="text-[var(--z-fg)]">Zapp © 2026</p>
+        <p className="mt-1">
+          <span className="font-semibold text-[var(--z-fg)]">Contact:</span> siddhantshankar@zappai.com
+        </p>
       </footer>
     </div>
   );
