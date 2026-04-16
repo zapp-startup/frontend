@@ -13,8 +13,9 @@ describe("value presentation", () => {
     expect(value.label).toBe("High Value");
   });
 
-  it("keeps the meter width capped at the 0-100 scale", () => {
-    expect(getValueMeterWidth(140)).toBe(100);
-    expect(getValueMeterWidth(85)).toBe(85);
+  it("maps meter width to the 0–150 scale", () => {
+    expect(getValueMeterWidth(150)).toBe(100);
+    expect(getValueMeterWidth(75)).toBe(50);
+    expect(getValueMeterWidth(140)).toBeCloseTo((140 / 150) * 100, 10);
   });
 });

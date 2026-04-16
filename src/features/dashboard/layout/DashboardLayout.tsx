@@ -16,6 +16,8 @@ import { PanelProvider } from "../context/PanelContext";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 import { ApiConfigBanner } from "@/shared/components/ApiConfigBanner";
 import { usePrivacyPolicyMeta } from "@/config/privacy";
+import { DashboardFeedbackProvider } from "@/features/dashboard/context/DashboardFeedbackContext";
+import { FeedbackPromptFlow } from "@/features/transactions/components/FeedbackPromptFlow";
 
 const HomePage = React.lazy(() =>
   import("@/features/home").then((module) => ({ default: module.HomePage }))
@@ -177,6 +179,7 @@ export function DashboardLayout() {
 
   return (
     <PanelProvider>
+      <DashboardFeedbackProvider>
         <motion.div
           animate={shouldReduceMotion ? undefined : { backgroundColor: activeColor }}
           transition={{ duration: 0.9 }}
@@ -284,6 +287,8 @@ export function DashboardLayout() {
 
       <ZappBot />
       <BuyAdvisorModal isOpen={isBuyAdvisorOpen} onClose={() => setIsBuyAdvisorOpen(false)} />
+      <FeedbackPromptFlow />
+      </DashboardFeedbackProvider>
     </PanelProvider>
   );
 }

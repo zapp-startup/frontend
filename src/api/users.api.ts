@@ -7,6 +7,8 @@ export type RawExplicit = {
   household_size: number | null;
   location_zip: string;
   income_range: string;
+  /** Set when the user enters an exact amount; otherwise use `income_range` buckets. */
+  monthly_income?: string | number | null;
   monthly_fixed_expenses: number | null;
   financial_goal: string;
   risk_tolerance: string;

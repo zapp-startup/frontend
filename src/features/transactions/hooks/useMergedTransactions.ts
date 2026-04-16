@@ -25,7 +25,7 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
     setLoading(true);
     setError(null);
     try {
-      const [manual, bank] = await Promise.all([
+      const [manualOutcome, bankOutcome] = await Promise.allSettled([
         TransactionsAPI.list({
           category: filters.category,
           direction: filters.direction,
@@ -41,8 +41,35 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
           limit: filters.limit ?? 500,
         }),
       ]);
-      setManualTx(Array.isArray(manual) ? manual : []);
-      setBankTx(Array.isArray(bank) ? bank : []);
+
+      let manual: Transaction[] = [];
+      let bank: BankTransaction[] = [];
+      const failures: string[] = [];
+
+      if (manualOutcome.status === "fulfilled") {
+        const v = manualOutcome.value;
+        manual = Array.isArray(v) ? v : [];
+      } else {
+        const r = manualOutcome.reason;
+        failures.push(r instanceof Error ? r.message : "Manual transactions could not be loaded.");
+      }
+
+      if (bankOutcome.status === "fulfilled") {
+        const v = bankOutcome.value;
+        bank = Array.isArray(v) ? v : [];
+      } else {
+        const r = bankOutcome.reason;
+        failures.push(r instanceof Error ? r.message : "Bank transactions could not be loaded.");
+      }
+
+      setManualTx(manual);
+      setBankTx(bank);
+
+      if (failures.length === 2) {
+        setError(failures.join(" "));
+      } else if (failures.length === 1) {
+        setError(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load transactions");
       setManualTx([]);
@@ -60,6 +87,15 @@ export function useMergedTransactions(filters: MergedTransactionsFilters = {}) {
 
   React.useEffect(() => {
     refetch();
+  }, [refetch]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onRefetch = () => {
+      void refetch();
+    };
+    window.addEventListener("zapp-transactions-refetch", onRefetch);
+    return () => window.removeEventListener("zapp-transactions-refetch", onRefetch);
   }, [refetch]);
 
   const merged: DisplayTransaction[] = React.useMemo(() => {

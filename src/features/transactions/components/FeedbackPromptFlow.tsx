@@ -1,12 +1,24 @@
 import * as React from "react";
 import { useLocation } from "react-router-dom";
 import { TransactionsAPI, type FeedbackCandidate } from "@/api/transactions.api";
+import { useAuth } from "@/features/auth";
+import { useDashboardFeedback } from "@/features/dashboard/context/DashboardFeedbackContext";
 import { useMergedTransactions } from "../hooks/useMergedTransactions";
-import { TransactionFeedbackModal } from "./TransactionFeedbackModal";
 import type { DisplayTransaction } from "../utils/normalizeBankTransaction";
 
 const MAX_PROMPTS_PER_SESSION = 2;
 const TRANSACTION_POOL_LIMIT = 300;
+
+const DAILY_STORAGE_PREFIX = "zapp-feedback-daily-prompt";
+
+function dailyPromptKey(userId: string | number | undefined): string | null {
+  if (userId == null) return null;
+  return `${DAILY_STORAGE_PREFIX}-${userId}`;
+}
+
+function getTodayLocal(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function hasFeedback(tx: DisplayTransaction): boolean {
   return (
@@ -34,8 +46,7 @@ function matchTransaction(
     const id = c.transaction_id;
     if (seen.has(id)) continue;
     const tx =
-      byId.get(id) ??
-      (typeof id === "string" ? byId.get(`bank-${id}`) : undefined);
+      byId.get(id) ?? (typeof id === "string" ? byId.get(`bank-${id}`) : undefined);
     if (!tx) continue;
     if (seen.has(tx.id)) continue;
     seen.add(tx.id);
@@ -47,9 +58,17 @@ function matchTransaction(
   return queue;
 }
 
+/**
+ * Fetches feedback candidates on the dashboard home route and opens the shared
+ * dashboard feedback modal at most once per local day for the first prompt
+ * (per user); further prompts in the same visit are not blocked by the daily key.
+ */
 export function FeedbackPromptFlow() {
   const { pathname } = useLocation();
   const isOnHome = pathname === "/";
+  const { user } = useAuth();
+  const { feedbackTransaction, openFeedback, registerPromptCloseHandler, registerPromptFeedbackSaved } =
+    useDashboardFeedback();
 
   const { transactions, loading: txLoading } = useMergedTransactions({
     limit: TRANSACTION_POOL_LIMIT,
@@ -63,7 +82,34 @@ export function FeedbackPromptFlow() {
     Set<string | number>
   >(() => new Set());
   const hasFetchedCandidates = React.useRef(false);
-  const ignoreNextCloseRef = React.useRef(false);
+  const openedPromptForIndexRef = React.useRef<number | null>(null);
+  /** After any prompt open in this tab session, allow follow-up prompts without re-checking daily storage. */
+  const openedPromptInSessionRef = React.useRef(false);
+
+  const advanceToNext = React.useCallback(() => {
+    setCurrentIndex((i) => {
+      const next = i + 1;
+      if (next >= queue.length) {
+        setQueue([]);
+        openedPromptForIndexRef.current = null;
+        return 0;
+      }
+      openedPromptForIndexRef.current = null;
+      return next;
+    });
+  }, [queue.length]);
+
+  React.useEffect(() => {
+    registerPromptCloseHandler(advanceToNext);
+    return () => registerPromptCloseHandler(null);
+  }, [registerPromptCloseHandler, advanceToNext]);
+
+  React.useEffect(() => {
+    registerPromptFeedbackSaved((transactionId) => {
+      setAnsweredThisSession((prev) => new Set(prev).add(transactionId));
+    });
+    return () => registerPromptFeedbackSaved(null);
+  }, [registerPromptFeedbackSaved]);
 
   React.useEffect(() => {
     if (!isOnHome || hasFetchedCandidates.current) return;
@@ -81,46 +127,61 @@ export function FeedbackPromptFlow() {
     const q = matchTransaction(candidates, transactions, answeredThisSession);
     setQueue(q);
     setCurrentIndex(0);
+    openedPromptForIndexRef.current = null;
   }, [isOnHome, candidates, candidatesLoading, txLoading, transactions, answeredThisSession]);
 
-  const currentTransaction = queue[currentIndex] ?? null;
-  const isOpen = isOnHome && currentTransaction != null;
+  const tryBrowserNotification = React.useCallback((tx: DisplayTransaction) => {
+    if (typeof window === "undefined" || typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+    try {
+      new Notification("Reflect on a purchase", {
+        body: (tx.description_raw || "A transaction").slice(0, 120),
+        tag: "zapp-feedback-prompt",
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  const handleClose = (open: boolean) => {
-    if (!open) {
-      if (ignoreNextCloseRef.current) {
-        ignoreNextCloseRef.current = false;
+  React.useEffect(() => {
+    if (!isOnHome || candidatesLoading || txLoading) return;
+    if (user?.id == null) return;
+    if (feedbackTransaction) return;
+    if (queue.length === 0 || currentIndex >= queue.length) return;
+
+    const key = dailyPromptKey(user.id);
+    const today = getTodayLocal();
+
+    if (!openedPromptInSessionRef.current) {
+      if (key && typeof localStorage !== "undefined" && localStorage.getItem(key) === today) {
         return;
       }
-      advanceToNext();
     }
-  };
 
-  const handleSubmitted = () => {
-    if (currentTransaction) {
-      setAnsweredThisSession((prev) => new Set(prev).add(currentTransaction.id));
+    if (openedPromptForIndexRef.current === currentIndex) return;
+
+    const tx = queue[currentIndex];
+    if (!tx) return;
+
+    openedPromptForIndexRef.current = currentIndex;
+    if (!openedPromptInSessionRef.current && key && typeof localStorage !== "undefined") {
+      localStorage.setItem(key, today);
     }
-    ignoreNextCloseRef.current = true;
-    advanceToNext();
-  };
+    openedPromptInSessionRef.current = true;
 
-  const advanceToNext = () => {
-    setCurrentIndex((i) => {
-      const next = i + 1;
-      if (next >= queue.length) {
-        setQueue([]);
-        return 0;
-      }
-      return next;
-    });
-  };
+    openFeedback(tx, "prompt");
+    tryBrowserNotification(tx);
+  }, [
+    isOnHome,
+    candidatesLoading,
+    txLoading,
+    feedbackTransaction,
+    queue,
+    currentIndex,
+    openFeedback,
+    user?.id,
+    tryBrowserNotification,
+  ]);
 
-  return (
-    <TransactionFeedbackModal
-      transaction={currentTransaction}
-      open={isOpen}
-      onOpenChange={handleClose}
-      onSubmitted={handleSubmitted}
-    />
-  );
+  return null;
 }
