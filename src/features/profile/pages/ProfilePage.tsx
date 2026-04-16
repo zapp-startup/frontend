@@ -2,6 +2,7 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { User, Mail, LogOut, Pencil, Plus, X, ChevronDown, Shield } from "lucide-react";
 import { useAuth } from "@/features/auth";
+import { getDisplayNameInitials, resolveDisplayName } from "@/features/auth/displayName";
 import { MfaEnrollmentCard } from "@/features/auth/components/MfaEnrollmentCard";
 import { PrivacyPolicyLink, PrivacyPolicyMetaLine } from "@/shared/components/PrivacyPolicyLink";
 import { useNavigate } from "react-router-dom";
@@ -444,13 +445,8 @@ export function ProfilePage() {
 
   if (!user) return null;
 
-  const initials = user.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
+  const displayName = resolveDisplayName(name, user.username);
+  const initials = getDisplayNameInitials(displayName);
   const planLabel = displayPlanLabel(user.tier);
 
   return (
@@ -461,6 +457,7 @@ export function ProfilePage() {
       className="mx-auto max-w-4xl space-y-6"
     >
       <SectionHeader
+        level={1}
         eyebrow="Account"
         title="Profile"
         titleClassName="app-page-title"
@@ -497,7 +494,7 @@ export function ProfilePage() {
               Your account
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--app-color-text-primary)] sm:text-3xl">
-              {name.trim() || user.name}
+              {displayName}
             </h2>
             <p className="mt-2 flex items-center justify-center gap-2 text-sm text-[var(--app-color-text-tertiary)] sm:justify-start">
               <Mail className="h-4 w-4 shrink-0 opacity-80" aria-hidden />

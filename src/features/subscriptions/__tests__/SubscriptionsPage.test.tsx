@@ -38,7 +38,7 @@ function renderSubscriptions() {
 
 async function expectValueScore(score: number) {
   await waitFor(() => {
-    expect(screen.getByText(new RegExp(`^${score}$`))).toBeInTheDocument();
+    expect(screen.getAllByText(new RegExp(`^${score}$`)).length).toBeGreaterThan(0);
   });
 
   expect(
@@ -90,6 +90,8 @@ describe("SubscriptionsPage", () => {
     });
 
     expect(screen.getByText("$15.99")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add subscription/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update value scores/i })).toBeInTheDocument();
   });
 
   it("renders subscription value scores with the transaction-style display", async () => {
@@ -108,7 +110,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await expectValueScore(100);
+    await expectValueScore(150);
   });
 
   it("normalizes fractional subscription feedback scores before display", async () => {
@@ -127,7 +129,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await expectValueScore(82);
+    await expectValueScore(123);
   });
 
   it("prefers subscription valuation scores when available", async () => {
@@ -154,7 +156,7 @@ describe("SubscriptionsPage", () => {
 
     renderSubscriptions();
 
-    await expectValueScore(120);
+    await expectValueScore(150);
   });
 
   it("still shows subscriptions when valuations fail to load", async () => {
@@ -178,5 +180,17 @@ describe("SubscriptionsPage", () => {
     });
 
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+  });
+
+  it("renders a retry notice when subscriptions fail to load", async () => {
+    vi.mocked(api.SubscriptionsAPI.list).mockRejectedValue(new Error("catalog offline"));
+
+    renderSubscriptions();
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("catalog offline");
+    });
+
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });

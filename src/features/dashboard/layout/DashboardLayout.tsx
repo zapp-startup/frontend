@@ -5,6 +5,7 @@ import { Home, CreditCard, BarChart2, Search, User, Camera, List, Users } from "
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/features/auth";
+import { getDisplayNameInitials, resolveDisplayName } from "@/features/auth/displayName";
 import { AppLogo } from "@/shared/components/brand/AppLogo";
 import { ThemeModeToggle } from "@/shared/components/layout/theme-mode-toggle";
 import { AppButton, IconBadge } from "@/shared/components/system";
@@ -71,20 +72,6 @@ const NAV_ITEMS: { id: Exclude<PageId, "profile">; path: string; label: string; 
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "circles", path: "/circles", label: "Circles", icon: Users },
 ];
-
-function getInitials(name: string | null | undefined) {
-  const parts = (name ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) return "G";
-
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 function pathToPage(pathname: string): PageId {
   if (pathname === "/") return "home";
@@ -157,7 +144,8 @@ export function DashboardLayout() {
   const activePage = pathToPage(pathname);
   const [isBuyAdvisorOpen, setIsBuyAdvisorOpen] = React.useState(false);
   const shouldReduceMotion = useReducedMotion();
-  const userInitials = getInitials(user?.name);
+  const userDisplayName = resolveDisplayName(user?.name, user?.username);
+  const userInitials = getDisplayNameInitials(userDisplayName);
 
   if (!isAuthReady) {
     return (
@@ -240,7 +228,7 @@ export function DashboardLayout() {
           <div className="flex shrink-0 items-center justify-self-end gap-4 sm:gap-6">
             <ThemeModeToggle />
             <div className="flex items-center gap-3 border-l border-[var(--app-color-border-subtle)] pl-3 sm:pl-4">
-              <NavLink to="/profile" className="group/avatar flex items-center">
+              <NavLink to="/profile" className="group/avatar flex items-center" aria-label={userDisplayName}>
                 <IconBadge
                   tone="cyan"
                   size="md"

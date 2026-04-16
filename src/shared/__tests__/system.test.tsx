@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
+  AppPage,
   AppButton,
   AppDialog,
   AppDialogBody,
@@ -11,7 +12,9 @@ import {
   AppSwitch,
   EmptyState,
   FormField,
+  InlineNotice,
   LoadingState,
+  SectionHeader,
   Surface,
 } from "@/shared/components/system";
 
@@ -73,5 +76,18 @@ describe("system components", () => {
 
     expect(screen.getByText("Dialog title")).toBeInTheDocument();
     expect(screen.getByText("Dialog body")).toBeInTheDocument();
+  });
+
+  it("renders page shell, semantic headings, and inline feedback notices", () => {
+    render(
+      <AppPage width="compact" spacing="compact">
+        <SectionHeader level={2} title="Settings" />
+        <InlineNotice tone="danger" title="Sync paused" description="Reconnect to resume updates." action={<AppButton>Retry</AppButton>} />
+      </AppPage>
+    );
+
+    expect(screen.getByRole("heading", { name: "Settings", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveClass("app-inline-notice");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

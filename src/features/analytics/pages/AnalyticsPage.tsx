@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import {
   BarChart3,
   ChevronRight,
-  Loader2,
   Plus,
   TrendingUp,
   ZapOff,
@@ -12,6 +11,12 @@ import { useSearchParams } from "react-router-dom";
 
 import { ElectricCard } from "@/features/home";
 import {
+  AppButton,
+  AppInput,
+  AppPage,
+  EmptyState,
+  FormField,
+  LoadingState,
   MetricCard,
   SectionHeader,
   StatusChip,
@@ -20,9 +25,6 @@ import {
 import { COLORS } from "@/shared/theme";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 
 import { toast } from "sonner";
 
@@ -32,6 +34,7 @@ import {
   SubscriptionValuationsAPI,
   ItemValuationsAPI,
 } from "@/api";
+import { normalizeModelValueScore } from "@/shared/valuation";
 import type {
   RawInferred,
   Computed,
@@ -69,19 +72,11 @@ function RawInferredSection() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 size={32} className="animate-spin text-cyan-400" />
-      </div>
-    );
+    return <LoadingState label="Loading inferred insights..." lines={3} compact />;
   }
 
   if (data.length === 0) {
-    return (
-      <div className="py-16 text-center text-sm text-gray-500">
-        No inferred insights yet.
-      </div>
-    );
+    return <EmptyState title="No inferred insights yet." description="Signals will appear here once enough activity has been analyzed." />;
   }
 
   return (
@@ -93,7 +88,7 @@ function RawInferredSection() {
           elevation={1}
           className="p-6"
         >
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+          <div className="mb-2 app-mini-label">
             Inferred #{item.id}
           </div>
           <div className="space-y-2">
@@ -101,8 +96,8 @@ function RawInferredSection() {
               .filter(([k]) => k !== "id")
               .map(([key, val]) => (
                 <div key={key} className="flex justify-between gap-4">
-                  <span className="text-xs text-gray-500">{key}</span>
-                  <span className="truncate text-sm font-bold text-white">
+                  <span className="text-xs text-[var(--app-color-text-tertiary)]">{key}</span>
+                  <span className="truncate text-sm font-bold text-[var(--app-color-text-primary)]">
                     {typeof val === "object" ? JSON.stringify(val) : String(val)}
                   </span>
                 </div>
@@ -138,19 +133,11 @@ function ComputedSection() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 size={32} className="animate-spin text-cyan-400" />
-      </div>
-    );
+    return <LoadingState label="Loading computed insights..." lines={3} compact />;
   }
 
   if (data.length === 0) {
-    return (
-      <div className="py-16 text-center text-sm text-gray-500">
-        No computed insights yet.
-      </div>
-    );
+    return <EmptyState title="No computed insights yet." description="Derived utility signals will appear here when the backend has enough source data." />;
   }
 
   return (
@@ -162,7 +149,7 @@ function ComputedSection() {
           elevation={1}
           className="p-6"
         >
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+          <div className="mb-2 app-mini-label">
             Computed #{item.id}
           </div>
           <div className="space-y-2">
@@ -170,8 +157,8 @@ function ComputedSection() {
               .filter(([k]) => k !== "id")
               .map(([key, val]) => (
                 <div key={key} className="flex justify-between gap-4">
-                  <span className="text-xs text-gray-500">{key}</span>
-                  <span className="truncate text-sm font-bold text-white">
+                  <span className="text-xs text-[var(--app-color-text-tertiary)]">{key}</span>
+                  <span className="truncate text-sm font-bold text-[var(--app-color-text-primary)]">
                     {typeof val === "object" ? JSON.stringify(val) : String(val)}
                   </span>
                 </div>
@@ -196,25 +183,26 @@ function ValuationCard({
   evidenceJson?: Record<string, unknown>;
   reasoningJson?: Record<string, unknown>;
 }) {
+  const normalizedScore = normalizeModelValueScore(score);
   const confidencePercent =
     confidence == null ? null : Math.round(Math.min(1, Math.max(0, confidence)) * 100);
   const evidenceText = evidenceJson ? JSON.stringify(evidenceJson, null, 2) : null;
   const reasoningText = reasoningJson ? JSON.stringify(reasoningJson, null, 2) : null;
 
   return (
-    <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02]">
-      {score != null && (
-        <div className="mb-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+    <Surface variant="inset" padding="md" className="space-y-4 rounded-[1.75rem]">
+      {normalizedScore != null && (
+        <div className="space-y-2">
+          <div className="app-mini-label">
             Personal Value Score
           </div>
-          <span className="text-lg font-black text-white">{score}/150</span>
+          <span className="text-lg font-black text-[var(--app-color-text-primary)]">{normalizedScore}/150</span>
         </div>
       )}
 
       {recommendation && (
-        <div className="mb-4">
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+        <div className="space-y-2">
+          <div className="app-mini-label">
             Recommendation
           </div>
           <span
@@ -231,12 +219,12 @@ function ValuationCard({
       )}
 
       {confidencePercent != null && (
-        <div className="mb-4">
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+        <div className="space-y-2">
+          <div className="app-mini-label">
             Confidence
           </div>
           <div className="flex items-center gap-3">
-            <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/5">
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--app-color-surface-base)]">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -245,34 +233,33 @@ function ValuationCard({
                 }}
               />
             </div>
-            <span className="text-sm font-black text-white">{confidencePercent}%</span>
+            <span className="text-sm font-black text-[var(--app-color-text-primary)]">{confidencePercent}%</span>
           </div>
         </div>
       )}
 
       {evidenceText && (
-        <div>
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+        <div className="space-y-2">
+          <div className="app-mini-label">
             Evidence
           </div>
-          <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-[var(--app-radius-control)] bg-[var(--app-color-surface-base)] p-4 text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
             {evidenceText}
           </pre>
         </div>
       )}
 
       {reasoningText && (
-        <div className="mt-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+        <div className="space-y-2">
+          <div className="app-mini-label">
             Reasoning
           </div>
-          <pre className="overflow-x-auto whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-[var(--app-radius-control)] bg-[var(--app-color-surface-base)] p-4 text-sm leading-relaxed text-[var(--app-color-text-secondary)]">
             {reasoningText}
           </pre>
-          <p className="text-sm leading-relaxed text-gray-300">{evidence}</p>
         </div>
       )}
-    </div>
+    </Surface>
   );
 }
 
@@ -340,77 +327,73 @@ function ValuationsSection({
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 size={32} className="animate-spin text-cyan-400" />
-      </div>
-    );
+    return <LoadingState label="Loading valuations..." lines={3} compact />;
   }
 
   const hasAny = subVals.length > 0 || itemVals.length > 0;
 
   return (
     <div className="space-y-12">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-black text-white">Valuations</h3>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h3 className="app-card-title text-2xl">Valuations</h3>
+          <p className="app-helper max-w-2xl">Review current subscription and item valuation output, or add a new item to score.</p>
+        </div>
         {!addingItem && (
-          <Button
+          <AppButton
+            type="button"
+            variant="info"
             onClick={() => {
               setAddingItem(true);
               onItemCreateIntentHandled();
             }}
-            className="gap-2 rounded-xl"
-            style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
+            className="gap-2"
           >
             <Plus size={16} />
             New Item Valuation
-          </Button>
+          </AppButton>
         )}
       </div>
 
       {addingItem && (
-        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <h4 className="font-black text-white">Add Item Valuation</h4>
+        <Surface variant="panel" padding="lg" className="space-y-5">
+          <div className="space-y-1">
+            <h4 className="app-card-title">Add Item Valuation</h4>
+            <p className="app-helper">Create an item entry to evaluate a one-off purchase against your current utility patterns.</p>
+          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-gray-500">
-                Description
-              </Label>
-              <Input
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Description">
+              <AppInput
                 value={newItem.itemName}
                 onChange={(e) =>
                   setNewItem((prev) => ({ ...prev, itemName: e.target.value }))
                 }
                 placeholder="e.g. New laptop"
-                className="border-white/10 bg-[#0B1220] text-white"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-gray-500">
-                Amount ($)
-              </Label>
-              <Input
+            <FormField label="Amount ($)">
+              <AppInput
                 type="number"
                 value={newItem.amount}
                 onChange={(e) =>
                   setNewItem((prev) => ({ ...prev, amount: e.target.value }))
                 }
                 placeholder="0"
-                className="border-white/10 bg-[#0B1220] text-white"
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="flex gap-2">
-            <Button
+          <div className="flex flex-wrap gap-3">
+            <AppButton
+              type="button"
               onClick={handleAddItem}
-              style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
             >
-              Add
-            </Button>
-            <Button
+              Add Item
+            </AppButton>
+            <AppButton
+              type="button"
               variant="outline"
               onClick={() => {
                 setAddingItem(false);
@@ -419,15 +402,13 @@ function ValuationsSection({
               }}
             >
               Cancel
-            </Button>
+            </AppButton>
           </div>
-        </div>
+        </Surface>
       )}
 
       {!hasAny && !addingItem && (
-        <div className="py-16 text-center text-sm text-gray-500">
-          No valuations yet. Add an item valuation to get started.
-        </div>
+        <EmptyState title="No valuations yet." description="Add an item valuation to start comparing one-off purchases alongside subscription value signals." />
       )}
 
       {subVals.length > 0 && (
@@ -507,8 +488,9 @@ export function AnalyticsPage() {
   }, [searchParams, setSearchParams]);
 
   return (
-    <div className="relative z-10 space-y-12 pb-32">
+    <AppPage>
       <SectionHeader
+        level={1}
         eyebrow="Intelligence"
         title="Analytics"
         titleClassName="app-page-title"
@@ -534,16 +516,10 @@ export function AnalyticsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="rounded-2xl border border-white/10 bg-[#101A2E] p-1.5">
-          <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white/10">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="rounded-xl data-[state=active]:bg-white/10">
-            Insights
-          </TabsTrigger>
-          <TabsTrigger value="valuations" className="rounded-xl data-[state=active]:bg-white/10">
-            Valuations
-          </TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="valuations">Valuations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-8">
@@ -753,14 +729,14 @@ export function AnalyticsPage() {
         <TabsContent value="insights" className="mt-8">
           <div className="space-y-10">
             <div>
-              <h3 className="mb-4 text-xl font-black text-white">
+              <h3 className="mb-4 app-card-title text-2xl">
                 Raw Inferred Insights
               </h3>
               <RawInferredSection />
             </div>
 
             <div>
-              <h3 className="mb-4 text-xl font-black text-white">
+              <h3 className="mb-4 app-card-title text-2xl">
                 Computed Insights
               </h3>
               <ComputedSection />
@@ -775,6 +751,6 @@ export function AnalyticsPage() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </AppPage>
   );
 }

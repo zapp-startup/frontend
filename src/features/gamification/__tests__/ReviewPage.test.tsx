@@ -68,6 +68,17 @@ function makeWeeklyOverview() {
         regret_score: null,
         satisfaction_rating: null,
       },
+      {
+        id: 12,
+        description_raw: "Old coffee",
+        occurred_at: "2026-04-02T12:00:00Z",
+        amount: "8.00",
+        direction: "spend",
+        category: "eating_out",
+        impulse_score: null,
+        regret_score: null,
+        satisfaction_rating: 8,
+      },
     ],
     upcoming_subscription_renewals: [],
     low_value_subscriptions: [],
@@ -107,25 +118,30 @@ describe("ReviewPage", () => {
 
     expect(screen.getByRole("heading", { name: "Weekly Review" })).toBeInTheDocument();
     expect(
-      screen.getByText("Capture one win, one miss, and one adjustment for next week."),
+      screen.getByText("One win, one miss, and one adjustment for next week."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Apr 6 - Apr 12\. Review the key purchases, then finish the summary\./),
+      screen.getByText(/Apr 6 - Apr 12\. Review purchases, then finish the summary\./),
     ).toBeInTheDocument();
+    expect(screen.getByText("See what's left before you submit.")).toBeInTheDocument();
+    expect(screen.getByText("Showing Apr 6 - Apr 12 purchases only")).toBeInTheDocument();
+    expect(screen.getByText("Needs feedback")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add feedback/i })).toBeInTheDocument();
+    expect(screen.queryByText("Old coffee")).not.toBeInTheDocument();
     expect(screen.getAllByText("Biggest win")).toHaveLength(2);
     expect(screen.getAllByText("Biggest miss")).toHaveLength(2);
     expect(screen.getAllByText("Next adjustment")).toHaveLength(2);
 
-    fireEvent.change(screen.getByPlaceholderText("Name one spending choice to keep."), {
+    fireEvent.change(screen.getByPlaceholderText("One spending choice to keep."), {
       target: { value: "Packed lunch twice." },
     });
-    fireEvent.change(screen.getByPlaceholderText("Name one purchase or pattern to rethink."), {
+    fireEvent.change(screen.getByPlaceholderText("One purchase or pattern to rethink."), {
       target: { value: "Impulse coffee run." },
     });
-    fireEvent.change(screen.getByPlaceholderText("Name one change for next week."), {
+    fireEvent.change(screen.getByPlaceholderText("One change for next week."), {
       target: { value: "Set a weekday lunch budget." },
     });
-    fireEvent.change(screen.getByPlaceholderText("Optional notes for this review."), {
+    fireEvent.change(screen.getByPlaceholderText("Optional notes."), {
       target: { value: "Keep lunch prep on Sunday." },
     });
 
@@ -143,5 +159,34 @@ describe("ReviewPage", () => {
     });
 
     expect(toast.success).toHaveBeenCalledWith("Weekly review complete. +25 points");
+  });
+
+  it("shows the shorter empty-state copy when there are no purchases left to review", async () => {
+    vi.mocked(GamificationAPI.getWeeklyReview).mockResolvedValue({
+      ...makeWeeklyOverview(),
+      transaction_candidates: [
+        {
+          id: 12,
+          description_raw: "Old coffee",
+          occurred_at: "2026-04-02T12:00:00Z",
+          amount: "8.00",
+          direction: "spend",
+          category: "eating_out",
+          impulse_score: null,
+          regret_score: null,
+          satisfaction_rating: 8,
+        },
+      ],
+    } as never);
+
+    renderReviewPage();
+
+    await waitFor(() => {
+      expect(GamificationAPI.getWeeklyReview).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByText("No purchases to review right now. Finish the summary above if you're ready."),
+    ).toBeInTheDocument();
   });
 });

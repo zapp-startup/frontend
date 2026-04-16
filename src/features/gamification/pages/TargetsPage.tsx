@@ -5,6 +5,7 @@ export function TargetsPage() {
   return (
     <div className="space-y-8 pb-32">
       <SectionHeader
+        level={1}
         eyebrow="Habit planning"
         title="Monthly Targets"
         titleClassName="app-page-title"

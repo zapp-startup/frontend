@@ -100,10 +100,10 @@ export function TransactionFeedbackModal({
         : null;
   const footerNote =
     primaryAction === "feedback"
-      ? "Rating, sliders, and note save together."
+      ? "Rating and note save together."
       : hasReflectionText
-        ? "Only the note will be saved for this purchase."
-        : "Add a rating or note to continue.";
+        ? "Only the note will be saved."
+        : "Add a rating or note.";
 
   const handleSubmit = async () => {
     if (!canSubmit || !transaction) return;
@@ -158,7 +158,7 @@ export function TransactionFeedbackModal({
     if (!transaction) return;
     const notes = form.reflection_text.trim();
     if (!notes) {
-      toast.error("Add a reflection before saving it.");
+      toast.error("Add a reflection before saving.");
       return;
     }
 
@@ -228,7 +228,7 @@ export function TransactionFeedbackModal({
           >
             <div className="app-label text-[var(--app-accent-cyan-soft)]">After using it</div>
             <p className="app-helper">
-              Add a rating for full feedback, or leave a note for a quick reflection.
+              Add a rating for full feedback, or leave a note.
             </p>
           </Surface>
 
@@ -238,7 +238,7 @@ export function TransactionFeedbackModal({
                 <span>Satisfaction</span> <span className="text-[var(--app-accent-red-soft)]">*</span>
               </>
             }
-            helperText="Rate it from 1 to 10."
+            helperText="1 to 10."
           >
             <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
@@ -257,7 +257,7 @@ export function TransactionFeedbackModal({
           </FormField>
 
           <div className="grid gap-5 lg:grid-cols-2">
-            <FormField label="Regret" helperText="0 is none. 100 is high.">
+            <FormField label="Regret" helperText="0 none, 100 high.">
               <div className="flex items-center gap-4">
                 <Slider
                   value={[form.regret_rating]}
@@ -273,7 +273,7 @@ export function TransactionFeedbackModal({
 
             <FormField
               label={wording?.repurchaseLabel ?? "Would you buy or use this again?"}
-              helperText="0 is never. 100 is definitely."
+              helperText="0 never, 100 definitely."
             >
               <div className="flex items-center gap-4">
                 <Slider
@@ -305,7 +305,7 @@ export function TransactionFeedbackModal({
             </FormField>
           )}
 
-          <FormField label="Reflection" helperText="What stood out?">
+          <FormField label="Reflection">
             <Surface
               variant="inset"
               padding="md"

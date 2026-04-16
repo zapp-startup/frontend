@@ -19,6 +19,9 @@ export type DisplayTransaction = {
   usage_frequency?: number | null;
   reflection_text?: string | null;
   considered_at?: string | null;
+  feedback_value_score?: number | null;
+  value_score?: number | null;
+  value_score_source?: string | null;
   personal_value_score?: number | null;
   value_score_confidence?: number | null;
   value_score_model_version?: string | null;
@@ -105,6 +108,9 @@ export function normalizeBankTransaction(bankTx: BankTransaction): DisplayTransa
     usage_frequency: null,
     reflection_text: null,
     considered_at: null,
+    feedback_value_score: null,
+    value_score: bankTx.personal_value_score ?? null,
+    value_score_source: "model",
     personal_value_score: bankTx.personal_value_score ?? null,
     value_score_confidence: bankTx.value_score_confidence ?? null,
     value_score_model_version: bankTx.value_score_model_version ?? null,

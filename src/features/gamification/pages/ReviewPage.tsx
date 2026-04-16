@@ -27,6 +27,7 @@ import type { DisplayTransaction } from "@/features/transactions/utils/normalize
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/components/ui/utils";
 import { COLORS } from "@/shared/theme";
+import { normalizeModelValueScore } from "@/shared/valuation";
 
 type ReviewKind = "weekly" | "monthly";
 
@@ -58,10 +59,10 @@ const REVIEW_THEME: Record<
     progress: "from-emerald-300 via-cyan-300 to-lime-200",
     summaryTitle: "Lock the lesson in",
     summaryDescription:
-      "Capture one win, one miss, and one adjustment for next week.",
-    transactionTitle: "Purchases worth revisiting",
+      "One win, one miss, and one adjustment for next week.",
+    transactionTitle: "Purchases to review",
     transactionDescription:
-      "Review the purchases that mattered most this week.",
+      "The purchases that mattered most this week.",
   },
   monthly: {
     title: "Monthly Review",
@@ -74,25 +75,25 @@ const REVIEW_THEME: Record<
     progress: "from-sky-300 via-cyan-300 to-indigo-200",
     summaryTitle: "Close the month with signal",
     summaryDescription:
-      "Capture the best call, the miss, and the focus for next month.",
-    transactionTitle: "Purchases to audit",
+      "The best call, the miss, and next month's focus.",
+    transactionTitle: "Purchases to review",
     transactionDescription:
-      "Review the biggest purchases first, then check subscriptions.",
+      "Start with the biggest purchases, then subscriptions.",
   },
 };
 
 const FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
   wins: {
     label: "Biggest win",
-    placeholder: "Name one spending choice to keep.",
+    placeholder: "One spending choice to keep.",
   },
   regrets: {
     label: "Biggest miss",
-    placeholder: "Name one purchase or pattern to rethink.",
+    placeholder: "One purchase or pattern to rethink.",
   },
   adjustment: {
     label: "Next adjustment",
-    placeholder: "Name one change for next week.",
+    placeholder: "One change for next week.",
   },
   best_purchase: {
     label: "Best purchase",
@@ -109,7 +110,7 @@ const FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
 };
 
 const MISSING_COPY: Record<string, string> = {
-  reviewed_transactions: "Review enough purchases before submitting.",
+  reviewed_transactions: "Review enough purchases first.",
   wins: "Add your biggest win.",
   regrets: "Add your biggest miss.",
   adjustment: "Add one next step.",
@@ -153,6 +154,41 @@ function statusTone(review: PeriodicReview) {
   return review.status === "completed"
     ? "bg-green-500/15 text-green-300 border-green-500/25"
     : "bg-yellow-500/15 text-yellow-200 border-yellow-500/25";
+}
+
+function currentDateKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function effectiveReviewEnd(review: PeriodicReview) {
+  const today = currentDateKey();
+  return review.period_end < today ? review.period_end : today;
+}
+
+function occursInReviewWindow(transaction: Transaction, review: PeriodicReview) {
+  const occurredOn = transaction.occurred_at.slice(0, 10);
+  return occurredOn >= review.period_start && occurredOn <= effectiveReviewEnd(review);
+}
+
+function formatDateLabel(dateString: string) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day, 12).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function hasReviewFeedback(transaction: Transaction) {
+  return (
+    transaction.satisfaction_rating != null ||
+    transaction.regret_rating != null ||
+    transaction.repurchase_likelihood != null ||
+    (transaction.reflection_text?.trim().length ?? 0) > 0
+  );
 }
 
 export function ReviewPage({ kind }: { kind: ReviewKind }) {
@@ -269,6 +305,10 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
   const overallProgress = Math.round(
     (((reviewedProgress * 0.55) + (summaryProgress * 0.45)) || 0) * 100,
   );
+  const scopedTransactions = overview.transaction_candidates.filter((transaction) =>
+    occursInReviewWindow(transaction, review),
+  );
+  const reviewScopeLabel = `${formatDateLabel(review.period_start)} - ${formatDateLabel(effectiveReviewEnd(review))}`;
   const outstandingRequirements = [
     ...(missingRequirements.length > 0
       ? missingRequirements
@@ -322,7 +362,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   </div>
                 </div>
                 <p className="max-w-3xl text-sm leading-6 text-gray-300">
-                  {overview.period_label}. Review the key purchases, then finish the summary.
+                  {overview.period_label}. Review purchases, then finish the summary.
                 </p>
               </div>
             </div>
@@ -361,10 +401,10 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               </div>
               <div className="mt-3 text-xs font-bold leading-5 text-gray-400">
                 {review.status === "completed"
-                  ? "This period is already complete."
+                  ? "This review is complete."
                   : overview.eligible_to_complete
-                    ? `You can submit this ${kind} review now.`
-                    : "Review the queue, then finish the summary."}
+                    ? "Ready to submit."
+                    : "Finish the queue and summary."}
               </div>
             </div>
           </div>
@@ -376,14 +416,14 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               note={`Need ${overview.minimum_transactions_required} total`}
             />
             <HeroMetricCard
-              label="Still pending"
+              label="Pending"
               value={String(overview.pending_transaction_feedback_count)}
-              note="Purchases still waiting for feedback"
+              note="Waiting for feedback"
             />
             <HeroMetricCard
-              label="Summary prompts"
+              label="Summary"
               value={`${filledSummaryFields}/${overview.summary_requirements.length}`}
-              note="Summary questions answered"
+              note="Questions answered"
             />
           </div>
         </div>
@@ -398,7 +438,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                 <h2 className="text-lg font-black text-white">Review map</h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-gray-400">
-                See what is left before you can submit.
+                See what's left before you submit.
               </p>
             </div>
             <div
@@ -423,7 +463,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                     overview.minimum_transactions_required
                   }
                   title="Review purchases"
-                  description={`${overview.reviewed_transaction_count} of ${overview.minimum_transactions_required} done`}
+                  description={`${overview.reviewed_transaction_count} of ${overview.minimum_transactions_required}`}
                 />
                 {overview.summary_requirements.map((field) => (
                   <ChecklistRow
@@ -439,11 +479,11 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             <div className="rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5">
               <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
                 <Clock3 size={16} className="text-yellow-300" />
-                Outstanding requirements
+                Still needed
               </div>
               {outstandingRequirements.length === 0 ? (
                 <div className="rounded-[1.4rem] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100">
-                  Everything is in place. Submit when you're ready.
+                  Everything is in place. Submit when ready.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -460,7 +500,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <MiniStat
                   label="Review status"
-                  value={review.status === "completed" ? "Closed" : "Open"}
+                  value={review.status === "completed" ? "Completed" : "Open"}
                 />
                 <MiniStat label="Period label" value={overview.period_label} />
               </div>
@@ -540,7 +580,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                 onChange={(event) => setNotes(event.target.value)}
                 rows={4}
                 className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
-                placeholder="Optional notes for this review."
+                placeholder="Optional notes."
               />
             </div>
             <Button
@@ -574,6 +614,9 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">
               {theme.transactionDescription}
             </p>
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+              Showing {reviewScopeLabel} purchases only
+            </p>
           </div>
           <Button
             variant="outline"
@@ -584,52 +627,69 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             Refresh
           </Button>
         </div>
-        {overview.transaction_candidates.length === 0 ? (
+        {scopedTransactions.length === 0 ? (
           <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold leading-6 text-gray-500">
-            No purchases to review right now. If you've already finished them,
-            complete the summary above.
+            No purchases to review right now. Finish the summary above if you're ready.
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {overview.transaction_candidates.map((transaction) => (
-              <button
-                key={transaction.id}
-                type="button"
-                onClick={() => openFeedback(transaction)}
-                className="group rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5 text-left transition-all hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/80">
-                      Candidate {String(transaction.id).slice(-3)}
+            {scopedTransactions.map((transaction) => {
+              const reviewed = hasReviewFeedback(transaction);
+              return (
+                <button
+                  key={transaction.id}
+                  type="button"
+                  onClick={() => openFeedback(transaction)}
+                  className="group rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5 text-left transition-all hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/80">
+                          Purchase {String(transaction.id).slice(-3)}
+                        </div>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em]",
+                            reviewed
+                              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                              : "border-yellow-400/25 bg-yellow-400/10 text-yellow-100",
+                          )}
+                        >
+                          {reviewed ? "Reviewed" : "Needs feedback"}
+                        </span>
+                      </div>
+                      <div className="mt-2 truncate text-xl font-black text-white">
+                        {transaction.description_raw ||
+                          formatCategoryLabel(transaction.category)}
+                      </div>
+                      <div className="mt-2 text-sm font-bold text-gray-400">
+                        {reviewed ? "Feedback saved for this purchase." : "Still needs feedback for this review."}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
+                        <span className="rounded-full border border-white/10 px-3 py-1">
+                          {new Date(transaction.occurred_at).toLocaleDateString()}
+                        </span>
+                        <span className="rounded-full border border-white/10 px-3 py-1">
+                          {formatCategoryLabel(transaction.category)}
+                        </span>
+                        <span className="rounded-full border border-white/10 px-3 py-1">
+                          {transaction.direction}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2 truncate text-xl font-black text-white">
-                      {transaction.description_raw ||
-                        formatCategoryLabel(transaction.category)}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
-                      <span className="rounded-full border border-white/10 px-3 py-1">
-                        {new Date(transaction.occurred_at).toLocaleDateString()}
-                      </span>
-                      <span className="rounded-full border border-white/10 px-3 py-1">
-                        {formatCategoryLabel(transaction.category)}
-                      </span>
-                      <span className="rounded-full border border-white/10 px-3 py-1">
-                        {transaction.direction}
-                      </span>
+                    <div className="text-right">
+                      <div className="text-2xl font-black text-white">
+                        {currencyAmount(transaction.amount)}
+                      </div>
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 transition-colors group-hover:border-cyan-300/40 group-hover:text-cyan-100">
+                        {reviewed ? "Edit feedback" : "Add feedback"}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black text-white">
-                      {currencyAmount(transaction.amount)}
-                    </div>
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 transition-colors group-hover:border-cyan-300/40 group-hover:text-cyan-100">
-                      Review purchase
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </ElectricCard>
@@ -784,7 +844,7 @@ function SubscriptionNudgesCard({
                 ) : null}
                 {subscription.feedback_value_score != null ? (
                   <span className="rounded-full border border-white/10 px-3 py-1">
-                    Value score {Math.round(subscription.feedback_value_score * 100)}%
+                    Value score {normalizeModelValueScore(subscription.feedback_value_score)}
                   </span>
                 ) : null}
               </div>

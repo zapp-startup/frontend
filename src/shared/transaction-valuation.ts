@@ -1,12 +1,24 @@
 import type { Transaction } from "@/api/transactions.api";
+import { normalizeModelValueScore } from "@/shared/valuation";
 
-export function deriveTransactionValueScore(tx: Transaction): number | null {
+type TransactionValueScoreShape = Pick<
+  Transaction,
+  "value_score" | "feedback_value_score" | "satisfaction_rating" | "impulse_score" | "regret_score"
+> & {
+  personal_value_score?: number | null;
+};
+
+export function deriveTransactionValueScore(tx: TransactionValueScoreShape): number | null {
   if (typeof tx.value_score === "number") {
-    return Math.max(0, Math.min(150, Math.round(tx.value_score)));
+    return normalizeModelValueScore(tx.value_score);
+  }
+
+  if (typeof tx.personal_value_score === "number") {
+    return normalizeModelValueScore(tx.personal_value_score);
   }
 
   if (typeof tx.feedback_value_score === "number") {
-    return Math.max(0, Math.min(150, Math.round(tx.feedback_value_score * 150)));
+    return normalizeModelValueScore(tx.feedback_value_score);
   }
 
   const satisfaction =
