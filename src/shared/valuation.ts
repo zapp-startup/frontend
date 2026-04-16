@@ -109,7 +109,8 @@ export function getValuePresentation(score: number | null | undefined): ValuePre
   };
 }
 
+/** Width percentage for a 0–150 value meter (same scale as {@link ValueScoreMeter}). */
 export function getValueMeterWidth(score: number | null | undefined) {
   if (score == null || Number.isNaN(score)) return 0;
-  return (Math.min(BASE_SCORE_MAX, clampScore(score)) / BASE_SCORE_MAX) * 100;
+  return (clampScore(score) / OVERFLOW_SCORE_MAX) * 100;
 }

@@ -4,69 +4,45 @@ import { cn } from "@/shared/components/ui/utils";
 type ValueScoreMeterProps = {
   score: number;
   className?: string;
+  /** From value presentation (e.g. `row.valueColor`) so the bar matches the score chip. */
+  accentColor?: string;
 };
 
-function clampValueScore(score: number) {
-  return Math.max(0, Math.min(150, score));
+function tierFillColor(score: number): string {
+  const s = Math.min(100, Math.max(0, score));
+  if (s >= 80) return COLORS.electricGreen;
+  if (s >= 60) return "#fb923c";
+  return COLORS.electricRed;
 }
 
-function ValueScoreMeter({ score, className }: ValueScoreMeterProps) {
-  const normalizedScore = clampValueScore(score);
-  const overflowWidth =
-    normalizedScore > 100 ? Math.min(100, ((normalizedScore - 100) / 50) * 100) * 0.333333 : 0;
-  const baseWidth = Math.min(66.6667, (Math.min(normalizedScore, 100) / 100) * 66.6667);
-  const baseColor =
-    normalizedScore >= 80
-      ? COLORS.electricGreen
-      : normalizedScore >= 60
-        ? "#fb923c"
-        : COLORS.electricRed;
+const SCORE_MAX = 150;
+
+function ValueScoreMeter({ score, className, accentColor }: ValueScoreMeterProps) {
+  const clamped = Math.max(0, Math.min(SCORE_MAX, score));
+  const fillPct = (clamped / SCORE_MAX) * 100;
+  const baseColor = accentColor ?? tierFillColor(clamped);
 
   return (
-    <div className={cn("relative pt-3", className)}>
-      <div className="relative h-2 overflow-hidden rounded-full bg-[var(--app-color-surface-overlay)]">
+    <div className={cn("w-full min-w-[12rem]", className)}>
+      <div
+        className="relative h-2 w-full overflow-hidden rounded-full bg-white/[0.07] ring-1 ring-white/[0.06]"
+        role="progressbar"
+        aria-valuenow={Math.round(clamped)}
+        aria-valuemin={0}
+        aria-valuemax={SCORE_MAX}
+      >
         <div
-          className="absolute left-0 top-0 h-full"
+          className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            width: "33.3333%",
-            backgroundColor: "rgba(255,255,255,0.04)",
-          }}
-        />
-        <div
-          className="absolute right-0 top-0 h-full"
-          style={{
-            width: "66.6667%",
-            backgroundColor: "rgba(255,255,255,0.04)",
-          }}
-        />
-        {normalizedScore > 100 ? (
-          <div
-            className="absolute top-0 h-full rounded-l-full transition-all"
-            style={{
-              left: `${33.3333 - overflowWidth}%`,
-              width: `${overflowWidth}%`,
-              backgroundColor: COLORS.electricBlue,
-              boxShadow: `0 0 16px ${COLORS.electricBlue}66`,
-            }}
-          />
-        ) : null}
-        <div
-          className="absolute right-0 top-0 h-full rounded-r-full transition-all"
-          style={{
-            width: `${baseWidth}%`,
-            backgroundColor: baseColor,
+            width: `${fillPct}%`,
+            background: baseColor,
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px ${baseColor}35`,
           }}
         />
       </div>
-      <div
-        className="absolute top-0 h-5 w-px bg-[var(--app-color-text-faint)]"
-        style={{ left: "33.3333%" }}
-      />
-      <div
-        className="absolute top-5 -translate-x-1/2 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--app-color-text-faint)]"
-        style={{ left: "33.3333%" }}
-      >
-        100
+      <div className="mt-1 flex justify-between px-0.5 opacity-70">
+        <span className="text-[10px] font-medium tabular-nums text-[var(--app-color-text-faint)]">0</span>
+        <span className="text-[10px] font-medium tabular-nums text-[var(--app-color-text-faint)]">150</span>
       </div>
     </div>
   );
