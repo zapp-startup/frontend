@@ -145,6 +145,28 @@ function VerifyTotpEnrollmentHarness() {
   );
 }
 
+function UpdateProfileHarness() {
+  const { updateProfile, user, backendUser } = useAuth();
+  const [result, setResult] = React.useState("");
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          const response = await updateProfile({ name: "Updated Display Name" });
+          setResult(JSON.stringify(response));
+        }}
+      >
+        Update profile
+      </button>
+      <output data-testid="profile-name">{user?.name ?? ""}</output>
+      <output data-testid="backend-profile-name">{backendUser?.name ?? ""}</output>
+      <output data-testid="profile-update-result">{result}</output>
+    </>
+  );
+}
+
 describe("AuthProvider", () => {
   let events: AuditEvent[] = [];
 
@@ -350,6 +372,46 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("session-result")).toHaveTextContent("Temporary backend failure");
       expect(screen.getByTestId("session-user")).toHaveTextContent("user@example.com");
       expect(screen.getByTestId("session-authenticated")).toHaveTextContent("true");
+    });
+  });
+
+  it("patches the backend profile and updates the stored display name", async () => {
+    mockApiRequest.mockImplementation(async (path: string, opts?: { method?: string; body?: string }) => {
+      if (path === "/api/auth/me/" && (!opts?.method || opts.method === "GET")) {
+        return meResponse;
+      }
+      if (path === "/api/auth/me/" && opts?.method === "PATCH") {
+        return {
+          ...meResponse,
+          name: "Updated Display Name",
+        };
+      }
+      throw new Error(`Unmocked: ${path}`);
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <UpdateProfileHarness />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-name")).toHaveTextContent("Test User");
+    });
+
+    await user.click(screen.getByRole("button", { name: /update profile/i }));
+
+    await waitFor(() => {
+      expect(mockApiRequest).toHaveBeenCalledWith("/api/auth/me/", {
+        requireAuth: true,
+        method: "PATCH",
+        body: JSON.stringify({ name: "Updated Display Name" }),
+      });
+      expect(screen.getByTestId("profile-name")).toHaveTextContent("Updated Display Name");
+      expect(screen.getByTestId("backend-profile-name")).toHaveTextContent("Updated Display Name");
+      expect(screen.getByTestId("profile-update-result")).toHaveTextContent('{"ok":true}');
     });
   });
 

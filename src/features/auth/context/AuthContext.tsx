@@ -2,6 +2,7 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import { apiRequest, ApiError, getApiConfigurationError } from "@/api/client";
 import { fetchAuthAssurance, type AuthAssuranceResponse } from "@/api/compliance.api";
+import { resolveDisplayName } from "@/features/auth/displayName";
 import { emitAuditEvent } from "@/shared/audit/audit";
 import {
   enrollTotpFactor as mfaEnrollTotp,
@@ -46,6 +47,7 @@ export type User = {
 export type BackendUserProfile = {
   id: number;
   email: string;
+  name: string;
   username: string;
   supabase_uid: string;
 };
@@ -122,7 +124,7 @@ function mapMeToUser(me: MeResponse): User {
     id: me.id,
     supabaseUid: me.supabase_uid ?? "",
     username: me.username,
-    name: me.name || me.username,
+    name: resolveDisplayName(me.name, me.username),
     email: me.email,
     tier: me.tier,
     createdAt: me.created_at ?? "",
@@ -133,6 +135,7 @@ function mapMeToBackend(me: MeResponse): BackendUserProfile {
   return {
     id: me.id,
     email: me.email,
+    name: resolveDisplayName(me.name, me.username),
     username: me.username,
     supabase_uid: me.supabase_uid ?? "",
   };
@@ -520,7 +523,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = React.useCallback(
     async (data: Partial<Pick<User, "name" | "tier">>) => {
       try {
-        const me = await apiRequest<MeResponse>("/api/users/profile/", {
+        const me = await apiRequest<MeResponse>("/api/auth/me/", {
           requireAuth: true,
           method: "PATCH",
           body: JSON.stringify({

@@ -123,6 +123,24 @@ describe("ProfilePage", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it("uses the edited display name for the hero title and initials preview", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue("Test User")).toBeInTheDocument());
+
+    await user.clear(screen.getByDisplayValue("Test User"));
+    await user.type(screen.getByPlaceholderText("Your name"), "Morgan Lee");
+
+    expect(screen.getByRole("heading", { name: "Morgan Lee" })).toBeInTheDocument();
+    expect(screen.getByText("ML")).toBeInTheDocument();
+  });
+
   it("shows error toast when profile update fails", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValue({ ok: false, error: "Supabase error" });
