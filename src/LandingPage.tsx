@@ -1,13 +1,14 @@
 import * as React from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Camera, Play, Sparkles, Upload } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { submitWaitlistSignup } from "@/api/waitlist.api";
 import "@/styles/landing.css";
 
-const demoVideoUrl = (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ?? "";
-const demoScore = 34;
+const fallbackDemoVideoUrl = "https://www.youtube.com/watch?v=M7lc1UVf-VE";
+const demoVideoUrl =
+  (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ?? fallbackDemoVideoUrl;
 
 function toEmbedUrl(url: string): string | null {
   if (!url) return null;
@@ -96,35 +97,6 @@ function PageBackground() {
   );
 }
 
-function DemoScoreCard() {
-  return (
-    <div className="rounded-[1.4rem] border border-rose-400/18 bg-[linear-gradient(180deg,rgba(127,29,29,0.18),rgba(11,18,32,0.88))] p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-300/80">
-            Zapp score
-          </p>
-          <p className="mt-2 text-lg font-black tracking-[-0.04em] text-white">
-            Not worth it right now.
-          </p>
-        </div>
-        <span className="rounded-full border border-rose-300/18 bg-rose-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-200">
-          Low value
-        </span>
-      </div>
-
-      <div className="mt-5 flex items-end gap-3">
-        <p className="text-5xl font-black tracking-[-0.08em] text-white">{demoScore}</p>
-        <p className="pb-1 text-sm text-slate-300">out of 100</p>
-      </div>
-
-      <p className="mt-3 text-sm leading-6 text-slate-300">
-        Lower scores mean lower value. Higher scores mean better value for you.
-      </p>
-    </div>
-  );
-}
-
 function WaitlistCard() {
   const { reduced } = useMotionSafe();
   const [name, setName] = React.useState("");
@@ -170,7 +142,7 @@ function WaitlistCard() {
       initial={reduced ? false : { opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="zapp-glass zapp-glow rounded-[2rem] p-7 text-left md:p-8"
+      className="zapp-glass zapp-glow flex h-full flex-col rounded-[2rem] p-7 text-left md:p-8"
     >
       <div className="mb-6">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-300/90">
@@ -182,9 +154,13 @@ function WaitlistCard() {
         <p className="mt-3 max-w-md text-sm leading-6 text-[var(--z-fg-muted)]">
           Join the list to try Zapp first and see how we score purchases before you spend.
         </p>
+        <p className="mt-3 text-sm font-semibold leading-6 text-emerald-300">
+          The first 50 signups get Zapp Pro free.
+        </p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="flex flex-1 flex-col justify-between gap-4" noValidate>
+        <div className="space-y-4">
         <div>
           <label htmlFor="wl-name" className="zapp-label">
             Name
@@ -229,6 +205,7 @@ function WaitlistCard() {
             </p>
           )}
         </div>
+        </div>
 
         <motion.button
           type="submit"
@@ -264,80 +241,32 @@ function DemoCard() {
       initial={reduced ? false : { opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: reduced ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
-      className="zapp-glass zapp-glow-subtle rounded-[2rem] p-7 text-left md:p-8"
+      className="zapp-glass zapp-glow-subtle flex h-full flex-col rounded-[2rem] p-7 text-left md:p-8"
     >
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
-            Demo
-          </p>
-          <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
-            See Zapp in action
-          </h2>
-          <p className="mt-3 max-w-md text-sm leading-6 text-[var(--z-fg-muted)]">
-            Snap the item, ask Zapp, and get a simple value score before the purchase becomes regret.
-          </p>
-        </div>
-        <span className="rounded-full border border-[var(--z-border)] bg-[var(--z-input-bg)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--z-fg-muted)]">
-          Live concept
-        </span>
+      <div className="mb-6">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-violet-300/90">
+          Demo
+        </p>
+        <h2 className="text-2xl font-black tracking-[-0.04em] text-[var(--z-fg)]">
+          See Zapp in action
+        </h2>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--z-border)] bg-black/30 shadow-inner">
-        {embedSrc ? (
-          <div className="aspect-video w-full">
-            <iframe
-              title="Product demo video"
-              src={embedSrc}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        ) : (
-          <motion.div
-            className="relative flex aspect-video w-full flex-col justify-between bg-gradient-to-br from-slate-900/90 via-slate-950 to-slate-900/80 p-6"
-            initial={false}
-            whileHover={reduced ? undefined : { scale: 1.01 }}
-            transition={{ duration: 0.35 }}
-          >
-            <div className="absolute inset-0 opacity-30">
-              <div className="absolute left-1/4 top-1/4 h-40 w-40 rounded-full bg-cyan-500/30 blur-3xl" />
-              <div className="absolute bottom-1/4 right-1/4 h-36 w-36 rounded-full bg-violet-500/30 blur-3xl" />
-            </div>
-
-            <div className="relative z-10 flex items-center justify-between">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">
-                Product demo
-              </span>
-              <Play className="h-8 w-8 text-cyan-300 drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]" />
-            </div>
-
-            <div className="relative z-10 grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-[1.35rem] border border-white/8 bg-white/[0.04] p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-cyan-400/10 text-cyan-300">
-                    <Camera size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      User input
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-200">
-                      Snap the item or ask Zapp if it&apos;s worth it.
-                    </p>
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                      <Upload size={13} />
-                      Upload a product image
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <DemoScoreCard />
-            </div>
-          </motion.div>
-        )}
+      <motion.div
+        className="overflow-hidden rounded-[1.5rem] border border-[var(--z-border)] bg-black/30 shadow-inner"
+        initial={false}
+        whileHover={reduced ? undefined : { scale: 1.01 }}
+        transition={{ duration: 0.35 }}
+      >
+        <div className="aspect-video w-full min-h-[420px]">
+          <iframe
+            title="Product demo video"
+            src={embedSrc ?? toEmbedUrl(fallbackDemoVideoUrl) ?? undefined}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
       </div>
     </motion.article>
   );
@@ -379,13 +308,13 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-balance text-[2.4rem] font-black leading-[1.02] tracking-tight text-[var(--z-fg)] sm:text-6xl md:text-7xl">
-              <span className="block">Your personal CFO</span>
-              <span className="mt-2 block text-gradient-electric">for smarter spending.</span>
+              <span>Zapp - </span>
+              <span className="text-gradient-electric">Your Personal CFO</span>
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--z-fg-muted)]">
-              We don&apos;t waste money. We misjudge value. Zapp helps you judge whether something
-              is actually worth buying before you spend.
+              <span className="block">Humans don&apos;t waste money,</span>
+              <span className="block">we misjudge value.</span>
             </p>
           </motion.div>
 
@@ -404,13 +333,10 @@ export default function LandingPage() {
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--z-fg-muted)]">
               Why this works
             </p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-[var(--z-fg)] md:text-4xl">
-              Better buying decisions, before the charge hits.
+            <h2 className="mt-3 text-balance text-3xl font-black tracking-tight text-[var(--z-fg)] md:text-4xl">
+              Make better buying decisions,
+              <br className="hidden md:block" /> before the charge hits.
             </h2>
-            <p className="mt-4 text-base leading-7 text-[var(--z-fg-muted)]">
-              Zapp turns vague purchase anxiety into a clear recommendation you can actually use in
-              the moment.
-            </p>
           </motion.div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -421,12 +347,12 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
-                className="zapp-glass rounded-[1.7rem] p-6 text-left"
+                className="zapp-glass rounded-[1.7rem] p-7 text-left"
               >
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/60">
+                <p className="text-[12px] font-black uppercase tracking-[0.22em] text-cyan-100/80">
                   {feature.title}
                 </p>
-                <p className="mt-3 max-w-[17rem] text-sm leading-6 text-[var(--z-fg-muted)]">
+                <p className="mt-4 max-w-[18rem] text-lg font-medium leading-8 text-[var(--z-fg)]">
                   {feature.body}
                 </p>
               </motion.article>
