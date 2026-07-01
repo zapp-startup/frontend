@@ -14,10 +14,10 @@ export function BankLinkComplianceBanner() {
 
   if (apiErr) {
     return (
-      <div className="flex gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
-        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div className="flex gap-3 rounded-2xl border border-[color:color-mix(in_srgb,var(--app-color-status-danger)_32%,transparent)] bg-[color:color-mix(in_srgb,var(--app-color-status-danger)_12%,transparent)] p-4 text-sm text-[var(--app-color-text-secondary)]">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-color-status-danger)]" />
         <div>
-          <p className="font-black uppercase tracking-widest text-[10px] text-red-400 mb-1">Configuration</p>
+          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-[var(--app-color-status-danger)]">Configuration</p>
           <p>{apiErr}</p>
         </div>
       </div>
@@ -33,13 +33,13 @@ export function BankLinkComplianceBanner() {
     bankLinkGateReason === "mfa_required";
 
   return (
-    <div className="flex gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-100 text-sm">
-      <Shield className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+    <div className="flex gap-3 rounded-2xl border border-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_32%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_14%,transparent)] p-4 text-sm text-[var(--app-color-text-secondary)]">
+      <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-accent-yellow-soft)]" />
       <div>
-        <p className="font-black uppercase tracking-widest text-[10px] text-amber-400/90 mb-1">Bank connection</p>
+        <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-[var(--app-accent-yellow-soft)]">Bank connection</p>
         <p>{msg}</p>
         {showProfileLink && (
-          <Link to="/profile" className="inline-block mt-2 text-cyan-400 font-bold text-xs uppercase tracking-widest hover:underline">
+          <Link to="/profile" className="mt-2 inline-block text-xs font-bold uppercase tracking-widest text-[var(--app-accent-cyan-soft)] hover:underline">
             Open profile & security
           </Link>
         )}

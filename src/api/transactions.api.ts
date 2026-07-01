@@ -46,21 +46,89 @@ export type TransactionFeedbackPayload = {
   considered_at: string;
 };
 
-export const TransactionsAPI = {
-  recent: (limit = 6) => apiRequest<Transaction[]>(`/api/transactions/?limit=${limit}`, { requireAuth: true }),
-  /** Fetch transactions recommended for feedback by the ML pipeline. */
-  getFeedbackCandidates: () =>
-    apiRequest<FeedbackCandidate[]>("/api/transactions/feedback-candidates/", { requireAuth: true }),
-  list: (params?: { category?: string; direction?: string; date_from?: string; date_to?: string; limit?: number; signal?: AbortSignal; }) => {
+/** One page of the cursor-paginated transactions endpoint. */
+export type TransactionsPage = {
+  results: Transaction[];
+  next: string | null;
+  previous: string | null;
+};
+
+type TransactionQueryParams = {
+  category?: string;
+  direction?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  page_size?: number;
+  cursor?: string;
+};
+
+function buildTransactionQuery(params?: TransactionQueryParams): string {
   const query = new URLSearchParams();
   if (params?.category) query.set("category", params.category);
   if (params?.direction) query.set("direction", params.direction);
   if (params?.date_from) query.set("date_from", params.date_from);
   if (params?.date_to) query.set("date_to", params.date_to);
   if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.page_size) query.set("page_size", String(params.page_size));
+  if (params?.cursor) query.set("cursor", params.cursor);
   const qs = query.toString();
-  return apiRequest<Transaction[]>(`/api/transactions/${qs ? `?${qs}` : ""}`, { requireAuth: true, signal: params?.signal, });
-},
+  return qs ? `?${qs}` : "";
+}
+
+/** Convert an absolute DRF `next`/`previous` URL into an apiRequest-relative path. */
+function toRelativeCursorPath(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url; // already relative
+  }
+}
+
+export const TransactionsAPI = {
+  recent: (limit = 6) => apiRequest<Transaction[]>(`/api/transactions/?limit=${limit}`, { requireAuth: true }),
+  /** Fetch transactions recommended for feedback by the ML pipeline. */
+  getFeedbackCandidates: () =>
+    apiRequest<FeedbackCandidate[]>("/api/transactions/feedback-candidates/", { requireAuth: true }),
+  /**
+   * Full manual-transaction list. Follows cursor pagination under the hood and
+   * returns the complete array, so callers that need the whole set (merged
+   * timeline, spending calendar, stats) are unaffected by server-side paging.
+   * The legacy `?limit=` path returns a plain array in a single request.
+   */
+  list: async (
+    params?: { category?: string; direction?: string; date_from?: string; date_to?: string; limit?: number; signal?: AbortSignal; }
+  ): Promise<Transaction[]> => {
+    let path = `/api/transactions/${buildTransactionQuery(params)}`;
+    const all: Transaction[] = [];
+    // Guard bounds runaway paging if a backend ever returns a self-referential cursor.
+    for (let guard = 0; guard < 10000; guard += 1) {
+      const data = await apiRequest<TransactionsPage | Transaction[]>(path, {
+        requireAuth: true,
+        signal: params?.signal,
+      });
+      if (Array.isArray(data)) {
+        all.push(...data); // ?limit= bypass → plain array, single request
+        break;
+      }
+      all.push(...(data.results ?? []));
+      if (!data.next) break;
+      path = toRelativeCursorPath(data.next);
+    }
+    return all;
+  },
+  /** One cursor-paginated page ({ results, next, previous }) for infinite scroll. */
+  listPage: (
+    params?: { category?: string; direction?: string; date_from?: string; date_to?: string; page_size?: number; cursor?: string; signal?: AbortSignal; }
+  ) =>
+    apiRequest<TransactionsPage>(`/api/transactions/${buildTransactionQuery(params)}`, {
+      requireAuth: true,
+      signal: params?.signal,
+    }),
+  /** Follow a `next`/`previous` URL returned by listPage. */
+  listMore: (cursorUrl: string, signal?: AbortSignal) =>
+    apiRequest<TransactionsPage>(toRelativeCursorPath(cursorUrl), { requireAuth: true, signal }),
   create: (data: NewTransaction) =>
     apiRequest<Transaction>("/api/transactions/", {
       requireAuth: true,

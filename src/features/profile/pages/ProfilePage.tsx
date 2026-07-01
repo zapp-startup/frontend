@@ -518,8 +518,8 @@ export function ProfilePage() {
       <Surface
         variant="panel"
         padding="lg"
-        className="rounded-3xl border border-[var(--app-color-border-strong)] shadow-xl"
-        style={{ backgroundColor: COLORS.bgCard, boxShadow: GLOWS.ambient() }}
+        className="rounded-3xl border border-[var(--app-color-border-strong)]"
+        style={{ boxShadow: GLOWS.ambient() }}
       >
         <div className="mb-6 flex items-center gap-2">
           <User className="h-4 w-4 text-[var(--app-accent-cyan-soft)]" aria-hidden />
@@ -552,8 +552,8 @@ export function ProfilePage() {
       <Surface
         variant="panel"
         padding="lg"
-        className="rounded-3xl border border-[var(--app-color-border-strong)] shadow-xl"
-        style={{ backgroundColor: COLORS.bgCard, boxShadow: GLOWS.ambient() }}
+        className="rounded-3xl border border-[var(--app-color-border-strong)]"
+        style={{ boxShadow: GLOWS.ambient() }}
       >
         <div className="mb-5 flex items-center gap-2">
           <Shield className="h-4 w-4 text-[var(--app-accent-cyan-soft)]" aria-hidden />
@@ -567,11 +567,8 @@ export function ProfilePage() {
       <Surface
         variant="panel"
         padding="lg"
-        className="rounded-3xl border border-[var(--app-color-border-strong)] shadow-xl"
-        style={{
-          backgroundColor: COLORS.bgCard,
-          boxShadow: GLOWS.ambient(),
-        }}
+        className="rounded-3xl border border-[var(--app-color-border-strong)]"
+        style={{ boxShadow: GLOWS.ambient() }}
       >
         <FinancialProfileSection
           sectionClassName="border-0 pt-0"
@@ -628,7 +625,6 @@ export function ProfilePage() {
         variant="panel"
         padding="lg"
         className="rounded-3xl border border-[var(--app-color-border-subtle)]"
-        style={{ backgroundColor: COLORS.bgCard }}
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--app-color-text-tertiary)]">
           <PrivacyPolicyMetaLine className="mb-0" />

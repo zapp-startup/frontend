@@ -62,16 +62,18 @@ export type ThemeOverrides = {
 
 export const LIGHT_THEME_OVERRIDES: ThemeOverrides = {
   colors: {
-    canvas: "#EDF5FF",
-    surface: "#F8FBFF",
-    surfaceMuted: "#E7F0FB",
-    surfaceStrong: "#DDE8F6",
-    borderSubtle: "rgba(11,18,32,0.08)",
-    borderStrong: "rgba(11,18,32,0.14)",
-    textPrimary: "#08111F",
-    textSecondary: "#334155",
-    textMuted: "#64748B",
-    textFaint: "#94A3B8",
+    // Canvas sits a step below the (near-white) card surfaces so cards read as
+    // raised panels instead of dissolving into the page.
+    canvas: "#E4EBF6",
+    surface: "#FFFFFF",
+    surfaceMuted: "#EDF2FA",
+    surfaceStrong: "#E1E9F4",
+    borderSubtle: "rgba(11,18,32,0.10)",
+    borderStrong: "rgba(11,18,32,0.16)",
+    textPrimary: "#0A1424",
+    textSecondary: "#33415A",
+    textMuted: "#5B6B82",
+    textFaint: "#8A99AD",
     accentGreenSoft: "#1FAF68",
     accentRedSoft: "#D64C5F",
     accentBlueSoft: "#2F6FDD",
@@ -163,9 +165,11 @@ export function applyThemeVariables(target: HTMLElement = document.documentEleme
 }
 
 export const COLORS = {
-  bgPrimary: APP_THEME.colors.canvas,
-  bgCard: APP_THEME.colors.surface,
-  bgCardHover: APP_THEME.colors.surfaceMuted,
+  // Surface/background constants resolve to theme tokens so inline `backgroundColor`
+  // styles adapt to light/dark instead of being frozen to the dark palette.
+  bgPrimary: "var(--app-color-background-canvas)",
+  bgCard: "var(--app-color-surface-base)",
+  bgCardHover: "var(--app-color-surface-raised)",
   electricGreen: APP_THEME.colors.accentGreen,
   electricRed: APP_THEME.colors.accentRed,
   electricBlue: APP_THEME.colors.accentBlue,
@@ -180,7 +184,10 @@ export const GLOWS = {
   medium: (color: string) => `0 0 24px ${color}59`,
   strong: (color: string) => `0 0 40px ${color}8c`,
   inner: "inset 0 0 1px rgba(255,255,255,0.15)",
-  ambient: (opacity = 0.6) => `0 20px 60px rgba(0,0,0,${opacity})`,
+  // Ambient elevation maps to the theme token so cards cast a soft, light-adapted
+  // shadow in light mode instead of a hardcoded heavy black halo. The opacity arg
+  // is kept for call-site compatibility but the token controls the real value.
+  ambient: (_opacity = 0.6) => "var(--app-shadow-ambient)",
 };
 
 export const UI_PATTERNS = {

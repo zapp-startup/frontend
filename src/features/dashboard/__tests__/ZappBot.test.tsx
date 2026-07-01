@@ -13,6 +13,7 @@ vi.mock("@/features/auth", () => ({
 vi.mock("@/api/ai.api", () => ({
   createConversation: vi.fn(),
   sendMessage: vi.fn(),
+  sendMessageStream: vi.fn(),
 }));
 
 vi.mock("motion/react", () => {

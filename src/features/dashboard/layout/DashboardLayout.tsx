@@ -67,14 +67,14 @@ type PageId =
   | "profile";
 
 const NAV_ITEMS: { id: Exclude<PageId, "profile">; path: string; label: string; icon: LucideIcon }[] = [
-  { id: "home", path: "/", label: "Dashboard", icon: Home },
+  { id: "home", path: "/home", label: "Dashboard", icon: Home },
   { id: "transactions", path: "/transactions", label: "Transactions", icon: List },
   { id: "subscriptions", path: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "circles", path: "/circles", label: "Circles", icon: Users },
 ];
 
 function pathToPage(pathname: string): PageId {
-  if (pathname === "/") return "home";
+  if (pathname === "/" || pathname === "/home") return "home";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/integrations")) return "subscriptions";
   if (pathname.startsWith("/valuations")) return "analytics";
@@ -87,7 +87,7 @@ function pathToPage(pathname: string): PageId {
 }
 
 const ROUTES: { path: string; match?: (pathname: string) => boolean; element: React.ReactNode }[] = [
-  { path: "/", match: (pathname) => pathname === "/", element: <HomePage /> },
+  { path: "/home", match: (pathname) => pathname === "/" || pathname === "/home", element: <HomePage /> },
   {
     path: "/transactions",
     match: (pathname) => pathname === "/transactions" || pathname === "/transactions/new",
@@ -149,7 +149,7 @@ export function DashboardLayout() {
 
   if (!isAuthReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B1220] text-xs font-black uppercase tracking-widest text-gray-500">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-color-background-canvas)] text-xs font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">
         Loading…
       </div>
     );
@@ -178,7 +178,7 @@ export function DashboardLayout() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--app-color-border-subtle)] bg-[var(--app-color-background-canvas)]/72 backdrop-blur-3xl">
         <div className="mx-auto grid h-24 w-full max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6 lg:px-8">
           <div className="justify-self-start">
-            <NavLink to="/" className="inline-flex items-center">
+            <NavLink to="/home" className="inline-flex items-center">
               <AppLogo
                 showWordmark
                 size={52}
@@ -192,7 +192,7 @@ export function DashboardLayout() {
               <NavLink
                 key={item.id}
                 to={item.path}
-                end={item.path === "/"}
+                end={item.path === "/home"}
                 className={({ isActive }) =>
                   cn(
                     "relative flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.22em] transition-all 2xl:px-6",
@@ -251,10 +251,10 @@ export function DashboardLayout() {
         <Routes>
           <Route path="*" element={<PageContent />} />
         </Routes>
-        <footer className="mt-16 border-t border-white/[0.06] py-8 text-center text-[10px] text-gray-600">
-          <PrivacyPolicyLink className="text-gray-500 hover:text-gray-400" />
-          <span className="mx-2 text-gray-700">·</span>
-          <span className="text-gray-600">
+        <footer className="mt-16 border-t border-[var(--app-color-border-subtle)] py-8 text-center text-[10px] text-[var(--app-color-text-tertiary)]">
+          <PrivacyPolicyLink className="text-[var(--app-color-text-tertiary)] transition-colors hover:text-[var(--app-color-text-secondary)]" />
+          <span className="mx-2 text-[var(--app-color-text-faint)]">·</span>
+          <span className="text-[var(--app-color-text-tertiary)]">
             Policy v{privacyPolicyMeta.version} · {privacyPolicyMeta.effectiveDate}
           </span>
         </footer>

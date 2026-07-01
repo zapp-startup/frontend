@@ -9,7 +9,6 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
-import { COLORS } from "@/shared/theme";
 import { getFinancialConsentDisclosure, usePrivacyPolicyMeta } from "@/config/privacy";
 import { PrivacyPolicyLink } from "@/shared/components/PrivacyPolicyLink";
 
@@ -39,28 +38,28 @@ export function BankConnectionConsentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-[#101A2E] border-white/10 text-white">
+      <DialogContent className="max-w-lg border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-overlay)] text-[var(--app-color-text-primary)]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black text-white">Connect your bank</DialogTitle>
+          <DialogTitle className="text-xl font-black text-[var(--app-color-text-primary)]">Connect your bank</DialogTitle>
           {/* asChild: Radix Description renders a <p> by default; use a div to avoid invalid <p> inside <p>. */}
           <DialogDescription asChild>
-            <div className="text-gray-400 text-left space-y-3 text-sm">
+            <div className="space-y-3 text-left text-sm text-[var(--app-color-text-secondary)]">
               <p>
                 {disclosure.intro}
               </p>
-              <p className="text-xs text-gray-500">
-                {disclosure.policyReference} Our <PrivacyPolicyLink className="text-cyan-400" /> contains the current
+              <p className="text-xs text-[var(--app-color-text-tertiary)]">
+                {disclosure.policyReference} Our <PrivacyPolicyLink className="text-[var(--app-accent-cyan-soft)]" /> contains the current
                 version and effective date.
               </p>
               <div
-                className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs text-gray-400"
+                className="rounded-xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] px-3 py-2.5 text-xs text-[var(--app-color-text-tertiary)]"
                 data-testid="bank-consent-policy-meta"
               >
-                <p className="font-bold uppercase tracking-widest text-[10px] text-gray-500 mb-1">Privacy policy</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--app-color-text-tertiary)]">Privacy policy</p>
                 <p>
-                  Version <span className="text-gray-200 font-mono">{meta.version}</span>
-                  <span className="mx-2 text-gray-600">·</span>
-                  Effective <span className="text-gray-200">{meta.effectiveDate}</span>
+                  Version <span className="font-mono text-[var(--app-color-text-secondary)]">{meta.version}</span>
+                  <span className="mx-2 text-[var(--app-color-text-faint)]">·</span>
+                  Effective <span className="text-[var(--app-color-text-secondary)]">{meta.effectiveDate}</span>
                 </p>
               </div>
             </div>
@@ -72,19 +71,19 @@ export function BankConnectionConsentModal({
             id="bank-consent"
             checked={accepted}
             onCheckedChange={(v) => setAccepted(v === true)}
-            className="mt-1 border-white/30 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+            className="mt-1 border-[var(--app-color-border-strong)] data-[state=checked]:border-[var(--app-accent-cyan-soft)] data-[state=checked]:bg-[var(--app-accent-cyan-soft)]"
           />
-          <label htmlFor="bank-consent" className="text-sm text-gray-300 leading-snug cursor-pointer">
+          <label htmlFor="bank-consent" className="cursor-pointer text-sm leading-snug text-[var(--app-color-text-secondary)]">
             {disclosure.checkboxLabel}
           </label>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-0">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="border-white/10 text-gray-400"
+            className="border-[var(--app-color-border-strong)] text-[var(--app-color-text-secondary)]"
             disabled={submitting}
           >
             Cancel
@@ -94,7 +93,7 @@ export function BankConnectionConsentModal({
             disabled={!accepted || submitting}
             onClick={() => void onConfirm()}
             className="font-black"
-            style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
+            style={{ backgroundColor: "var(--app-color-action-primary-bg)", color: "var(--app-color-action-primary-fg)" }}
           >
             {submitting ? "Saving…" : "Continue to bank connection"}
           </Button>

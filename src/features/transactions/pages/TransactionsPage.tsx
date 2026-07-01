@@ -61,6 +61,7 @@ import {
   Surface,
   ValueScoreMeter,
   appButtonVariants,
+  useInViewport,
 } from "@/shared/components/system";
 import { toast } from "sonner";
 
@@ -1031,6 +1032,20 @@ const TransactionGroups = React.memo(function TransactionGroups({
     [groups, visibleGroupCount]
   );
 
+  const hasMoreGroups = visibleGroupCount < groups.length;
+
+  // Infinite scroll: reveal more date groups as the sentinel nears the viewport.
+  const { ref: sentinelRef, inView: sentinelInView } = useInViewport<HTMLDivElement>({
+    rootMargin: "400px",
+    once: false,
+  });
+
+  React.useEffect(() => {
+    if (sentinelInView && hasMoreGroups) {
+      setVisibleGroupCount((prev) => Math.min(prev + INITIAL_VISIBLE_GROUPS, groups.length));
+    }
+  }, [sentinelInView, hasMoreGroups, groups.length]);
+
   const toggleGroup = React.useCallback((date: string) => {
     setExpandedState((prev) => ({ ...prev, [date]: !prev[date] }));
   }, []);
@@ -1207,8 +1222,9 @@ const TransactionGroups = React.memo(function TransactionGroups({
         );
       })}
 
-      {visibleGroupCount < groups.length && (
-        <div className="flex justify-center pt-2">
+      {hasMoreGroups && (
+        <div ref={sentinelRef} className="flex justify-center pt-2">
+          {/* Auto-loads on scroll via IntersectionObserver; button is a fallback. */}
           <AppButton
             variant="outline"
             onClick={() => setVisibleGroupCount((prev) => Math.min(prev + INITIAL_VISIBLE_GROUPS, groups.length))}
