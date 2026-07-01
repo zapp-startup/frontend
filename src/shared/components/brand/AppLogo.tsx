@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { Image, webpFrom } from "@/shared/components/system/image";
 import { cn } from "@/shared/components/ui/utils";
 import { useAppThemeMode } from "@/shared/theme-provider";
 
@@ -23,13 +24,16 @@ export function AppLogo({
 
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>
-      <img
+      <Image
         alt={showWordmark ? "" : "Zapp logo"}
         aria-hidden={showWordmark}
         className={cn("block shrink-0 object-contain object-center", markClassName)}
         draggable={false}
         role={showWordmark ? undefined : "img"}
         src={logoSrc}
+        webpSrc={webpFrom(logoSrc)}
+        width={size}
+        height={size}
         style={{ width: size, height: size, objectPosition: "36% 56%" }}
       />
 

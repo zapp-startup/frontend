@@ -4,7 +4,7 @@ import { ShieldCheck, Smartphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { AppLogo } from "@/shared/components/brand/AppLogo";
-import { AppButton, AppInput, AppSelect, FormField, SectionHeader, Surface } from "@/shared/components/system";
+import { AppButton, AppInput, AppSelect, FormField, Image, SectionHeader, Surface } from "@/shared/components/system";
 
 function normalizeCode(value: string) {
   return value.replace(/\D/g, "").slice(0, 6);
@@ -269,7 +269,7 @@ export function MfaSetupPage() {
               Scan the QR code in Google Authenticator, Authy, or another TOTP app.
             </p>
             {setupQrCode?.startsWith("data:") ? (
-              <img src={setupQrCode} alt="MFA QR code" className="mx-auto h-48 w-48 rounded-lg" />
+              <Image src={setupQrCode} alt="MFA QR code" width={192} height={192} className="mx-auto h-48 w-48 rounded-lg" />
             ) : (
               <p className="break-all text-xs text-[var(--app-color-text-tertiary)]">{setupQrCode}</p>
             )}

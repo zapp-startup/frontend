@@ -20,14 +20,14 @@ export class AppErrorBoundary extends React.Component<React.PropsWithChildren, S
   render() {
     if (this.state.error) {
       return (
-        <div className="min-h-screen bg-[#0B1220] text-white flex flex-col items-center justify-center p-8 font-sans">
-          <p className="text-xs font-black uppercase tracking-widest text-red-400">Something went wrong</p>
-          <pre className="mt-4 max-w-2xl whitespace-pre-wrap rounded-2xl border border-red-500/30 bg-black/40 p-4 text-sm text-red-100">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--app-color-background-canvas)] p-8 font-sans text-[var(--app-color-text-primary)]">
+          <p className="text-xs font-black uppercase tracking-widest text-[var(--app-color-status-danger)]">Something went wrong</p>
+          <pre className="mt-4 max-w-2xl whitespace-pre-wrap rounded-2xl border border-[color:color-mix(in_srgb,var(--app-color-status-danger)_32%,transparent)] bg-[var(--app-color-surface-inset)] p-4 text-sm text-[var(--app-color-text-secondary)]">
             {this.state.error.message}
           </pre>
           <button
             type="button"
-            className="mt-6 rounded-xl border border-white/20 px-4 py-2 text-sm font-bold hover:bg-white/10"
+            className="mt-6 rounded-xl border border-[var(--app-color-border-strong)] px-4 py-2 text-sm font-bold transition-colors hover:bg-[var(--app-color-surface-inset)]"
             onClick={() => window.location.reload()}
           >
             Reload

@@ -76,7 +76,7 @@ function matchTransaction(
  */
 export function FeedbackPromptFlow() {
   const { pathname } = useLocation();
-  const isOnHome = pathname === "/";
+  const isOnHome = pathname === "/home";
   const { user } = useAuth();
   const { feedbackTransaction, openFeedback, registerPromptCloseHandler, registerPromptFeedbackSaved } =
     useDashboardFeedback();

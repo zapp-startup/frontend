@@ -4,7 +4,7 @@ import { useAuth } from "@/features/auth";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { COLORS } from "@/shared/theme";
+import { Image } from "@/shared/components/system";
 import { toast } from "sonner";
 
 /**
@@ -84,26 +84,31 @@ export function MfaEnrollmentCard() {
     }
   };
 
+  const accentButtonStyle = {
+    backgroundColor: "var(--app-color-action-primary-bg)",
+    color: "var(--app-color-action-primary-fg)",
+  } as React.CSSProperties;
+
   return (
-    <div className="pt-8 border-t border-white/10">
-      <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
-        <Shield size={18} className="text-cyan-400" />
+    <div className="pt-8 border-t border-[var(--app-color-border-subtle)]">
+      <h3 className="mb-2 flex items-center gap-2 text-lg font-black text-[var(--app-color-text-primary)]">
+        <Shield size={18} className="text-[var(--app-accent-cyan-soft)]" />
         Two-factor authentication
       </h3>
-      <p className="text-xs text-gray-500 mb-4 max-w-xl">
+      <p className="mb-4 max-w-xl text-xs text-[var(--app-color-text-tertiary)]">
         Adding an authenticator app is required before connecting a bank. This strengthens your sign-in; server-side
         policies may apply additional checks.
       </p>
       {mfaLoading && (
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
+        <div className="flex items-center gap-2 text-sm text-[var(--app-color-text-tertiary)]">
           <Loader2 size={16} className="animate-spin" /> Loading security status…
         </div>
       )}
-      {mfaError && <p className="text-sm text-amber-400 mb-2">{mfaError}</p>}
+      {mfaError && <p className="mb-2 text-sm text-[var(--app-color-status-warning)]">{mfaError}</p>}
       {!mfaLoading && mfaSnapshot?.currentLevel && (
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="mb-3 text-xs text-[var(--app-color-text-tertiary)]">
           Current session assurance:{" "}
-          <span className="font-mono text-gray-300">{mfaSnapshot.currentLevel}</span>
+          <span className="font-mono text-[var(--app-color-text-secondary)]">{mfaSnapshot.currentLevel}</span>
           {mfaSnapshot.nextLevel ? (
             <>
               {" "}
@@ -113,23 +118,23 @@ export function MfaEnrollmentCard() {
         </p>
       )}
       {!mfaLoading && pending.length > 0 && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-100 text-xs">
-          <p className="font-bold uppercase tracking-widest text-[10px] text-amber-400/90 mb-1">Pending setup</p>
+        <div className="mb-4 rounded-xl border border-[color:color-mix(in_srgb,var(--app-color-status-warning)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--app-color-status-warning)_12%,transparent)] p-3 text-xs text-[var(--app-color-text-secondary)]">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--app-color-status-warning)]">Pending setup</p>
           <p>
             Finish verifying your authenticator in this browser, or remove the incomplete factor and start again.
           </p>
         </div>
       )}
       {!mfaLoading && verified.length > 0 && (
-        <ul className="space-y-2 mb-4">
+        <ul className="mb-4 space-y-2">
           {verified.map((f) => (
             <li
               key={f.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2 px-4 rounded-xl bg-white/5 border border-white/5"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] px-4 py-2"
             >
-              <span className="text-sm font-bold text-white">{f.friendlyName}</span>
-              <span className="text-[10px] uppercase text-emerald-400 font-black">Active</span>
-              <Button type="button" variant="ghost" size="sm" className="text-red-400" onClick={() => void remove(f.id)}>
+              <span className="text-sm font-bold text-[var(--app-color-text-primary)]">{f.friendlyName}</span>
+              <span className="text-[10px] font-black uppercase text-[var(--app-color-status-success)]">Active</span>
+              <Button type="button" variant="ghost" size="sm" className="text-[var(--app-color-status-danger)]" onClick={() => void remove(f.id)}>
                 Remove
               </Button>
             </li>
@@ -142,34 +147,34 @@ export function MfaEnrollmentCard() {
           onClick={() => void startEnroll()}
           disabled={enrolling}
           className="rounded-xl font-bold"
-          style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
+          style={accentButtonStyle}
         >
           {enrolling ? "Starting…" : "Set up authenticator app"}
         </Button>
       )}
       {qr && factorId && (
-        <div className="space-y-4 mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
-          <p className="text-sm text-gray-300">Scan this QR code in Google Authenticator, Authy, or another TOTP app.</p>
+        <div className="mt-4 space-y-4 rounded-xl border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-4">
+          <p className="text-sm text-[var(--app-color-text-secondary)]">Scan this QR code in Google Authenticator, Authy, or another TOTP app.</p>
           {qr.startsWith("data:") ? (
-            <img src={qr} alt="MFA QR" className="w-48 h-48 rounded-lg border border-white/10" />
+            <Image src={qr} alt="MFA QR" width={192} height={192} className="h-48 w-48 rounded-lg border border-[var(--app-color-border-subtle)] bg-white p-2" />
           ) : (
-            <div className="text-xs text-gray-500 break-all">{qr}</div>
+            <div className="break-all text-xs text-[var(--app-color-text-tertiary)]">{qr}</div>
           )}
           {totpSecret && (
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Or enter key manually</p>
-              <code className="block text-xs font-mono text-cyan-200/90 break-all bg-black/30 rounded-lg px-3 py-2 border border-white/10">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[var(--app-color-text-tertiary)]">Or enter key manually</p>
+              <code className="block break-all rounded-lg border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-strong)] px-3 py-2 font-mono text-xs text-[var(--app-accent-cyan-soft)]">
                 {totpSecret}
               </code>
             </div>
           )}
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-gray-500">Verification code</Label>
+            <Label className="text-[10px] font-black uppercase text-[var(--app-color-text-tertiary)]">Verification code</Label>
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="000000"
-              className="bg-[#0B1220] border-white/10 text-white h-10 rounded-xl"
+              className="app-input h-10 rounded-xl"
             />
           </div>
           <div className="flex gap-2">
@@ -177,14 +182,14 @@ export function MfaEnrollmentCard() {
               type="button"
               onClick={() => void completeEnroll()}
               disabled={submitting || code.length < 6}
-              style={{ backgroundColor: COLORS.electricCyan, color: COLORS.bgPrimary }}
+              style={accentButtonStyle}
             >
               {submitting ? "Verifying…" : "Confirm"}
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="border-white/10"
+              className="border-[var(--app-color-border-strong)]"
               onClick={() => {
                 setQr(null);
                 setTotpSecret(null);

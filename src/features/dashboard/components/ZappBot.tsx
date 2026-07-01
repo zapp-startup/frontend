@@ -6,7 +6,7 @@ import {
 } from "motion/react";
 import { Send, X, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { createConversation, sendMessage } from "@/api/ai.api";
+import { createConversation, sendMessage, sendMessageStream, type StreamMessageResult } from "@/api/ai.api";
 import { COLORS, GLOWS } from "@/shared/theme";
 import { cn } from "@/shared/components/ui/utils";
 import {
@@ -34,6 +34,10 @@ function isNotFoundError(error: unknown) {
   );
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 export function ZappBot() {
   const promptDisplayMs = 3200;
   const navigate = useNavigate();
@@ -55,10 +59,16 @@ export function ZappBot() {
     buildFallbackAssistantMessage(),
   ]);
   const [conversationId, setConversationId] = React.useState<number | null>(null);
+  // Id of the in-progress streaming assistant bubble (null when not streaming).
+  const [streamingMessageId, setStreamingMessageId] = React.useState<string | null>(null);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const createConversationPromiseRef =
     React.useRef<Promise<{ conversation_id: number }> | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Abort any in-flight stream when the assistant unmounts.
+  React.useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   React.useEffect(() => {
     if (!conversationStorageKey) {
@@ -136,6 +146,58 @@ export function ZappBot() {
     setInput("");
     setIsTyping(true);
 
+    // Streaming placeholder bubble — created lazily on the first delta so the
+    // typing indicator shows until the first token arrives.
+    const streamingId = `stream-${Date.now()}`;
+    let placeholderAdded = false;
+
+    const ensurePlaceholder = () => {
+      if (placeholderAdded) return;
+      placeholderAdded = true;
+      setStreamingMessageId(streamingId);
+      setMessages((prev) => [
+        ...prev,
+        { id: streamingId, text: "", sender: "assistant", timestamp: new Date() },
+      ]);
+    };
+
+    const appendDelta = (delta: string) => {
+      ensurePlaceholder();
+      setMessages((prev) =>
+        prev.map((m) => (m.id === streamingId ? { ...m, text: m.text + delta } : m))
+      );
+    };
+
+    const removePlaceholder = () => {
+      if (!placeholderAdded) return;
+      setMessages((prev) => prev.filter((m) => m.id !== streamingId));
+      placeholderAdded = false;
+    };
+
+    const finalize = (resp: StreamMessageResult) => {
+      const assistantMsg =
+        mapApiMessageToChatMessage({
+          ...resp.assistant_message,
+          content: resp.assistant_message.content.includes("LLM not connected yet")
+            ? "Your message has been stored."
+            : resp.assistant_message.content,
+          metadata_json: {
+            ...resp.assistant_message.metadata_json,
+            quick_actions: normalizeQuickActions(
+              resp.assistant_message.metadata_json?.quick_actions
+            ),
+          },
+        }) ?? buildFallbackAssistantMessage();
+
+      setMessages((prev) => {
+        const base = placeholderAdded ? prev.filter((m) => m.id !== streamingId) : prev;
+        return [...base, assistantMsg];
+      });
+    };
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       if (!devUsername) {
         setMessages((prev) => [
@@ -156,40 +218,46 @@ export function ZappBot() {
         cid = await createFreshConversation();
       }
 
-      let resp;
       try {
-        resp = await sendMessage({ devUsername }, cid, prompt, actionPayload);
-      } catch (err) {
-        if (!isNotFoundError(err)) throw err;
+        // Primary path: stream the reply token-by-token.
+        const resp = await sendMessageStream(cid, prompt, {
+          actionPayload,
+          auth: { devUsername },
+          signal: controller.signal,
+          onDelta: appendDelta,
+        });
+        finalize(resp);
+      } catch (streamErr) {
+        if (isAbortError(streamErr)) return; // unmounted mid-stream
 
-        if (conversationStorageKey) {
-          localStorage.removeItem(conversationStorageKey);
+        // On 404, recreate the conversation before falling back.
+        let fallbackCid = cid;
+        if (isNotFoundError(streamErr)) {
+          if (conversationStorageKey) localStorage.removeItem(conversationStorageKey);
+          setConversationId(null);
+          createConversationPromiseRef.current = null;
+          fallbackCid = await createFreshConversation();
         }
 
-        setConversationId(null);
-        createConversationPromiseRef.current = null;
+        removePlaceholder();
 
-        const freshCid = await createFreshConversation();
-        resp = await sendMessage({ devUsername }, freshCid, prompt, actionPayload);
+        // Graceful fallback to the non-streaming endpoint (keeps its own 404 retry).
+        let resp;
+        try {
+          resp = await sendMessage({ devUsername }, fallbackCid, prompt, actionPayload);
+        } catch (err) {
+          if (!isNotFoundError(err)) throw err;
+          if (conversationStorageKey) localStorage.removeItem(conversationStorageKey);
+          setConversationId(null);
+          createConversationPromiseRef.current = null;
+          const freshCid = await createFreshConversation();
+          resp = await sendMessage({ devUsername }, freshCid, prompt, actionPayload);
+        }
+        finalize(resp);
       }
-
-      const assistantMsg =
-        mapApiMessageToChatMessage({
-          ...resp.assistant_message,
-          content: resp.assistant_message.content.includes("LLM not connected yet")
-            ? "Your message has been stored."
-            : resp.assistant_message.content,
-          metadata_json: {
-            ...resp.assistant_message.metadata_json,
-            quick_actions: normalizeQuickActions(
-              resp.assistant_message.metadata_json?.quick_actions
-            ),
-          },
-        }) ?? buildFallbackAssistantMessage();
-
-      setMessages((prev) => [...prev, assistantMsg]);
     } catch {
       createConversationPromiseRef.current = null;
+      removePlaceholder();
       setMessages((prev) => [
         ...prev,
         {
@@ -200,7 +268,11 @@ export function ZappBot() {
         },
       ]);
     } finally {
+      setStreamingMessageId(null);
       setIsTyping(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -364,7 +436,7 @@ export function ZappBot() {
                   </motion.div>
                 ))}
 
-                {isTyping && (
+                {isTyping && !streamingMessageId && (
                   <Surface
                     variant="inset"
                     padding="sm"

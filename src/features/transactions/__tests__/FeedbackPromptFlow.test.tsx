@@ -54,8 +54,9 @@ const baseTransaction: DisplayTransaction = {
 };
 
 function renderFlow() {
+  // Home dashboard lives at /home; "/" redirects authenticated users there.
   return render(
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter initialEntries={["/home"]}>
       <FeedbackPromptFlow />
     </MemoryRouter>,
   );

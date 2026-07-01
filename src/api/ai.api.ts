@@ -215,6 +215,113 @@ export async function sendMessage(
   );
 }
 
+export type StreamMessageResult = {
+  user_message: ApiMessage;
+  assistant_message: ApiMessage & { metadata_json?: AiAssistantMetadata };
+};
+
+/**
+ * Stream an assistant reply via Server-Sent Events. Calls `onDelta` for each
+ * text chunk as it arrives and resolves with the persisted
+ * { user_message, assistant_message } from the final `done` frame.
+ *
+ * Throws on HTTP error, an `error` frame, a missing response body (streaming
+ * unsupported), or abort — so callers can fall back to `sendMessage`. Auth
+ * matches the non-streaming path (session cookie + CSRF + optional dev header);
+ * we use fetch + ReadableStream rather than EventSource because EventSource
+ * cannot send a POST body or the CSRF header.
+ */
+export async function sendMessageStream(
+  conversationId: number,
+  content: string,
+  options: {
+    onDelta: (text: string) => void;
+    actionPayload?: Record<string, unknown>;
+    signal?: AbortSignal;
+    auth?: DevAuthParams;
+  }
+): Promise<StreamMessageResult> {
+  const body = JSON.stringify(
+    options.actionPayload ? { content, action_payload: options.actionPayload } : { content }
+  );
+
+  const res = await fetch(
+    `${getAiBaseUrl()}/api/ai/conversations/${conversationId}/messages/stream/`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: mergeHeaders(buildAiHeaders(options.auth, body, "POST"), {
+        Accept: "text/event-stream",
+      }),
+      body,
+      signal: options.signal,
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(await readAiError(res, "sendMessageStream failed"));
+  }
+  if (!res.body) {
+    throw new Error("sendMessageStream failed: streaming not supported");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: StreamMessageResult | null = null;
+  let streamError: string | null = null;
+
+  const handleFrame = (frame: string) => {
+    const dataLine = frame
+      .split("\n")
+      .map((line) => line.trimStart())
+      .find((line) => line.startsWith("data:"));
+    if (!dataLine) return;
+
+    const json = dataLine.slice("data:".length).trim();
+    if (!json) return;
+
+    let event: {
+      type?: string;
+      text?: string;
+      user_message?: ApiMessage;
+      assistant_message?: ApiMessage & { metadata_json?: AiAssistantMetadata };
+      detail?: string;
+    };
+    try {
+      event = JSON.parse(json);
+    } catch {
+      return;
+    }
+
+    if (event.type === "delta" && typeof event.text === "string") {
+      options.onDelta(event.text);
+    } else if (event.type === "done" && event.user_message && event.assistant_message) {
+      result = { user_message: event.user_message, assistant_message: event.assistant_message };
+    } else if (event.type === "error") {
+      streamError = event.detail || "stream_failed";
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let separator = buffer.indexOf("\n\n");
+    while (separator !== -1) {
+      const frame = buffer.slice(0, separator);
+      buffer = buffer.slice(separator + 2);
+      handleFrame(frame);
+      separator = buffer.indexOf("\n\n");
+    }
+  }
+  if (buffer.trim()) handleFrame(buffer);
+
+  if (streamError) throw new Error(`sendMessageStream failed: ${streamError}`);
+  if (!result) throw new Error("sendMessageStream failed: stream ended without a final message");
+  return result;
+}
+
 export async function listMessages(
   auth: DevAuthParams,
   conversationId: number

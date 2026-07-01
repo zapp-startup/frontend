@@ -8,7 +8,7 @@ export type Merchant = {
   website?: string;
 };
 
-/** Merchant list is public; no auth required. */
+/** Merchant catalog; requires an authenticated session (sent via cookies). */
 export const MerchantsAPI = {
   list: async (opts?: { signal?: AbortSignal }): Promise<Merchant[]> => {
     const data = await apiRequest<Merchant[] | { results?: Merchant[]; data?: Merchant[] }>(

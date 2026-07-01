@@ -151,27 +151,29 @@
 }
 
 .light {
-  --background: #eef4fb;
-  --foreground: #08111f;
+  --background: #e4ebf6;
+  --foreground: #0a1424;
   --card: #ffffff;
-  --card-foreground: #08111f;
+  --card-foreground: #0a1424;
   --popover: #ffffff;
-  --popover-foreground: #08111f;
-  --primary: #08111f;
+  --popover-foreground: #0a1424;
+  --primary: #0a1424;
   --primary-foreground: #ffffff;
-  --secondary: #e4ecf6;
-  --secondary-foreground: #08111f;
-  --muted: #dde7f2;
-  --muted-foreground: #64748b;
-  --accent: #dbe7f4;
-  --accent-foreground: #08111f;
-  --border: rgba(11, 18, 32, 0.1);
+  --secondary: #e1e9f4;
+  --secondary-foreground: #0a1424;
+  --muted: #dbe5f2;
+  --muted-foreground: #5b6b82;
+  --accent: #d6e3f3;
+  --accent-foreground: #0a1424;
+  --border: rgba(11, 18, 32, 0.12);
   --input: rgba(255, 255, 255, 0.9);
   --input-background: #ffffff;
-  --switch-background: #cbd5e1;
-  --ring: rgba(59, 130, 246, 0.35);
-  --app-color-border-focus: rgba(59, 130, 246, 0.4);
+  --switch-background: #c2cedd;
+  --ring: rgba(59, 130, 246, 0.4);
+  --app-color-border-focus: rgba(59, 130, 246, 0.45);
   --app-color-text-inverse: #ffffff;
+  /* Soft accents are also runtime-injected from theme.ts (LIGHT_THEME_OVERRIDES),
+     which wins over this block; keep both in sync. */
   --app-accent-green-soft: #1faf68;
   --app-accent-red-soft: #d64c5f;
   --app-accent-blue-soft: #2f6fdd;
@@ -179,9 +181,9 @@
   --app-accent-teal-soft: #0d9e86;
   --app-accent-purple-soft: #7c5bcf;
   --app-accent-yellow-soft: #b98519;
-  --app-shadow-ambient: 0 18px 40px rgba(8, 17, 31, 0.08);
-  --app-shadow-raised: 0 16px 28px rgba(8, 17, 31, 0.08);
-  --app-shadow-interactive: 0 0 24px rgba(59, 130, 246, 0.14);
+  --app-shadow-ambient: 0 20px 44px rgba(8, 17, 31, 0.12);
+  --app-shadow-raised: 0 14px 30px rgba(8, 17, 31, 0.11);
+  --app-shadow-interactive: 0 0 24px rgba(59, 130, 246, 0.16);
 }
 
 @theme inline {

@@ -31,6 +31,14 @@ import { normalizeModelValueScore } from "@/shared/valuation";
 
 type ReviewKind = "weekly" | "monthly";
 
+// Shared token-based treatments so light/dark both read cleanly.
+const SUCCESS_PILL =
+  "border-[color:color-mix(in_srgb,var(--app-color-status-success)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--app-color-status-success)_12%,transparent)] text-[var(--app-color-status-success)]";
+const WARNING_PILL =
+  "border-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-yellow-soft)_12%,transparent)] text-[var(--app-accent-yellow-soft)]";
+const INSET_SURFACE =
+  "border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)]";
+
 const REVIEW_THEME: Record<
   ReviewKind,
   {
@@ -40,7 +48,6 @@ const REVIEW_THEME: Record<
     heroCard: string;
     surfaceCard: string;
     pill: string;
-    ring: string;
     progress: string;
     summaryTitle: string;
     summaryDescription: string;
@@ -52,11 +59,11 @@ const REVIEW_THEME: Record<
     title: "Weekly Review",
     eyebrow: "Weekly Reset",
     accent: COLORS.electricGreen,
-    heroCard: "from-emerald-400/18 via-cyan-400/10 to-transparent",
-    surfaceCard: "border-emerald-400/15",
-    pill: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
-    ring: "shadow-[0_0_0_1px_rgba(52,211,153,0.16)]",
-    progress: "from-emerald-300 via-cyan-300 to-lime-200",
+    heroCard:
+      "from-[color:color-mix(in_srgb,var(--app-accent-green-soft)_22%,transparent)] via-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)] to-transparent",
+    surfaceCard: "border-[color:color-mix(in_srgb,var(--app-accent-green-soft)_22%,transparent)]",
+    pill: SUCCESS_PILL,
+    progress: "from-[var(--app-accent-green-soft)] via-[var(--app-accent-cyan-soft)] to-[var(--app-accent-teal-soft)]",
     summaryTitle: "Lock the lesson in",
     summaryDescription:
       "One win, one miss, and one adjustment for next week.",
@@ -68,11 +75,11 @@ const REVIEW_THEME: Record<
     title: "Monthly Review",
     eyebrow: "Monthly Audit",
     accent: COLORS.electricBlue,
-    heroCard: "from-sky-400/18 via-indigo-400/10 to-transparent",
-    surfaceCard: "border-sky-400/15",
-    pill: "border-sky-400/25 bg-sky-400/10 text-sky-200",
-    ring: "shadow-[0_0_0_1px_rgba(56,189,248,0.16)]",
-    progress: "from-sky-300 via-cyan-300 to-indigo-200",
+    heroCard:
+      "from-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_22%,transparent)] via-[color:color-mix(in_srgb,var(--app-accent-purple-soft)_12%,transparent)] to-transparent",
+    surfaceCard: "border-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_22%,transparent)]",
+    pill: "border-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-blue-soft)_12%,transparent)] text-[var(--app-accent-blue-soft)]",
+    progress: "from-[var(--app-accent-blue-soft)] via-[var(--app-accent-cyan-soft)] to-[var(--app-accent-purple-soft)]",
     summaryTitle: "Close the month with signal",
     summaryDescription:
       "The best call, the miss, and next month's focus.",
@@ -151,9 +158,7 @@ function currencyAmount(value: string | number) {
 }
 
 function statusTone(review: PeriodicReview) {
-  return review.status === "completed"
-    ? "bg-green-500/15 text-green-300 border-green-500/25"
-    : "bg-yellow-500/15 text-yellow-200 border-yellow-500/25";
+  return review.status === "completed" ? SUCCESS_PILL : WARNING_PILL;
 }
 
 function currentDateKey() {
@@ -265,7 +270,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
   if (loading) {
     return (
       <ElectricCard semanticColor={accent} elevation={1}>
-        <div className="py-16 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-600">
+        <div className="py-16 text-center text-xs font-black uppercase tracking-[0.3em] text-[var(--app-color-text-tertiary)]">
           Loading {kind} review...
         </div>
       </ElectricCard>
@@ -276,12 +281,16 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
     return (
       <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
         <div className="space-y-3">
-          <div className="text-sm font-black uppercase tracking-[0.24em] text-gray-500">{theme.title}</div>
-          <div className="text-2xl font-black text-white">Could not load review data</div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm font-black uppercase tracking-[0.24em] text-[var(--app-color-text-tertiary)]">{theme.title}</div>
+          <div className="text-2xl font-black text-[var(--app-color-text-primary)]">Could not load review data</div>
+          <div className="text-sm text-[var(--app-color-text-tertiary)]">
             Try refreshing the page once the backend is available again.
           </div>
-          <Button onClick={() => void loadReview()} className="rounded-2xl bg-cyan-500 text-[#0B1220] hover:bg-cyan-400">
+          <Button
+            onClick={() => void loadReview()}
+            className="rounded-2xl"
+            style={{ backgroundColor: "var(--app-color-action-primary-bg)", color: "var(--app-color-action-primary-fg)" }}
+          >
             Retry
           </Button>
         </div>
@@ -324,32 +333,32 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
 
   return (
     <div className="space-y-8 pb-24">
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#08111f] p-6 sm:p-8">
+      <div className="relative overflow-hidden rounded-[2rem] border border-[var(--app-color-border-strong)] bg-[var(--app-color-surface-strong)] p-6 sm:p-8">
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-br",
             theme.heroCard,
           )}
         />
-        <div className="pointer-events-none absolute -right-16 top-0 h-44 w-44 rounded-full bg-white/6 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-10 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 top-0 h-44 w-44 rounded-full bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_16%,transparent)] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-10 h-40 w-40 rounded-full bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)] blur-3xl" />
 
         <div className="relative space-y-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-4">
               <Link
-                to="/"
-                className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-gray-500 transition-colors hover:text-cyan-400"
+                to="/home"
+                className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-[var(--app-color-text-tertiary)] transition-colors hover:text-[var(--app-accent-cyan-soft)]"
               >
                 <ArrowLeft size={14} />
                 Back to dashboard
               </Link>
               <div className="space-y-3">
-                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300/80">
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-[var(--app-accent-cyan-soft)]">
                   {theme.eyebrow}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+                  <h1 className="text-4xl font-black tracking-tight text-[var(--app-color-text-primary)] sm:text-5xl">
                     {theme.title}
                   </h1>
                   <div
@@ -361,7 +370,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                     {review.status === "completed" ? "Completed" : "Open"}
                   </div>
                 </div>
-                <p className="max-w-3xl text-sm leading-6 text-gray-300">
+                <p className="max-w-3xl text-sm leading-6 text-[var(--app-color-text-secondary)]">
                   {overview.period_label}. Review purchases, then finish the summary.
                 </p>
               </div>
@@ -369,16 +378,15 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
 
             <div
               className={cn(
-                "min-w-[220px] rounded-[1.8rem] border bg-white/[0.03] p-5 backdrop-blur",
+                "min-w-[220px] rounded-[1.8rem] border bg-[var(--app-color-surface-overlay)] p-5 backdrop-blur",
                 theme.surfaceCard,
-                theme.ring,
               )}
             >
-              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--app-color-text-tertiary)]">
                 Completion progress
               </div>
               <div className="mt-3 flex items-end justify-between gap-4">
-                <div className="text-5xl font-black tracking-tight text-white">
+                <div className="text-5xl font-black tracking-tight text-[var(--app-color-text-primary)]">
                   {overallProgress}%
                 </div>
                 <div
@@ -390,7 +398,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   {overview.eligible_to_complete ? "Ready to submit" : "In progress"}
                 </div>
               </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/6">
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-[var(--app-color-surface-inset)]">
                 <div
                   className={cn(
                     "h-full rounded-full bg-gradient-to-r transition-all duration-500",
@@ -399,7 +407,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   style={{ width: `${overallProgress}%` }}
                 />
               </div>
-              <div className="mt-3 text-xs font-bold leading-5 text-gray-400">
+              <div className="mt-3 text-xs font-bold leading-5 text-[var(--app-color-text-tertiary)]">
                 {review.status === "completed"
                   ? "This review is complete."
                   : overview.eligible_to_complete
@@ -435,9 +443,9 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles size={18} style={{ color: accent }} />
-                <h2 className="text-lg font-black text-white">Review map</h2>
+                <h2 className="text-lg font-black text-[var(--app-color-text-primary)]">Review map</h2>
               </div>
-              <p className="max-w-xl text-sm leading-6 text-gray-400">
+              <p className="max-w-xl text-sm leading-6 text-[var(--app-color-text-tertiary)]">
                 See what's left before you submit.
               </p>
             </div>
@@ -452,8 +460,8 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+            <div className={cn("rounded-[1.8rem] p-5", INSET_SURFACE)}>
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--app-color-text-tertiary)]">
                 Checklist
               </div>
               <div className="mt-4 space-y-3">
@@ -476,13 +484,13 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
               </div>
             </div>
 
-            <div className="rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5">
-              <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
-                <Clock3 size={16} className="text-yellow-300" />
+            <div className={cn("rounded-[1.8rem] p-5", INSET_SURFACE)}>
+              <div className="mb-3 flex items-center gap-2 text-sm font-black text-[var(--app-color-text-primary)]">
+                <Clock3 size={16} className="text-[var(--app-accent-yellow-soft)]" />
                 Still needed
               </div>
               {outstandingRequirements.length === 0 ? (
-                <div className="rounded-[1.4rem] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100">
+                <div className={cn("rounded-[1.4rem] p-4 text-sm font-bold leading-6", SUCCESS_PILL)}>
                   Everything is in place. Submit when ready.
                 </div>
               ) : (
@@ -490,7 +498,7 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   {outstandingRequirements.map((requirement) => (
                     <div
                       key={requirement}
-                      className="rounded-[1.4rem] border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm font-bold leading-6 text-yellow-100/90"
+                      className={cn("rounded-[1.4rem] border px-4 py-3 text-sm font-bold leading-6", WARNING_PILL)}
                     >
                       {formatMissingRequirement(requirement)}
                     </div>
@@ -515,12 +523,12 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
         >
           <div className="mb-6 space-y-2">
             <div className="flex items-center gap-2">
-              <FileText size={18} className="text-purple-300" />
-              <h2 className="text-lg font-black text-white">
+              <FileText size={18} className="text-[var(--app-accent-purple-soft)]" />
+              <h2 className="text-lg font-black text-[var(--app-color-text-primary)]">
                 {theme.summaryTitle}
               </h2>
             </div>
-            <p className="text-sm leading-6 text-gray-400">
+            <p className="text-sm leading-6 text-[var(--app-color-text-tertiary)]">
               {theme.summaryDescription}
             </p>
           </div>
@@ -535,22 +543,22 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                 <div
                   key={field}
                   className={cn(
-                    "rounded-[1.6rem] border bg-white/[0.02] p-4 transition-colors",
+                    "rounded-[1.6rem] border p-4 transition-colors",
                     filled
-                      ? "border-cyan-400/20 bg-cyan-400/[0.04]"
-                      : "border-white/[0.06]",
+                      ? "border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
+                      : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)]",
                   )}
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-400">
+                    <label className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-color-text-secondary)]">
                       {copy.label}
                     </label>
                     <div
                       className={cn(
                         "rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em]",
                         filled
-                          ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
-                          : "border-white/10 bg-white/[0.03] text-gray-500",
+                          ? SUCCESS_PILL
+                          : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] text-[var(--app-color-text-tertiary)]",
                       )}
                     >
                       {filled ? "Done" : "Needed"}
@@ -565,28 +573,29 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                       }))
                     }
                     rows={4}
-                    className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
+                    className="app-input w-full rounded-[1.2rem] px-4 py-3 text-sm font-medium leading-6 outline-none transition-colors focus:border-[var(--app-color-border-focus)]"
                     placeholder={copy.placeholder}
                   />
                 </div>
               );
             })}
-            <div className="rounded-[1.6rem] border border-white/[0.06] bg-white/[0.02] p-4">
-              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-gray-400">
+            <div className={cn("rounded-[1.6rem] p-4", INSET_SURFACE)}>
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-color-text-secondary)]">
                 Notes
               </label>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={4}
-                className="w-full rounded-[1.2rem] border border-white/10 bg-[#0B1220] px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors focus:border-cyan-500/40"
+                className="app-input w-full rounded-[1.2rem] px-4 py-3 text-sm font-medium leading-6 outline-none transition-colors focus:border-[var(--app-color-border-focus)]"
                 placeholder="Optional notes."
               />
             </div>
             <Button
               onClick={handleComplete}
               disabled={submitting || review.status === "completed"}
-              className="h-14 w-full rounded-[1.2rem] bg-cyan-500 text-sm font-black uppercase tracking-[0.18em] text-[#0B1220] hover:bg-cyan-400"
+              className="h-14 w-full rounded-[1.2rem] text-sm font-black uppercase tracking-[0.18em]"
+              style={{ backgroundColor: "var(--app-color-action-primary-bg)", color: "var(--app-color-action-primary-fg)" }}
             >
               {review.status === "completed"
                 ? "Review completed"
@@ -606,29 +615,29 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Wallet size={18} className="text-cyan-300" />
-              <h2 className="text-lg font-black text-white">
+              <Wallet size={18} className="text-[var(--app-accent-cyan-soft)]" />
+              <h2 className="text-lg font-black text-[var(--app-color-text-primary)]">
                 {theme.transactionTitle}
               </h2>
             </div>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-color-text-tertiary)]">
               {theme.transactionDescription}
             </p>
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--app-color-text-tertiary)]">
               Showing {reviewScopeLabel} purchases only
             </p>
           </div>
           <Button
             variant="outline"
             onClick={() => void loadReview()}
-            className="rounded-2xl border-white/10"
+            className="rounded-2xl border-[var(--app-color-border-strong)]"
           >
             <RefreshCw size={14} className="mr-2" />
             Refresh
           </Button>
         </div>
         {scopedTransactions.length === 0 ? (
-          <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-8 text-sm font-bold leading-6 text-gray-500">
+          <div className={cn("rounded-[1.8rem] p-8 text-sm font-bold leading-6 text-[var(--app-color-text-tertiary)]", INSET_SURFACE)}>
             No purchases to review right now. Finish the summary above if you're ready.
           </div>
         ) : (
@@ -640,49 +649,47 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
                   key={transaction.id}
                   type="button"
                   onClick={() => openFeedback(transaction)}
-                  className="group rounded-[1.8rem] border border-white/[0.06] bg-white/[0.02] p-5 text-left transition-all hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
+                  className="group rounded-[1.8rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-5 text-left transition-all hover:border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_28%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_6%,transparent)]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/80">
+                        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-accent-cyan-soft)]">
                           Purchase {String(transaction.id).slice(-3)}
                         </div>
                         <span
                           className={cn(
                             "rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em]",
-                            reviewed
-                              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
-                              : "border-yellow-400/25 bg-yellow-400/10 text-yellow-100",
+                            reviewed ? SUCCESS_PILL : WARNING_PILL,
                           )}
                         >
                           {reviewed ? "Reviewed" : "Needs feedback"}
                         </span>
                       </div>
-                      <div className="mt-2 truncate text-xl font-black text-white">
+                      <div className="mt-2 truncate text-xl font-black text-[var(--app-color-text-primary)]">
                         {transaction.description_raw ||
                           formatCategoryLabel(transaction.category)}
                       </div>
-                      <div className="mt-2 text-sm font-bold text-gray-400">
+                      <div className="mt-2 text-sm font-bold text-[var(--app-color-text-tertiary)]">
                         {reviewed ? "Feedback saved for this purchase." : "Still needs feedback for this review."}
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
-                        <span className="rounded-full border border-white/10 px-3 py-1">
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-color-text-tertiary)]">
+                        <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                           {new Date(transaction.occurred_at).toLocaleDateString()}
                         </span>
-                        <span className="rounded-full border border-white/10 px-3 py-1">
+                        <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                           {formatCategoryLabel(transaction.category)}
                         </span>
-                        <span className="rounded-full border border-white/10 px-3 py-1">
+                        <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                           {transaction.direction}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-black text-white">
+                      <div className="text-2xl font-black text-[var(--app-color-text-primary)]">
                         {currencyAmount(transaction.amount)}
                       </div>
-                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 transition-colors group-hover:border-cyan-300/40 group-hover:text-cyan-100">
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--app-accent-cyan-soft)_12%,transparent)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--app-accent-cyan-soft)] transition-colors">
                         {reviewed ? "Edit feedback" : "Add feedback"}
                       </div>
                     </div>
@@ -698,13 +705,13 @@ export function ReviewPage({ kind }: { kind: ReviewKind }) {
         <div className="grid gap-6 xl:grid-cols-2">
           <SubscriptionNudgesCard
             title="Upcoming renewals"
-            icon={<Calendar size={18} className="text-yellow-300" />}
+            icon={<Calendar size={18} className="text-[var(--app-accent-yellow-soft)]" />}
             emptyText="No renewals are coming up in the next two weeks."
             subscriptions={overview.upcoming_subscription_renewals}
           />
           <SubscriptionNudgesCard
             title="Low-value subscriptions"
-            icon={<Target size={18} className="text-red-300" />}
+            icon={<Target size={18} className="text-[var(--app-color-status-danger)]" />}
             emptyText="No low-value subscription flags right now."
             subscriptions={overview.low_value_subscriptions}
           />
@@ -734,14 +741,14 @@ function HeroMetricCard({
   note: string;
 }) {
   return (
-    <div className="rounded-[1.6rem] border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
-      <div className="text-[10px] font-black uppercase tracking-[0.28em] text-gray-500">
+    <div className="rounded-[1.6rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-overlay)] p-5 backdrop-blur">
+      <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[var(--app-color-text-tertiary)]">
         {label}
       </div>
-      <div className="mt-3 text-3xl font-black tracking-tight text-white">
+      <div className="mt-3 text-3xl font-black tracking-tight text-[var(--app-color-text-primary)]">
         {value}
       </div>
-      <div className="mt-2 text-xs font-bold leading-5 text-gray-400">
+      <div className="mt-2 text-xs font-bold leading-5 text-[var(--app-color-text-tertiary)]">
         {note}
       </div>
     </div>
@@ -758,20 +765,20 @@ function ChecklistRow({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-[1.2rem] border border-white/[0.05] bg-[#0B1220]/80 p-3">
+    <div className="flex items-start gap-3 rounded-[1.2rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] p-3">
       <div
         className={cn(
           "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
           done
-            ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
-            : "border-white/10 bg-white/[0.04] text-gray-500",
+            ? SUCCESS_PILL
+            : "border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] text-[var(--app-color-text-tertiary)]",
         )}
       >
         <CheckCircle2 size={14} />
       </div>
       <div className="min-w-0">
-        <div className="text-sm font-black text-white">{title}</div>
-        <div className="mt-1 text-xs font-bold leading-5 text-gray-500">
+        <div className="text-sm font-black text-[var(--app-color-text-primary)]">{title}</div>
+        <div className="mt-1 text-xs font-bold leading-5 text-[var(--app-color-text-tertiary)]">
           {description}
         </div>
       </div>
@@ -781,11 +788,11 @@ function ChecklistRow({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-white/[0.05] bg-[#0B1220]/70 p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-gray-500">
+    <div className="rounded-[1.2rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-base)] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--app-color-text-tertiary)]">
         {label}
       </div>
-      <div className="mt-2 text-sm font-black leading-5 text-white">{value}</div>
+      <div className="mt-2 text-sm font-black leading-5 text-[var(--app-color-text-primary)]">{value}</div>
     </div>
   );
 }
@@ -805,45 +812,45 @@ function SubscriptionNudgesCard({
     <ElectricCard semanticColor={COLORS.electricYellow} elevation={1}>
       <div className="mb-5 flex items-center gap-2">
         {icon}
-        <h2 className="text-lg font-black text-white">{title}</h2>
+        <h2 className="text-lg font-black text-[var(--app-color-text-primary)]">{title}</h2>
       </div>
       {subscriptions.length === 0 ? (
-        <div className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-6 text-sm font-bold text-gray-500">
+        <div className="rounded-[1.8rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-6 text-sm font-bold text-[var(--app-color-text-tertiary)]">
           {emptyText}
         </div>
       ) : (
         <div className="space-y-3">
           {subscriptions.map((subscription) => (
-            <div key={subscription.id} className="rounded-[1.8rem] border border-white/[0.05] bg-white/[0.02] p-5">
+            <div key={subscription.id} className="rounded-[1.8rem] border border-[var(--app-color-border-subtle)] bg-[var(--app-color-surface-inset)] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-lg font-black text-white">{subscription.plan_name || "Subscription"}</div>
-                  <div className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
+                  <div className="text-lg font-black text-[var(--app-color-text-primary)]">{subscription.plan_name || "Subscription"}</div>
+                  <div className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-[var(--app-color-text-tertiary)]">
                     {subscription.billing_cycle} · {subscription.status}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-white">{currencyAmount(subscription.price)}</div>
+                  <div className="text-lg font-black text-[var(--app-color-text-primary)]">{currencyAmount(subscription.price)}</div>
                   {subscription.renewal_date ? (
-                    <div className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
+                    <div className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--app-color-text-faint)]">
                       Renews {new Date(subscription.renewal_date).toLocaleDateString()}
                     </div>
                   ) : null}
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
+              <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--app-color-text-tertiary)]">
                 {subscription.subscription_utilization != null ? (
-                  <span className="rounded-full border border-white/10 px-3 py-1">
+                  <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                     Utilization {Math.round(subscription.subscription_utilization * 100)}%
                   </span>
                 ) : null}
                 {subscription.subscription_cost_benefit != null ? (
-                  <span className="rounded-full border border-white/10 px-3 py-1">
+                  <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                     Cost benefit {Math.round(subscription.subscription_cost_benefit * 100)}%
                   </span>
                 ) : null}
                 {subscription.feedback_value_score != null ? (
-                  <span className="rounded-full border border-white/10 px-3 py-1">
+                  <span className="rounded-full border border-[var(--app-color-border-subtle)] px-3 py-1">
                     Value score {normalizeModelValueScore(subscription.feedback_value_score)}
                   </span>
                 ) : null}
